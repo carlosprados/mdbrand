@@ -1,0 +1,78 @@
+name: release
+
+# Every v* tag publishes a GitHub release with prebuilt binaries.
+#
+#   git tag -a v0.2.0 -m "…" && git push origin v0.2.0
+#
+# Nothing else is needed: the tag is the trigger and the version. mdbrand has no
+# cgo, so the cross-compilation below is plain `go build` with GOOS/GOARCH set.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Test
+        run: go test ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build every target
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME}"
+          mkdir -p dist stage
+          # The licence and the README travel inside each archive, so stage them
+          # once and archive from there: zip refuses paths containing "..".
+          cp LICENSE README.md stage/
+          while read -r os arch; do
+            ext=''
+            [ "$os" = windows ] && ext='.exe'
+            name="mdbrand_${version}_${os}_${arch}"
+            echo "building $name"
+            GOOS="$os" GOARCH="$arch" go build \
+              -trimpath \
+              -ldflags "-s -w -X github.com/carlosprados/mdbrand/cmd.Version=${version}" \
+              -o "stage/mdbrand${ext}" .
+            if [ "$os" = windows ]; then
+              (cd stage && zip -q "../dist/${name}.zip" "mdbrand${ext}" LICENSE README.md)
+            else
+              tar -C stage -czf "dist/${name}.tar.gz" mdbrand LICENSE README.md
+            fi
+            rm -f "stage/mdbrand${ext}"
+          done <<'TARGETS'
+          linux amd64
+          linux arm64
+          darwin amd64
+          darwin arm64
+          windows amd64
+          TARGETS
+          (cd dist && sha256sum ./* > "mdbrand_${version}_checksums.txt")
+          ls -l dist
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --title "mdbrand ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            --verify-tag
