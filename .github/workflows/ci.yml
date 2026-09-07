@@ -1,0 +1,29 @@
+name: ci
+
+# Tests on every push and pull request. It also exercises the same actions the
+# release workflow uses, so a broken action version shows up here instead of
+# during a release.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - name: Formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needed on:"; echo "$unformatted"; exit 1
+          fi
+      - run: go vet ./...
+      - run: go test ./...
+      - name: Build
+        run: go build ./...
