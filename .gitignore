@@ -1,0 +1,10 @@
+# built binary
+/mdbrand
+
+# build outputs and kept work directories
+*.pdf
+*.aux
+*.log
+*.out
+*.toc
+/out/
