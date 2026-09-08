@@ -87,7 +87,10 @@ text), or split the figure. Do not "fix" it by scaling the whole diagram down.
   dead URLs. The route is source → SVG → `rsvg-convert` → PDF, and it is
   already what mdbrand does.
 - **Never commit a logo or a licensed font.** Bundles live outside code
-  repositories; the display font is referenced by absolute path.
+  repositories. The display font is found by searching `fonts.display.path`
+  (a list of candidates, `~` and `$VARS` expanded) and then fontconfig, so a
+  shared bundle never hardcodes one machine's path. If it is absent the cover
+  falls back to the body font and the build still succeeds.
 
 ## Brand bundles
 

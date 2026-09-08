@@ -15,6 +15,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/carlosprados/mdbrand/internal/run"
 )
 
 // Brand is one bundle, as parsed from brand.yaml plus the defaults.
@@ -46,10 +48,52 @@ type Fonts struct {
 // Display is referenced by path and never copied into the bundle, so a
 // commercial licence is not breached by sharing the bundle.
 type Display struct {
-	Family  string `yaml:"family"`
-	Path    string `yaml:"path"`
-	Regular string `yaml:"regular"`
-	Bold    string `yaml:"bold"`
+	Family  string   `yaml:"family"`
+	Path    PathList `yaml:"path"`
+	Regular string   `yaml:"regular"`
+	Bold    string   `yaml:"bold"`
+}
+
+// PathList is where to look for the display font. A shared bundle cannot carry
+// one absolute path: the machine that wrote it is not the machine that clones
+// it. So it accepts either a single path or a list of candidates, the first
+// existing one wins, and ~ and $VARS are expanded — which lets a bundle name
+// $MDBRAND_FONT_DIR and leave the choice to each machine.
+type PathList []string
+
+func (p *PathList) UnmarshalYAML(n *yaml.Node) error {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		var one string
+		if err := n.Decode(&one); err != nil {
+			return err
+		}
+		if one != "" {
+			*p = PathList{one}
+		}
+		return nil
+	case yaml.SequenceNode:
+		var many []string
+		if err := n.Decode(&many); err != nil {
+			return err
+		}
+		*p = PathList(many)
+		return nil
+	}
+	return fmt.Errorf("fonts.display.path: expected a path or a list of paths")
+}
+
+// expandPath resolves ~ and environment variables. A candidate naming an unset
+// variable simply will not exist, which is the behaviour we want.
+func expandPath(p string) string {
+	p = os.ExpandEnv(strings.TrimSpace(p))
+	if p == "~" || strings.HasPrefix(p, "~/") {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			p = filepath.Join(home, strings.TrimPrefix(p, "~"))
+		}
+	}
+	return p
 }
 
 type Page struct {
@@ -188,23 +232,86 @@ func (b *Brand) LogoPath() string {
 	return filepath.Join(b.Dir, b.Logo)
 }
 
-// DisplayFontDir returns the display font directory when it is usable, plus
-// whether it is. A missing directory is not an error: the templates fall back
-// to the body font, so a bundle stays usable on a machine without the licensed
-// font installed.
+// DisplayFontDir returns the directory holding the display font, plus whether
+// one was found. A font that is absent is not an error: the templates fall back
+// to the body font, so a bundle stays usable on a machine that does not have
+// the licensed face — which is most machines, by design.
+//
+// Resolution order: each declared candidate in turn, then fontconfig. Asking
+// fontconfig for the file's real location is what makes a shared bundle work
+// unedited: install the font the normal way and no path needs declaring at all.
 func (b *Brand) DisplayFontDir() (string, bool) {
 	d := b.Fonts.Display
-	if d.Path == "" || d.Regular == "" {
+	if d.Regular == "" {
 		return "", false
 	}
-	p := d.Path
+	for _, cand := range d.Path {
+		dir := expandPath(cand)
+		if dir == "" {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(dir, d.Regular)); err == nil {
+			return withSep(dir), true
+		}
+	}
+	if dir := fontconfigDir(d.Regular); dir != "" {
+		return dir, true
+	}
+	return "", false
+}
+
+func withSep(p string) string {
 	if !strings.HasSuffix(p, string(os.PathSeparator)) {
 		p += string(os.PathSeparator)
 	}
-	if _, err := os.Stat(filepath.Join(d.Path, d.Regular)); err != nil {
-		return p, false
+	return p
+}
+
+// fontconfigDir asks the system where a font file actually lives.
+func fontconfigDir(file string) string {
+	if !run.Have("fc-list") {
+		return ""
 	}
-	return p, true
+	out, err := run.Cmd("", "fc-list", "--format", "%{file}\n")
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" && strings.EqualFold(filepath.Base(line), file) {
+			return withSep(filepath.Dir(line))
+		}
+	}
+	return ""
+}
+
+// DisplayFontHint says how to make an absent display font resolvable. It is the
+// message a colleague who just cloned a bundle needs.
+func (b *Brand) DisplayFontHint() string {
+	d := b.Fonts.Display
+	tried := "none declared"
+	if len(d.Path) > 0 {
+		expanded := make([]string, 0, len(d.Path))
+		for _, c := range d.Path {
+			// An unset variable expands to nothing; saying so beats printing a
+			// blank entry, because "set that variable" is one of the fixes.
+			if e := expandPath(c); e == "" {
+				expanded = append(expanded, c+" (not set)")
+			} else {
+				expanded = append(expanded, e)
+			}
+		}
+		tried = strings.Join(expanded, ", ")
+	}
+	return fmt.Sprintf(`%s not found — cover and header fall back to %s.
+    Looked in: %s
+    Any one of these fixes it, no edit to the bundle required:
+      - install the font normally (~/.local/share/fonts, then fc-cache -f) and
+        mdbrand will find it through fontconfig;
+      - export MDBRAND_FONT_DIR=/where/you/keep/it, if the bundle names it;
+      - or add your own path to fonts.display.path.
+    %s is licensed software: get it from wherever your organisation keeps it.
+    It is never distributed inside a bundle`, d.Regular, b.Fonts.Body, tried, d.Family)
 }
 
 var hexRe = regexp.MustCompile(`^[0-9A-Fa-f]{6}$`)
@@ -266,10 +373,9 @@ func (b *Brand) Check() (problems, warnings []string) {
 		}
 	}
 
-	if d := b.Fonts.Display; d.Family != "" || d.Path != "" {
+	if d := b.Fonts.Display; d.Family != "" || len(d.Path) > 0 {
 		if _, ok := b.DisplayFontDir(); !ok {
-			add(&warnings, "fonts.display: %s not found at %s — cover and header fall back to %s",
-				d.Regular, d.Path, b.Fonts.Body)
+			add(&warnings, "fonts.display: %s", b.DisplayFontHint())
 		}
 	}
 	if b.Fonts.Body == "" {
@@ -307,11 +413,15 @@ colors:
 
 fonts:
   body: Inter         # fontconfig family; must cover the glyphs you type
-  # display:          # optional brand font for cover and header
+  # display:          # optional brand font for cover and header, by path only
   #   family: Gotham
-  #   path: /absolute/path/to/otf
   #   regular: Gotham-Light.otf
   #   bold: Gotham-Medium.otf
+  #   path:             # candidates, first existing wins; ~ and $VARS expand.
+  #     - $MDBRAND_FONT_DIR
+  #     - ~/.local/share/fonts/gotham
+  #   # If the font is installed the normal way, drop path entirely: mdbrand
+  #   # asks fontconfig where it is. Never copy the file into the bundle.
 
 page:
   papersize: a4

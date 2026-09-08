@@ -250,9 +250,11 @@ fonts:
   body: Inter                  # fontconfig family
   display:                     # optional; cover and header only
     family: Gotham
-    path: /path/to/gotham/otf  # by path — never copied into the bundle
     regular: Gotham-Light.otf
     bold: Gotham-Medium.otf
+    path:                      # candidates; first existing wins, ~ and $VARS expand
+      - $MDBRAND_FONT_DIR
+      - ~/.local/share/fonts/gotham
 
 page:
   papersize: a4
@@ -271,9 +273,21 @@ diagrams:
 footer: ""                     # optional line under the cover rule
 ```
 
-A missing display font is not an error: the cover and header fall back to the
-body font, so a bundle stays usable on a machine that does not have the licensed
-face installed.
+**A shared bundle must not carry one machine's absolute path.** `path` is a list
+of candidates and the first that exists wins, with `~` and `$VARS` expanded — so
+a bundle can name `$MDBRAND_FONT_DIR` and leave the choice to each machine. If
+no candidate matches, mdbrand asks **fontconfig** where that file actually is,
+which means a font installed the normal way needs no `path` at all:
+
+```sh
+mkdir -p ~/.local/share/fonts/gotham && cp *.otf ~/.local/share/fonts/gotham/
+fc-cache -f
+```
+
+A missing display font is not an error either: the cover and header fall back to
+the body font, so a bundle stays usable on a machine that does not have the
+licensed face installed — which is most machines, by design. `mdbrand brand
+validate` prints where it looked and every way to fix it.
 
 ## Configuration
 
