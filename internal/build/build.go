@@ -170,9 +170,7 @@ func Run(o Options) (*Report, error) {
 			data.DisplayBold = b.Fonts.Display.Regular
 		}
 	} else if b.Fonts.Display.Family != "" {
-		rep.Warnings = append(rep.Warnings, fmt.Sprintf(
-			"display font %s not found at %s — cover and header use %s",
-			b.Fonts.Display.Regular, b.Fonts.Display.Path, b.Fonts.Body))
+		rep.Warnings = append(rep.Warnings, b.DisplayFontHint())
 	}
 
 	for _, frag := range []string{"preamble", "before", "after"} {
