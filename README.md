@@ -353,7 +353,24 @@ XeLaTeX log.
 
 `mdbrand --help` and `mdbrand <command> --help` are written to be the whole
 manual: an agent can drive the tool from help output without reading this file.
-There is also a Claude Code skill in [`SKILL.md`](SKILL.md).
+
+There is also an agent skill — [`SKILL.md`](SKILL.md) — which states the front
+matter, the diagram rules and the traps, so an assistant uses the CLI instead of
+improvising a pandoc command line. **It is embedded in the binary**, so a person
+who installed a release can install it without cloning anything:
+
+```sh
+mdbrand skill install              # ~/.claude/skills/mdbrand/SKILL.md
+mdbrand skill install --project    # ./.claude/skills/mdbrand/SKILL.md
+mdbrand skill show                 # print it, to pipe elsewhere
+mdbrand skill path                 # where install would write
+```
+
+Re-run it after upgrading the binary: the installed copy carries the version
+that wrote it, so a stale one is visible. Installing refuses to overwrite a
+SKILL.md that differs unless you pass `--force`, because in a checkout of this
+repository that file is a symlink to the source and writing through it would
+edit the repository.
 
 ## Licence
 
