@@ -160,6 +160,13 @@ co-branded proposal, a funding body's emblem, an institution above a federation.
 Width is `page.logo_width_cover_secondary`. The running header keeps one mark:
 at 16 mm a second one is a smudge, not an identity.
 
+**Do not set `page.headheight`.** mdbrand measures the logo and sizes the header
+box from its real height, because `logo_width_header` is a width and a square
+mark is four times taller than the old fixed default could hold — it overflowed
+the box and printed over the first line of every page. A declared `headheight`
+that cannot hold the mark fails the build with the two fixes; `brand validate`
+prints the value actually in use.
+
 ## When a build looks wrong
 
 `--work ./out` keeps the generated `preamble.tex`, `before.tex`, `after.tex`,

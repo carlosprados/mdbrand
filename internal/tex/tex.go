@@ -7,6 +7,7 @@ package tex
 import (
 	"embed"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"text/template"
@@ -144,4 +145,73 @@ func TextWidthMM(b *brand.Brand) (float64, error) {
 		return 0, fmt.Errorf("margin %s leaves no text width on %s", b.Page.Margin, b.Page.PaperSize)
 	}
 	return w, nil
+}
+
+// mmPerPt converts TeX points, the unit headheight and headsep are written in.
+const mmPerPt = 25.4 / 72.272
+
+// headSlackMM is the air left above and below the mark inside the header box.
+// Without it fancyhdr reports "\headheight is too small (0.0pt too short)" on
+// rounding alone, and that warning only exists in a log nobody reads.
+const headSlackMM = 2 * mmPerPt
+
+// HeaderHeightMM settles the running header's box height, in millimetres.
+//
+// logoAspect is the header logo's height divided by its width, or 0 when the
+// document carries no logo. This is the one piece of geometry that cannot be
+// written down in advance: `logo_width_header` is a WIDTH, and what the header
+// must reserve is a height. For the wide 4:1 marks most bundles carry the
+// difference is invisible; for a square crest the mark is four times taller
+// than the default box, overflows it, eats headsep whole and prints across the
+// first line of body text on every page.
+//
+// So the rule is: an undeclared headheight is derived from the logo, and a
+// declared one that cannot hold it fails the build naming both fixes.
+func HeaderHeightMM(b *brand.Brand, logoAspect float64) (float64, error) {
+	declared, err := ParseLenMM(b.Page.HeadHeight)
+	if err != nil {
+		return 0, fmt.Errorf("page.headheight: %w", err)
+	}
+	sep, err := ParseLenMM(b.Page.HeadSep)
+	if err != nil {
+		return 0, fmt.Errorf("page.headsep: %w", err)
+	}
+	margin, err := ParseLenMM(b.Page.Margin)
+	if err != nil {
+		return 0, fmt.Errorf("page.margin: %w", err)
+	}
+
+	var logoH float64
+	if logoAspect > 0 {
+		logoW, err := ParseLenMM(b.Page.LogoWidthHeader)
+		if err != nil {
+			return 0, fmt.Errorf("page.logo_width_header: %w", err)
+		}
+		logoH = logoW * logoAspect
+	}
+
+	height := declared
+	switch {
+	case logoH+headSlackMM <= declared:
+		// Fits as declared, whoever chose the number.
+	case b.Page.HeadHeightDeclared():
+		return 0, fmt.Errorf(
+			"page.headheight %s cannot hold the header logo, which is %.1fmm tall at "+
+				"logo_width_header %s: raise headheight to %.0fpt, or lower logo_width_header to %.0fmm",
+			b.Page.HeadHeight, logoH, b.Page.LogoWidthHeader,
+			math.Ceil((logoH+headSlackMM)/mmPerPt), math.Floor((declared-headSlackMM)/logoAspect))
+	default:
+		height = logoH + headSlackMM
+	}
+
+	// The header lives in the top margin, above the text block. If it is taller
+	// than the margin it runs off the top of the paper instead of onto the text,
+	// which is the same defect wearing a different hat.
+	if height+sep >= margin {
+		return 0, fmt.Errorf(
+			"the running header needs %.1fmm (headheight) + %s (headsep) and the top margin is only %s: "+
+				"lower logo_width_header, or raise page.margin",
+			height, b.Page.HeadSep, b.Page.Margin)
+	}
+	return height, nil
 }

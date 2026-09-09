@@ -28,6 +28,7 @@ import (
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/doc"
+	"github.com/carlosprados/mdbrand/internal/imgsize"
 	"github.com/carlosprados/mdbrand/internal/run"
 )
 
@@ -162,47 +163,14 @@ func renderVega(f *doc.Fig, out string) error {
 	return run.Quiet(filepath.Dir(f.SrcPath), "vl2svg", f.SrcPath, out)
 }
 
-var (
-	rootRe    = regexp.MustCompile(`<svg\b[^>]*>`)
-	attrWRe   = regexp.MustCompile(`\swidth="([0-9.]+)(?:px)?"`)
-	attrHRe   = regexp.MustCompile(`\sheight="([0-9.]+)(?:px)?"`)
-	viewBoxRe = regexp.MustCompile(`viewBox="\s*(-?[0-9.]+)[\s,]+(-?[0-9.]+)[\s,]+([0-9.]+)[\s,]+([0-9.]+)\s*"`)
-	fontRe    = regexp.MustCompile(`font-size\s*[:=]\s*"?\s*([0-9.]+)`)
-)
+var fontRe = regexp.MustCompile(`font-size\s*[:=]\s*"?\s*([0-9.]+)`)
 
 // svgSize returns the root element's size in pixels and the factor that turns
-// inner user units into those pixels. d2 without --scale emits a root <svg>
-// carrying a viewBox and no width/height at all, so the viewBox is the
-// fallback, not an afterthought.
+// inner user units into those pixels. The measurement itself lives in imgsize,
+// because page geometry needs the same numbers for a logo and two copies of
+// this regex would drift apart.
 func svgSize(src string) (w, h, unit float64, err error) {
-	root := rootRe.FindString(src)
-	if root == "" {
-		return 0, 0, 0, fmt.Errorf("no <svg> element")
-	}
-	vb := viewBoxRe.FindStringSubmatch(root)
-	if m := attrWRe.FindStringSubmatch(root); m != nil {
-		w, _ = strconv.ParseFloat(m[1], 64)
-	}
-	if m := attrHRe.FindStringSubmatch(root); m != nil {
-		h, _ = strconv.ParseFloat(m[1], 64)
-	}
-	if w == 0 || h == 0 {
-		if vb == nil {
-			return 0, 0, 0, fmt.Errorf("root <svg> has neither width/height nor viewBox")
-		}
-		w, _ = strconv.ParseFloat(vb[3], 64)
-		h, _ = strconv.ParseFloat(vb[4], 64)
-	}
-	unit = 1
-	if vb != nil {
-		if vbw, _ := strconv.ParseFloat(vb[3], 64); vbw > 0 {
-			unit = w / vbw
-		}
-	}
-	if w <= 0 || h <= 0 {
-		return 0, 0, 0, fmt.Errorf("root <svg> has a non-positive size")
-	}
-	return w, h, unit, nil
+	return imgsize.SVG(src)
 }
 
 // minFontSize returns the smallest font-size declared anywhere in the SVG, in

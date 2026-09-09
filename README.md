@@ -287,6 +287,8 @@ page:
   logo_width_cover: 46mm
   logo_width_cover_secondary: 24mm
   logo_width_header: 16mm       # one mark only: at 16mm a second is a smudge
+  # headheight: 22pt            # usually omit: derived from the logo's height
+  # headsep: 13pt               # gap between the header rule and the text
 
 diagrams:
   d2_theme: 0                  # light: paper has no prefers-color-scheme
@@ -297,6 +299,14 @@ diagrams:
 
 footer: ""                     # optional line under the cover rule
 ```
+
+**Leave `headheight` out unless you mean it.** `logo_width_header` is a width,
+but what the running header has to reserve is a *height*, and the two differ by
+the logo's proportions. mdbrand measures the logo and sets the box itself, so a
+square crest gets the room it needs instead of printing across the first line of
+every page. Declare `headheight` only to make the header taller than the mark
+needs; declare one that cannot hold the mark and the build fails, naming both
+ways out. `mdbrand brand validate` reports the value actually used.
 
 **A shared bundle must not carry one machine's absolute path.** `path` is a list
 of candidates and the first that exists wins. A **relative** candidate resolves
