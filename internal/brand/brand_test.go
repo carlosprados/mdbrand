@@ -163,3 +163,66 @@ func TestDisplayFontDirResolvesRelativeToTheBundle(t *testing.T) {
 		t.Error("a non-existent absolute candidate must not resolve")
 	}
 }
+
+// Regression: the two faces of a display font need not share a directory, and
+// only the regular used to be verified. The bold was then handed to fontspec
+// with the regular's Path, so the build died inside XeLaTeX with "the font
+// cannot be found" — after validate had already reported ok.
+func TestResolveDisplayChecksEveryFace(t *testing.T) {
+	const reg, bold = "MdbrandTestFace-Light.otf", "MdbrandTestFace-Medium.otf"
+	bundle := t.TempDir()
+	other := t.TempDir()
+	regDir := filepath.Join(bundle, "fonts")
+	if err := os.MkdirAll(regDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write := func(dir, name string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(regDir, reg)
+	write(other, bold) // the bold lives somewhere else entirely
+
+	b := Default()
+	b.Dir = bundle
+	b.Fonts.Display = Display{Family: "Test", Regular: reg, Bold: bold, Path: PathList{"fonts", other}}
+
+	res, ok := b.ResolveDisplay()
+	if !ok {
+		t.Fatal("regular not found")
+	}
+	if res.RegularDir != regDir+string(os.PathSeparator) {
+		t.Errorf("regular dir = %q", res.RegularDir)
+	}
+	if res.BoldDir != other+string(os.PathSeparator) || res.BoldFile != bold {
+		t.Errorf("bold = %q in %q, want %q in %q", res.BoldFile, res.BoldDir, bold, other)
+	}
+	if res.BoldIsRegular {
+		t.Error("bold was found; it must not be reported as substituted")
+	}
+
+	// Bold nowhere: the regular stands in, the build stays possible, and it is
+	// reported instead of exploding in fontspec.
+	b.Fonts.Display.Bold = "MdbrandTestFace-Absent.otf"
+	res, ok = b.ResolveDisplay()
+	if !ok {
+		t.Fatal("a missing bold must not disable the display font")
+	}
+	if !res.BoldIsRegular || res.BoldFile != reg {
+		t.Errorf("substitution not applied: %+v", res)
+	}
+	if len(res.Missing) != 1 {
+		t.Errorf("Missing = %v, want the absent bold only", res.Missing)
+	}
+	_, warns := b.Check()
+	found := false
+	for _, w := range warns {
+		if contains(w, "Absent.otf") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("validate must warn about the substituted face, got %v", warns)
+	}
+}

@@ -232,32 +232,79 @@ func (b *Brand) LogoPath() string {
 	return filepath.Join(b.Dir, b.Logo)
 }
 
-// DisplayFontDir returns the directory holding the display font, plus whether
-// one was found. A font that is absent is not an error: the templates fall back
-// to the body font, so a bundle stays usable on a machine that does not have
-// the licensed face — which is most machines, by design.
-//
-// Resolution order: each declared candidate in turn, then fontconfig. Asking
-// fontconfig for the file's real location is what makes a shared bundle work
-// unedited: install the font the normal way and no path needs declaring at all.
-func (b *Brand) DisplayFontDir() (string, bool) {
+// DisplayFonts is where each face of the display font was found. The two faces
+// are resolved independently because they need not sit in the same directory,
+// and assuming they do produces a build that dies inside XeLaTeX with
+// "the font cannot be found" after validate had already said ok.
+type DisplayFonts struct {
+	RegularDir    string // "" when the regular face was not found
+	RegularFile   string
+	BoldDir       string
+	BoldFile      string
+	BoldIsRegular bool     // the bold face was absent, so the regular stands in
+	Missing       []string // declared files that could not be found anywhere
+}
+
+// ResolveDisplay locates every face of the display font. ok reports whether
+// there is a usable display font at all; when it is false the templates fall
+// back to the body font, which is a documented outcome and not an error.
+func (b *Brand) ResolveDisplay() (DisplayFonts, bool) {
 	d := b.Fonts.Display
+	var out DisplayFonts
 	if d.Regular == "" {
+		return out, false
+	}
+	out.RegularFile = d.Regular
+	dir, ok := b.FaceDir(d.Regular)
+	if !ok {
+		out.Missing = append(out.Missing, d.Regular)
+		return out, false
+	}
+	out.RegularDir = dir
+
+	bold := d.Bold
+	if bold == "" {
+		bold = d.Regular // no bold declared: the regular carries both weights
+	}
+	if bdir, ok := b.FaceDir(bold); ok {
+		out.BoldDir, out.BoldFile = bdir, bold
+	} else {
+		// Found the regular but not the bold. Standing the regular in keeps the
+		// document buildable and the type still the brand's, which beats both
+		// dying in XeLaTeX and silently dropping to the body font.
+		out.Missing = append(out.Missing, bold)
+		out.BoldDir, out.BoldFile, out.BoldIsRegular = dir, d.Regular, true
+	}
+	return out, true
+}
+
+// FaceDir resolves one font file: every declared candidate in turn, then
+// fontconfig. Asking fontconfig where the file actually is makes a shared
+// bundle work unedited when the font is installed the normal way.
+func (b *Brand) FaceDir(file string) (string, bool) {
+	if file == "" {
 		return "", false
 	}
-	for _, cand := range d.Path {
+	for _, cand := range b.Fonts.Display.Path {
 		dir := b.resolveFontDir(cand)
 		if dir == "" {
 			continue
 		}
-		if _, err := os.Stat(filepath.Join(dir, d.Regular)); err == nil {
+		if _, err := os.Stat(filepath.Join(dir, file)); err == nil {
 			return withSep(dir), true
 		}
 	}
-	if dir := fontconfigDir(d.Regular); dir != "" {
+	if dir := fontconfigDir(file); dir != "" {
 		return dir, true
 	}
 	return "", false
+}
+
+// DisplayFontDir reports where the regular face lives, for callers that only
+// need to know whether a display font is available.
+func (b *Brand) DisplayFontDir() (string, bool) {
+	r, ok := b.ResolveDisplay()
+	return r.RegularDir, ok
 }
 
 // resolveFontDir expands a candidate and, when it is relative, resolves it
@@ -389,8 +436,15 @@ func (b *Brand) Check() (problems, warnings []string) {
 	}
 
 	if d := b.Fonts.Display; d.Family != "" || len(d.Path) > 0 {
-		if _, ok := b.DisplayFontDir(); !ok {
+		res, ok := b.ResolveDisplay()
+		switch {
+		case !ok:
 			add(&warnings, "fonts.display: %s", b.DisplayFontHint())
+		case res.BoldIsRegular:
+			// The build used to sail past this and die inside XeLaTeX instead.
+			add(&warnings, "fonts.display: %s found, but %s is missing — titles will "+
+				"use %s instead. Put both faces in the same place, or declare only the "+
+				"one you have as `regular`", res.RegularFile, strings.Join(res.Missing, ", "), res.RegularFile)
 		}
 	}
 	if b.Fonts.Body == "" {
