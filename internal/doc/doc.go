@@ -25,7 +25,41 @@ type Meta struct {
 	Lang     string `yaml:"lang"`
 	TOC      *bool  `yaml:"toc"`
 
+	// Citations. These are pandoc's own metadata names and stay at the top
+	// level rather than moving under `mdbrand:`, so a document already written
+	// for pandoc builds unchanged. Declaring a bibliography is what turns
+	// --citeproc on; there is no separate switch to forget.
+	Bibliography StringList `yaml:"bibliography"`
+	CSL          string     `yaml:"csl"`
+
 	Options Options `yaml:"mdbrand"`
+}
+
+// StringList accepts either one value or a list, the way pandoc reads
+// `bibliography:`. A document with a single .bib should not have to write a
+// one-item sequence.
+type StringList []string
+
+func (s *StringList) UnmarshalYAML(n *yaml.Node) error {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		var one string
+		if err := n.Decode(&one); err != nil {
+			return err
+		}
+		if strings.TrimSpace(one) != "" {
+			*s = StringList{one}
+		}
+		return nil
+	case yaml.SequenceNode:
+		var many []string
+		if err := n.Decode(&many); err != nil {
+			return err
+		}
+		*s = StringList(many)
+		return nil
+	}
+	return fmt.Errorf("bibliography: expected a path or a list of paths")
 }
 
 // Options are the mdbrand-specific keys, nested under `mdbrand:` so they never

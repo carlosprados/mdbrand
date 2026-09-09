@@ -122,6 +122,10 @@ func Run(o Options) (*Report, error) {
 	rep := &Report{Brand: b.Name, Style: style, WorkDir: work, Kept: keep}
 
 	// The logo goes into the work directory in a form xelatex can embed.
+	logoSecondFile, err := prepareLogoSecondary(b, work)
+	if err != nil {
+		return nil, err
+	}
 	logoFile, err := prepareLogo(b, work)
 	if err != nil {
 		return nil, err
@@ -158,20 +162,22 @@ func Run(o Options) (*Report, error) {
 	// LaTeX fragments.
 	data := &tex.Data{
 		Brand: b, Style: style,
-		LogoFile:        logoFile,
-		CoverLogoWidth:  b.Page.LogoWidthCover,
-		HeaderLogoWidth: b.Page.LogoWidthHeader,
-		HeaderTitle:     d.Meta.Title,
-		Title:           d.Meta.Title,
-		Subtitle:        d.Meta.Subtitle,
-		Author:          d.Meta.AuthorString(),
-		Date:            d.Meta.Date,
-		Reference:       d.Meta.Options.Reference,
-		Confidential:    d.Meta.Options.Confidential,
-		Recipient:       d.Meta.Options.To,
-		Place:           d.Meta.Options.Place,
-		Greeting:        d.Meta.Options.Greeting,
-		Signature:       d.Meta.Options.Signature,
+		LogoFile:                logoFile,
+		LogoSecondaryFile:       logoSecondFile,
+		CoverLogoWidth:          b.Page.LogoWidthCover,
+		CoverLogoSecondaryWidth: b.Page.LogoWidthCoverSecondary,
+		HeaderLogoWidth:         b.Page.LogoWidthHeader,
+		HeaderTitle:             d.Meta.Title,
+		Title:                   d.Meta.Title,
+		Subtitle:                d.Meta.Subtitle,
+		Author:                  d.Meta.AuthorString(),
+		Date:                    d.Meta.Date,
+		Reference:               d.Meta.Options.Reference,
+		Confidential:            d.Meta.Options.Confidential,
+		Recipient:               d.Meta.Options.To,
+		Place:                   d.Meta.Options.Place,
+		Greeting:                d.Meta.Options.Greeting,
+		Signature:               d.Meta.Options.Signature,
 	}
 	if s := d.Meta.Options.Signature; s != "" {
 		data.SignatureLines = strings.Split(s, "\n")
@@ -223,9 +229,47 @@ func Run(o Options) (*Report, error) {
 		"-V", "geometry=" + geometry,
 		"-V", "linestretch=" + strconv.FormatFloat(b.Page.LineStretch, 'f', -1, 64),
 	}
+
+	// Citations. pandoc runs in the work directory, so a `bibliography:` left in
+	// the front matter would be resolved against the wrong place and silently
+	// yield "[@key?]" in the PDF. Passing the files absolutely on the command
+	// line overrides the metadata and removes the whole class of error.
+	if len(d.Meta.Bibliography) > 0 {
+		docDir := filepath.Dir(mustAbs(o.Input))
+		args = append(args, "--citeproc")
+		for _, ref := range d.Meta.Bibliography {
+			p := ref
+			if !filepath.IsAbs(p) {
+				p = filepath.Join(docDir, p)
+			}
+			if _, err := os.Stat(p); err != nil {
+				return nil, fmt.Errorf(`bibliography %s: %w
+  Paths are resolved relative to the document, not to the working directory.`, ref, err)
+			}
+			args = append(args, "--bibliography="+p)
+		}
+		if csl := d.Meta.CSL; csl != "" {
+			if !filepath.IsAbs(csl) {
+				csl = filepath.Join(docDir, csl)
+			}
+			if _, err := os.Stat(csl); err != nil {
+				return nil, fmt.Errorf("csl %s: %w", d.Meta.CSL, err)
+			}
+			args = append(args, "--csl="+csl)
+		}
+	}
+
 	o.logf("  pandoc %s", stem+".md")
-	if _, err := run.Cmd(work, "pandoc", args...); err != nil {
+	pandocOut, err := run.Cmd(work, "pandoc", args...)
+	if err != nil {
 		return nil, err
+	}
+	if keys := missingCitations(pandocOut); len(keys) > 0 {
+		return nil, fmt.Errorf(`the bibliography has no entry for %d citation key(s):
+  %s
+citeproc prints those as "(key?)" in the finished PDF and exits 0, so nothing
+else would have told you. Fix the key or add the entry.`,
+			len(keys), strings.Join(keys, ", "))
 	}
 
 	// xelatex, run here so the log is ours to read.
@@ -285,18 +329,31 @@ func figTools(figs []*doc.Fig) []string {
 }
 
 func prepareLogo(b *brand.Brand, work string) (string, error) {
-	src := b.LogoPath()
+	return prepareLogoFile(b, work, b.LogoPath(), "logo")
+}
+
+func prepareLogoSecondary(b *brand.Brand, work string) (string, error) {
+	return prepareLogoFile(b, work, b.LogoSecondaryPath(), "logo-secondary")
+}
+
+// prepareLogoFile lands one logo in the work directory under `stem`, converting
+// SVG to PDF on the way. Each logo needs its own stem: writing both to logo.pdf
+// left the cover showing the same mark twice.
+func prepareLogoFile(b *brand.Brand, work, src, stem string) (string, error) {
 	if src == "" {
 		return "", nil
 	}
 	switch strings.ToLower(filepath.Ext(src)) {
 	case ".pdf":
-		return "logo.pdf", copyFile(src, filepath.Join(work, "logo.pdf"))
+		return stem + ".pdf", copyFile(src, filepath.Join(work, stem+".pdf"))
 	case ".png":
-		return "logo.png", copyFile(src, filepath.Join(work, "logo.png"))
+		return stem + ".png", copyFile(src, filepath.Join(work, stem+".png"))
 	case ".svg":
-		out := filepath.Join(work, "logo.pdf")
-		if err := run.Quiet(work, "rsvg-convert", "-f", "pdf", "-o", out, src); err != nil {
+		// rsvg-convert runs with the work directory as its cwd, so it is given
+		// the bare name: handing it the joined path made `--work ./out` write to
+		// out/out/ and fail, because the path was resolved twice.
+		out := filepath.Join(work, stem+".pdf")
+		if err := run.Quiet(work, "rsvg-convert", "-f", "pdf", "-o", stem+".pdf", src); err != nil {
 			return "", err
 		}
 		st, err := os.Stat(out)
@@ -312,7 +369,7 @@ func prepareLogo(b *brand.Brand, work string) (string, error) {
   raster uses the invalid MIME type data:img/... instead of data:image/...
   Diagnose with: mdbrand brand validate %s`, filepath.Base(src), st.Size(), b.Name)
 		}
-		return "logo.pdf", nil
+		return stem + ".pdf", nil
 	default:
 		return "", fmt.Errorf("logo %s: unsupported format", filepath.Base(src))
 	}
@@ -369,4 +426,24 @@ func mustAbs(p string) string {
 		return p
 	}
 	return a
+}
+
+// citeprocMissingRe matches pandoc's own wording for a citation key that has no
+// entry: "[WARNING] Citeproc: citation fml not found".
+var citeprocMissingRe = regexp.MustCompile(`Citeproc: citation ([^\s]+) not found`)
+
+// missingCitations extracts the unresolved keys from pandoc's output, in order
+// and without repeats. pandoc reports them as warnings and still exits 0, which
+// is how a PDF reaches a reader with "(fml?)" printed in the middle of a
+// sentence.
+func missingCitations(out string) []string {
+	var keys []string
+	seen := map[string]bool{}
+	for _, m := range citeprocMissingRe.FindAllStringSubmatch(out, -1) {
+		if !seen[m[1]] {
+			seen[m[1]] = true
+			keys = append(keys, m[1])
+		}
+	}
+	return keys
 }

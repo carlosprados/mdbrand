@@ -39,7 +39,17 @@ taller than max_height_mm. If a diagram cannot satisfy that, the build stops and
 says what to change — it does not ship an illegible figure.
 
 A document whose text uses a glyph the font lacks also stops the build: those
-characters print as nothing and only the XeLaTeX log would ever know.`,
+characters print as nothing and only the XeLaTeX log would ever know.
+
+Citations need no flag either — declaring a bibliography in the front matter is
+what turns them on:
+
+    bibliography: refs.bib      # a path, or a list of them
+    csl: apa.csl                # optional
+
+Those paths resolve against the document, not the working directory, and one
+that is not there stops the build by name instead of shipping a PDF full of
+[@key?].`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.Input = args[0]

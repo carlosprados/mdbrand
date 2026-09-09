@@ -3,7 +3,14 @@
 \thispagestyle{empty}
 \begingroup
 \setlength{\parindent}{0pt}\setlength{\parskip}{0pt}\raggedright
+{{if .LogoSecondaryFile -}}
+% Two identities: one at each end of the measure, on a shared baseline, the way
+% a letterhead sets them. \includegraphics boxes already rest on the baseline,
+% so no \raisebox belongs here.
+\noindent\brandLogo{ {{- .CoverLogoWidth -}} }\hfill\brandLogoSecondary{ {{- .CoverLogoSecondaryWidth -}} }\par
+{{- else -}}
 \brandLogo{ {{- .CoverLogoWidth -}} }\par
+{{- end}}
 \vfill
 {\color{brandPrimary}\rule{\textwidth}{1.6pt}}\par
 \vspace{9mm}

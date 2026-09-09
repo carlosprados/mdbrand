@@ -21,14 +21,20 @@ import (
 
 // Brand is one bundle, as parsed from brand.yaml plus the defaults.
 type Brand struct {
-	Name        string   `yaml:"name"`
-	DisplayName string   `yaml:"display_name"`
-	Logo        string   `yaml:"logo"`
-	Colors      Colors   `yaml:"colors"`
-	Fonts       Fonts    `yaml:"fonts"`
-	Page        Page     `yaml:"page"`
-	Diagrams    Diagrams `yaml:"diagrams"`
-	Footer      string   `yaml:"footer"`
+	Name        string `yaml:"name"`
+	DisplayName string `yaml:"display_name"`
+	Logo        string `yaml:"logo"`
+
+	// A second mark for the cover, for a document issued under two identities:
+	// a co-branded proposal, a funding body's emblem, an institutional
+	// letterhead. Optional everywhere; absent, the cover is unchanged.
+	LogoSecondary string `yaml:"logo_secondary"`
+
+	Colors   Colors   `yaml:"colors"`
+	Fonts    Fonts    `yaml:"fonts"`
+	Page     Page     `yaml:"page"`
+	Diagrams Diagrams `yaml:"diagrams"`
+	Footer   string   `yaml:"footer"`
 
 	Dir string `yaml:"-"` // resolved bundle directory
 }
@@ -104,6 +110,10 @@ type Page struct {
 	HeadSep         string  `yaml:"headsep"`
 	LogoWidthCover  string  `yaml:"logo_width_cover"`
 	LogoWidthHeader string  `yaml:"logo_width_header"`
+
+	// The second logo appears on the cover only. The running header stays with
+	// one mark: at 16mm a second one is a smudge, not an identity.
+	LogoWidthCoverSecondary string `yaml:"logo_width_cover_secondary"`
 }
 
 // Diagrams carries the print numbers. They are per brand because they depend on
@@ -158,6 +168,9 @@ func (b *Brand) applyDefaults() {
 	}
 	if b.Page.LogoWidthHeader == "" {
 		b.Page.LogoWidthHeader = "16mm"
+	}
+	if b.Page.LogoWidthCoverSecondary == "" {
+		b.Page.LogoWidthCoverSecondary = "24mm"
 	}
 	if b.Diagrams.D2Scale == 0 {
 		b.Diagrams.D2Scale = 0.5
@@ -219,6 +232,22 @@ func List(brandsDir string) []string {
 		}
 	}
 	return out
+}
+
+// LogoSecondaryPath is the absolute path of the cover's second logo, or "" when
+// the bundle declares none.
+func (b *Brand) LogoSecondaryPath() string {
+	return b.resolveLogo(b.LogoSecondary)
+}
+
+func (b *Brand) resolveLogo(name string) string {
+	if name == "" || b.Dir == "" {
+		return ""
+	}
+	if filepath.IsAbs(name) {
+		return name
+	}
+	return filepath.Join(b.Dir, name)
 }
 
 // LogoPath is the absolute path of the logo, or "" when the bundle has none.
@@ -396,15 +425,14 @@ func (b *Brand) Check() (problems, warnings []string) {
 		}
 	}
 
-	logo := b.LogoPath()
-	switch {
-	case logo == "":
-		add(&warnings, "logo: none declared — cover and header will carry type only")
-	default:
+	// Both logos go through the same checks: the traps below (a bitmap in an
+	// SVG coat, the data:img/ MIME type, <foreignObject>) cost exactly as much
+	// on the second mark as on the first.
+	checkLogo := func(label, logo string) {
 		st, err := os.Stat(logo)
 		if err != nil {
-			add(&problems, "logo: %s: %v", logo, err)
-			break
+			add(&problems, "%s: %s: %v", label, logo, err)
+			return
 		}
 		switch strings.ToLower(filepath.Ext(logo)) {
 		case ".pdf", ".png":
@@ -412,27 +440,36 @@ func (b *Brand) Check() (problems, warnings []string) {
 		case ".svg":
 			raw, err := os.ReadFile(logo)
 			if err != nil {
-				add(&problems, "logo: %v", err)
-				break
+				add(&problems, "%s: %v", label, err)
+				return
 			}
 			s := string(raw)
 			if strings.Contains(s, "<image") {
-				add(&warnings, "logo: %s embeds a raster <image> — it is a bitmap in an SVG coat, "+
-					"so it will look soft on a cover. Get the vector original.", filepath.Base(logo))
+				add(&warnings, "%s: %s embeds a raster <image> — it is a bitmap in an SVG coat, "+
+					"so it will look soft on a cover. Get the vector original.", label, filepath.Base(logo))
 			}
 			if strings.Contains(s, "data:img/") {
-				add(&problems, "logo: %s uses the invalid MIME type data:img/... (it must be data:image/...); "+
-					"rsvg-convert renders nothing and fails silently", filepath.Base(logo))
+				add(&problems, "%s: %s uses the invalid MIME type data:img/... (it must be data:image/...); "+
+					"rsvg-convert renders nothing and fails silently", label, filepath.Base(logo))
 			}
 			if strings.Contains(s, "<foreignObject") {
-				add(&problems, "logo: %s contains <foreignObject>; rsvg-convert drops it without a word", filepath.Base(logo))
+				add(&problems, "%s: %s contains <foreignObject>; rsvg-convert drops it without a word", label, filepath.Base(logo))
 			}
 		default:
-			add(&problems, "logo: %s: unsupported extension (use .svg, .pdf or .png)", filepath.Base(logo))
+			add(&problems, "%s: %s: unsupported extension (use .svg, .pdf or .png)", label, filepath.Base(logo))
 		}
 		if st.Size() < 300 {
-			add(&warnings, "logo: %s is only %d bytes — suspiciously small for artwork", filepath.Base(logo), st.Size())
+			add(&warnings, "%s: %s is only %d bytes — suspiciously small for artwork", label, filepath.Base(logo), st.Size())
 		}
+	}
+
+	if logo := b.LogoPath(); logo == "" {
+		add(&warnings, "logo: none declared — cover and header will carry type only")
+	} else {
+		checkLogo("logo", logo)
+	}
+	if second := b.LogoSecondaryPath(); second != "" {
+		checkLogo("logo_secondary", second)
 	}
 
 	if d := b.Fonts.Display; d.Family != "" || len(d.Path) > 0 {
@@ -474,6 +511,7 @@ display_name: %[1]s
 # Vector is what you want. An SVG that merely wraps a PNG will look soft on a
 # cover; "mdbrand brand validate %[1]s" says so.
 logo: logo.svg
+# logo_secondary: cliente.svg   # optional second mark, right of the COVER only
 
 colors:
   primary: "1F6FEB"   # rules and accents, 6-digit hex, no '#'
@@ -497,6 +535,7 @@ page:
   margin: 22mm
   linestretch: 1.125
   logo_width_cover: 46mm    # tune per logo: a tall mark needs less width
+  # logo_width_cover_secondary: 24mm
   logo_width_header: 16mm
 
 diagrams:
