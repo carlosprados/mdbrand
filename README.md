@@ -224,6 +224,7 @@ copied in.
 <brands dir>/amplia/
   brand.yaml
   logo.svg
+  fonts/otf/          optional, and only if you may redistribute the font
 ```
 
 ```sh
@@ -274,10 +275,15 @@ footer: ""                     # optional line under the cover rule
 ```
 
 **A shared bundle must not carry one machine's absolute path.** `path` is a list
-of candidates and the first that exists wins, with `~` and `$VARS` expanded — so
-a bundle can name `$MDBRAND_FONT_DIR` and leave the choice to each machine. If
-no candidate matches, mdbrand asks **fontconfig** where that file actually is,
-which means a font installed the normal way needs no `path` at all:
+of candidates and the first that exists wins. A **relative** candidate resolves
+inside the bundle, so a bundle may ship the font next to `brand.yaml`
+(`path: [fonts/otf]`) and a fresh clone then works with nothing installed —
+whether you *may* ship it is a licensing question, and a commercial face must
+never land in a repository that anyone can read anonymously. Absolute candidates
+expand `~` and `$VARS`, so a bundle can name `$MDBRAND_FONT_DIR` and leave the
+choice to each machine. If no candidate matches, mdbrand asks **fontconfig**
+where that file actually is, which means a font installed the normal way needs
+no `path` at all:
 
 ```sh
 mkdir -p ~/.local/share/fonts/gotham && cp *.otf ~/.local/share/fonts/gotham/

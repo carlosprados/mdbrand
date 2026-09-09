@@ -86,11 +86,13 @@ text), or split the figure. Do not "fix" it by scaling the whole diagram down.
 - **Never use d2's own PDF export** — it downloads a Playwright driver from
   dead URLs. The route is source → SVG → `rsvg-convert` → PDF, and it is
   already what mdbrand does.
-- **Never commit a logo or a licensed font.** Bundles live outside code
-  repositories. The display font is found by searching `fonts.display.path`
-  (a list of candidates, `~` and `$VARS` expanded) and then fontconfig, so a
-  shared bundle never hardcodes one machine's path. If it is absent the cover
-  falls back to the body font and the build still succeeds.
+- **Never put a licensed font or a client logo in a repository that can be read
+  anonymously.** A bundle may carry its font (`fonts.display.path: [fonts/otf]`,
+  relative paths resolve inside the bundle) only when the bundle's own
+  distribution respects that licence — private or internal, never public.
+  Otherwise leave it out: candidates expand `~` and `$VARS`, and mdbrand asks
+  fontconfig for an installed copy. If the font is absent the cover falls back
+  to the body font and the build still succeeds.
 
 ## Brand bundles
 
