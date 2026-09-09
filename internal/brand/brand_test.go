@@ -123,3 +123,43 @@ func indexOf(s, sub string) int {
 	}
 	return -1
 }
+
+// A bundle may carry its own font, and then the candidate is relative: it must
+// resolve inside the bundle directory, not against the process's working
+// directory, or a clone would only work when built from one place.
+//
+// The face name is deliberately one no system can have installed: otherwise the
+// fontconfig fallback answers and the test passes or fails depending on whose
+// machine it runs on.
+func TestDisplayFontDirResolvesRelativeToTheBundle(t *testing.T) {
+	const face = "MdbrandTestFace-Regular.otf"
+	bundle := t.TempDir()
+	fonts := filepath.Join(bundle, "fonts", "otf")
+	if err := os.MkdirAll(fonts, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fonts, face), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	b := Default()
+	b.Dir = bundle
+	b.Fonts.Display = Display{Family: "Test", Regular: face, Path: PathList{"fonts/otf"}}
+
+	dir, ok := b.DisplayFontDir()
+	if !ok {
+		t.Fatal("font shipped inside the bundle was not found")
+	}
+	if dir != fonts+string(os.PathSeparator) {
+		t.Errorf("dir = %q, want %q", dir, fonts)
+	}
+
+	// An absolute candidate must be used as given, never joined to the bundle.
+	b.Fonts.Display.Path = PathList{filepath.Join(bundle, "fonts", "otf")}
+	if dir, ok = b.DisplayFontDir(); !ok || dir != fonts+string(os.PathSeparator) {
+		t.Errorf("absolute candidate: dir = %q ok = %v", dir, ok)
+	}
+	b.Fonts.Display.Path = PathList{"/definitely/not/here"}
+	if _, ok = b.DisplayFontDir(); ok {
+		t.Error("a non-existent absolute candidate must not resolve")
+	}
+}

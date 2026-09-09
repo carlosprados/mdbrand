@@ -15,13 +15,20 @@ func brandCmd() *cobra.Command {
 		Use:   "brand",
 		Short: "Create, inspect and validate brand bundles",
 		Long: `A brand bundle is a directory with a brand.yaml, a logo and colours. It lives
-outside this tool and outside any code repository, because a corporate logo and
-a commercially licensed font must not be committed or redistributed: the display
-font is referenced by absolute path and never copied in.
+outside this tool, so the same document can be published under another identity
+by changing one word.
 
   <brands dir>/amplia/
     brand.yaml
-    logo.svg        vector; an SVG that merely wraps a PNG will look soft`,
+    logo.svg        vector; an SVG that merely wraps a PNG will look soft
+    fonts/otf/      optional: the display font, if you may redistribute it
+
+A relative fonts.display.path is resolved inside the bundle, so a bundle that
+carries its font works on a fresh clone with nothing installed. Whether you may
+put a font there is a licensing question, not a technical one: a commercial face
+like Gotham must never go into a repository anyone can read anonymously. Keep
+such a bundle private or internal, or leave the font out and let mdbrand find an
+installed copy through fontconfig.`,
 	}
 	c.AddCommand(brandListCmd(), brandShowCmd(), brandValidateCmd(), brandNewCmd(), brandPathCmd())
 	return c
@@ -111,6 +118,9 @@ With no arguments, validates every installed bundle.`,
 				}
 				for _, w := range warns {
 					fmt.Fprintf(out, "  warning  %s\n", w)
+				}
+				if dir, found := b.DisplayFontDir(); found {
+					fmt.Fprintf(out, "  display font %s found in %s\n", b.Fonts.Display.Regular, dir)
 				}
 				if len(probs) == 0 && len(warns) == 0 {
 					fmt.Fprintln(out, "  ok")

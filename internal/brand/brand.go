@@ -246,7 +246,7 @@ func (b *Brand) DisplayFontDir() (string, bool) {
 		return "", false
 	}
 	for _, cand := range d.Path {
-		dir := expandPath(cand)
+		dir := b.resolveFontDir(cand)
 		if dir == "" {
 			continue
 		}
@@ -258,6 +258,21 @@ func (b *Brand) DisplayFontDir() (string, bool) {
 		return dir, true
 	}
 	return "", false
+}
+
+// resolveFontDir expands a candidate and, when it is relative, resolves it
+// inside the bundle — the same rule `logo:` follows. That is what lets a bundle
+// ship the font next to brand.yaml and work on a fresh clone with no install,
+// no environment variable and no edit.
+func (b *Brand) resolveFontDir(cand string) string {
+	dir := expandPath(cand)
+	if dir == "" {
+		return ""
+	}
+	if !filepath.IsAbs(dir) && b.Dir != "" {
+		return filepath.Join(b.Dir, dir)
+	}
+	return dir
 }
 
 func withSep(p string) string {
@@ -295,7 +310,7 @@ func (b *Brand) DisplayFontHint() string {
 		for _, c := range d.Path {
 			// An unset variable expands to nothing; saying so beats printing a
 			// blank entry, because "set that variable" is one of the fixes.
-			if e := expandPath(c); e == "" {
+			if e := b.resolveFontDir(c); e == "" {
 				expanded = append(expanded, c+" (not set)")
 			} else {
 				expanded = append(expanded, e)
