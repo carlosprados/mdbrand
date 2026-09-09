@@ -52,7 +52,7 @@ Checksums are attached to each release as `mdbrand_<version>_checksums.txt`.
 
 ### From source
 
-Go 1.26 or newer:
+[Go](https://go.dev/dl/) 1.26 or newer:
 
 ```sh
 go install github.com/carlosprados/mdbrand@latest
@@ -76,14 +76,20 @@ mdbrand doctor
 
 Required for every build:
 
-| Tool | Debian / Ubuntu | Fedora | Arch |
-|---|---|---|---|
-| pandoc | `apt install pandoc` | `dnf install pandoc` | `pacman -S pandoc` |
-| XeLaTeX | `apt install texlive-xetex` | `dnf install texlive-xetex` | `pacman -S texlive-xetex` |
-| rsvg-convert | `apt install librsvg2-bin` | `dnf install librsvg2-tools` | `pacman -S librsvg` |
+| Tool | What it does here | Debian / Ubuntu | Fedora | Arch |
+|---|---|---|---|---|
+| **[pandoc](https://pandoc.org)** ([install](https://pandoc.org/installing.html)) | Markdown → LaTeX | `apt install pandoc` | `dnf install pandoc` | `pacman -S pandoc` |
+| **[XeLaTeX](https://tug.org/texlive/)** (or [MiKTeX](https://miktex.org)) | LaTeX → PDF, with Unicode | `apt install texlive-xetex` | `dnf install texlive-xetex` | `pacman -S texlive-xetex` |
+| **[rsvg-convert](https://gitlab.gnome.org/GNOME/librsvg)** | SVG → vector PDF for figures | `apt install librsvg2-bin` | `dnf install librsvg2-tools` | `pacman -S librsvg` |
 
-LaTeX packages: `fancyhdr`, `geometry`, `fontspec`, `etoolbox`, `microtype`,
-`caption`, `xcolor`. On Debian/Ubuntu:
+LaTeX packages, all on [CTAN](https://ctan.org):
+[fancyhdr](https://ctan.org/pkg/fancyhdr),
+[geometry](https://ctan.org/pkg/geometry),
+[fontspec](https://ctan.org/pkg/fontspec),
+[etoolbox](https://ctan.org/pkg/etoolbox),
+[microtype](https://ctan.org/pkg/microtype),
+[caption](https://ctan.org/pkg/caption) and
+[xcolor](https://ctan.org/pkg/xcolor). On Debian/Ubuntu they arrive with:
 
 ```sh
 apt install texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-xetex
@@ -91,15 +97,16 @@ apt install texlive-latex-base texlive-latex-recommended texlive-latex-extra tex
 
 Required only if a document contains diagrams:
 
-| Tool | Install |
-|---|---|
-| d2 | `curl -fsSL https://d2lang.com/install.sh \| sh -s --` (or `brew install d2`) |
-| vl2svg | `npm i -g vega-cli vega-lite` |
+| Tool | What it does here | Install |
+|---|---|---|
+| **[d2](https://d2lang.com)** | Renders `.d2` diagrams ([install guide](https://d2lang.com/tour/install), [language tour](https://d2lang.com/tour/intro)) | `curl -fsSL https://d2lang.com/install.sh \| sh -s --` (or `brew install d2`) |
+| **[vl2svg](https://vega.github.io/vega-lite/)** | Renders Vega-Lite charts ([CLI source](https://github.com/vega/vega/tree/main/packages/vega-cli), [chart docs](https://vega.github.io/vega-lite/docs/)) | `npm i -g vega-cli vega-lite` |
 
 Fonts: the body font named in the bundle must be installed and must cover the
-glyphs you type. `Inter` is a good default (`apt install fonts-inter`, or
-[rsms.me/inter](https://rsms.me/inter/)). A licensed display font is referenced
-by path and never copied anywhere.
+glyphs you type. [Inter](https://rsms.me/inter/) is a good default
+(`apt install fonts-inter`). Installed fonts are discovered through
+[fontconfig](https://www.freedesktop.org/wiki/Software/fontconfig/), so
+`fc-cache -f` after dropping files into `~/.local/share/fonts` is all it takes.
 
 ### Dependencies — Windows
 
@@ -108,11 +115,12 @@ ships `xelatex`, pandoc and d2 have Windows builds, `librsvg` is the awkward one
 and usually arrives through MSYS2. Expect to install:
 
 ```powershell
-winget install JohnMacFarlane.Pandoc
-winget install MiKTeX.MiKTeX
-scoop install d2
-npm i -g vega-cli vega-lite
-# rsvg-convert: MSYS2  ->  pacman -S mingw-w64-x86_64-librsvg
+winget install JohnMacFarlane.Pandoc     # https://pandoc.org/installing.html
+winget install MiKTeX.MiKTeX             # https://miktex.org
+scoop install d2                         # https://d2lang.com/tour/install
+npm i -g vega-cli vega-lite              # https://vega.github.io/vega-lite/
+# rsvg-convert: MSYS2 -> pacman -S mingw-w64-x86_64-librsvg
+#   MSYS2: https://www.msys2.org  ·  librsvg: https://gitlab.gnome.org/GNOME/librsvg
 ```
 
 Paths in `brand.yaml` are absolute, so a bundle written on Linux needs its
