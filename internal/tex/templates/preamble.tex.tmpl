@@ -19,8 +19,10 @@
 {{if .DisplayFont -}}
 % Display font referenced by path: a commercially licensed face is never copied
 % into a bundle, so a machine without it falls back instead of failing.
-\newfontfamily\brandDisplay{ {{- .DisplayRegular -}} }[Path={{.DisplayDir}}]
-\newfontfamily\brandDisplayBold{ {{- .DisplayBold -}} }[Path={{.DisplayDir}}]
+% One Path per face: the two weights need not live in the same directory, and
+% assuming they do is a build that dies inside fontspec after validate said ok.
+\newfontfamily\brandDisplay{ {{- .DisplayRegular -}} }[Path={{.DisplayRegularDir}}]
+\newfontfamily\brandDisplayBold{ {{- .DisplayBold -}} }[Path={{.DisplayBoldDir}}]
 {{- else -}}
 \newcommand{\brandDisplay}{\mdseries}
 \newcommand{\brandDisplayBold}{\bfseries}

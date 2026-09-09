@@ -30,14 +30,18 @@ import (
 
 // Options drive one build.
 type Options struct {
-	Input      string
-	Output     string
-	BrandsDir  string
-	BrandName  string
-	Style      string
-	WorkDir    string // when set, the work directory is kept for inspection
-	AllowHoles bool   // proceed even if the font lacks glyphs the text uses
-	Log        func(string, ...any)
+	Input     string
+	Output    string
+	BrandsDir string
+	BrandName string
+	Style     string
+	// Defaults from configuration, used only when neither a flag nor the
+	// document's own front matter says otherwise.
+	DefaultBrand string
+	DefaultStyle string
+	WorkDir      string // when set, the work directory is kept for inspection
+	AllowHoles   bool   // proceed even if the font lacks glyphs the text uses
+	Log          func(string, ...any)
 }
 
 // Report is what the build produced.
@@ -61,6 +65,24 @@ func (o *Options) logf(f string, a ...any) {
 	}
 }
 
+// Pick returns the first non-empty value, which encodes the precedence every
+// setting follows: an explicit flag beats the document's front matter, and the
+// front matter beats a machine-wide default.
+//
+// Getting this backwards is not a cosmetic bug. A configured default used to be
+// applied before the front matter was read, so a document that asked for
+// `brand: none` was built with whatever brand the reader had configured — and a
+// colleague building the unbranded example got a font error about a typeface
+// the document never mentions.
+func Pick(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // Run executes the pipeline.
 func Run(o Options) (*Report, error) {
 	if missing := run.Missing(Tools...); len(missing) > 0 {
@@ -71,10 +93,7 @@ func Run(o Options) (*Report, error) {
 		return nil, err
 	}
 
-	name := o.BrandName
-	if name == "" {
-		name = d.Meta.Options.Brand
-	}
+	name := Pick(o.BrandName, d.Meta.Options.Brand, o.DefaultBrand)
 	b, err := brand.Load(o.BrandsDir, name)
 	if err != nil {
 		return nil, err
@@ -84,13 +103,7 @@ func Run(o Options) (*Report, error) {
 			b.Name, strings.Join(probs, "\n  - "), b.Name)
 	}
 
-	style := o.Style
-	if style == "" {
-		style = d.Meta.Options.Style
-	}
-	if style == "" {
-		style = "report"
-	}
+	style := Pick(o.Style, d.Meta.Options.Style, o.DefaultStyle, "report")
 	if !tex.ValidStyle(style) {
 		return nil, fmt.Errorf("unknown style %q: pick one of %s", style, strings.Join(tex.Styles, ", "))
 	}
@@ -163,11 +176,14 @@ func Run(o Options) (*Report, error) {
 	if s := d.Meta.Options.Signature; s != "" {
 		data.SignatureLines = strings.Split(s, "\n")
 	}
-	if dir, ok := b.DisplayFontDir(); ok {
-		data.DisplayFont, data.DisplayDir = true, dir
-		data.DisplayRegular, data.DisplayBold = b.Fonts.Display.Regular, b.Fonts.Display.Bold
-		if data.DisplayBold == "" {
-			data.DisplayBold = b.Fonts.Display.Regular
+	if res, ok := b.ResolveDisplay(); ok {
+		data.DisplayFont = true
+		data.DisplayRegular, data.DisplayRegularDir = res.RegularFile, res.RegularDir
+		data.DisplayBold, data.DisplayBoldDir = res.BoldFile, res.BoldDir
+		if res.BoldIsRegular {
+			rep.Warnings = append(rep.Warnings, fmt.Sprintf(
+				"display font: %s not found, so titles use %s",
+				strings.Join(res.Missing, ", "), res.RegularFile))
 		}
 	} else if b.Fonts.Display.Family != "" {
 		rep.Warnings = append(rep.Warnings, b.DisplayFontHint())

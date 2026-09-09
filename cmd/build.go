@@ -44,9 +44,8 @@ characters print as nothing and only the XeLaTeX log would ever know.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.Input = args[0]
 			o.BrandsDir = brandsDir()
-			if o.BrandName == "" {
-				o.BrandName = viper.GetString("brand")
-			}
+			o.DefaultBrand = viper.GetString("brand")
+			o.DefaultStyle = viper.GetString("style")
 			if !quiet {
 				o.Log = func(f string, a ...any) { fmt.Fprintf(cmd.ErrOrStderr(), f+"\n", a...) }
 			}

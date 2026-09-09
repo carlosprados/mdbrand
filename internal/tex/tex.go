@@ -39,10 +39,11 @@ type Data struct {
 	CoverLogoWidth  string
 	HeaderLogoWidth string
 
-	DisplayFont    bool
-	DisplayDir     string
-	DisplayRegular string
-	DisplayBold    string
+	DisplayFont       bool
+	DisplayRegularDir string
+	DisplayRegular    string
+	DisplayBoldDir    string
+	DisplayBold       string
 
 	HeaderTitle  string
 	Title        string
