@@ -35,6 +35,7 @@ identity by changing one word.
   mdbrand doctor                       check the toolchain and say how to fix it
   mdbrand brand list                   what bundles are installed
   mdbrand brand validate amplia        diagnose a bundle before it bites
+  mdbrand skill install                install the agent skill, for AI assistants
 
 Front matter drives everything, so a build needs no flags:
 
@@ -59,7 +60,7 @@ Front matter drives everything, so a build needs no flags:
 
 	cobra.OnInitialize(initConfig)
 
-	root.AddCommand(buildCmd(), newCmd(), doctorCmd(), brandCmd(), diagramsCmd(), configCmd(), versionCmd())
+	root.AddCommand(buildCmd(), newCmd(), doctorCmd(), brandCmd(), diagramsCmd(), skillCmd(), configCmd(), versionCmd())
 	return root
 }
 

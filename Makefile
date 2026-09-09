@@ -12,8 +12,9 @@ install: build
 	install -Dm755 $(BIN) $(PREFIX)/bin/$(BIN)
 	@echo "installed $(PREFIX)/bin/$(BIN) ($(VERSION))"
 
-# Symlinks the skill into Claude Code, keeping this repo the single source of
-# truth for it.
+# Symlinks the skill into Claude Code, keeping this checkout the single source
+# of truth while developing it. Everyone else installs the copy embedded in the
+# binary, with `mdbrand skill install`, which needs no checkout at all.
 SKILL_DIR ?= $(HOME)/.claude/skills/mdbrand
 skill:
 	@mkdir -p $(SKILL_DIR)

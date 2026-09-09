@@ -19,6 +19,10 @@ mdbrand brand list|show|validate|new
 
 `mdbrand <cmd> --help` is the full manual. Read it instead of guessing flags.
 
+This document is embedded in the binary. If it looks out of step with the tool,
+`mdbrand skill install --force` rewrites it from the installed binary, and
+`mdbrand version` says which one that is.
+
 ## Front matter is the interface
 
 ```yaml
