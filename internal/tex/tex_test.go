@@ -171,3 +171,27 @@ func TestHeaderHeightMM(t *testing.T) {
 		t.Fatal("a header taller than the top margin must fail")
 	}
 }
+
+// A tool upgrade must not move a hairline in a document that was already
+// correct, so a declared headheight goes to geometry verbatim rather than
+// converted: "11.25mm" for "32pt" is the same height and a different pixel.
+func TestHeaderHeightSpecKeepsDeclaredString(t *testing.T) {
+	b := bundleFor(t, "logo_width_header: 10mm", "headheight: 32pt", "headsep: 12pt", "margin: 25mm")
+	got, err := HeaderHeightSpec(b, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "32pt" {
+		t.Errorf("spec = %q, want the bundle's own %q", got, "32pt")
+	}
+
+	// Derived, because a square 16mm mark does not fit the 22pt default.
+	b = bundleFor(t)
+	got, err = HeaderHeightSpec(b, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(got, "mm") || strings.HasPrefix(got, "22") {
+		t.Errorf("spec = %q, want a derived length in mm", got)
+	}
+}
