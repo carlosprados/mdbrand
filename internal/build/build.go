@@ -14,6 +14,7 @@ package build
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -24,6 +25,7 @@ import (
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/doc"
 	"github.com/carlosprados/mdbrand/internal/fig"
+	"github.com/carlosprados/mdbrand/internal/imgsize"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/carlosprados/mdbrand/internal/tex"
 )
@@ -217,7 +219,27 @@ func Run(o Options) (*Report, error) {
 		return nil, err
 	}
 
-	geometry := fmt.Sprintf("margin=%s,headheight=%s,headsep=%s", b.Page.Margin, b.Page.HeadHeight, b.Page.HeadSep)
+	// The header's height depends on the shape of the logo that goes in it, so
+	// it is measured rather than assumed. See tex.HeaderHeightMM.
+	var logoAspect float64
+	if logo := b.LogoPath(); logo != "" {
+		a, err := imgsize.Aspect(logo)
+		switch {
+		case err != nil:
+			// An unreadable size is not a defect in the artwork, so it must not
+			// fail the build; but the header geometry is then a guess, and a
+			// guess the reader should hear about.
+			o.logf("  warning: cannot measure %s (%v) — header height left at %s, "+
+				"which is wrong if the mark is not wide", filepath.Base(logo), err, b.Page.HeadHeight)
+		case a > 0:
+			logoAspect = a
+		}
+	}
+	headHeightMM, err := tex.HeaderHeightMM(b, logoAspect)
+	if err != nil {
+		return nil, err
+	}
+	geometry := fmt.Sprintf("margin=%s,headheight=%.2fmm,headsep=%s", b.Page.Margin, headHeightMM, b.Page.HeadSep)
 	args := []string{
 		mdName, "-s", "-o", stem + ".tex",
 		"--include-in-header=preamble.tex",
@@ -285,7 +307,7 @@ else would have told you. Fix the key or add the entry.`,
 	}
 
 	logRaw, _ := os.ReadFile(filepath.Join(work, stem+".log"))
-	holes, over, pages := scanLog(string(logRaw))
+	holes, over, pages, headShort := scanLog(string(logRaw))
 	rep.Pages = pages
 	if len(holes) > 0 && !o.AllowHoles {
 		return nil, fmt.Errorf(`the font has no glyph for %d character(s) the document uses, so they
@@ -294,6 +316,12 @@ would print as nothing at all and only this log would know:
 Fix the text (a ballpoint tick beats a missing ☐ anyway) or pick a font that
 covers it; override with --allow-missing-glyphs if you truly want the holes`,
 			len(holes), strings.Join(holes, "\n  "))
+	}
+	if headShort > 0 {
+		return nil, fmt.Errorf(`the running header is %.1fpt taller than its box, so its logo prints
+across the first line of text on every page — and only the XeLaTeX log knew.
+Raise page.headheight by at least %.0fpt in the brand bundle, or lower
+page.logo_width_header so the mark is shorter.`, headShort, math.Ceil(headShort))
 	}
 	if over > 0 {
 		rep.Warnings = append(rep.Warnings, fmt.Sprintf(
@@ -378,11 +406,17 @@ func prepareLogoFile(b *brand.Brand, work, src, stem string) (string, error) {
 var (
 	missingRe = regexp.MustCompile(`Missing character: There is no (.+?) \(U\+([0-9A-Fa-f]+)\) in font ([^!]+)!`)
 	overRe    = regexp.MustCompile(`Overfull \\hbox \(([0-9.]+)pt too wide\)`)
-	pagesRe   = regexp.MustCompile(`Output written on .*? \((\d+) pages?`)
+	// The belt to tex.HeaderHeightMM's braces. If anything still puts more in
+	// the running header than its box can hold — a logo whose size could not be
+	// measured, a headheight declared taller than this code can foresee — the
+	// mark prints across the first line of every page, and fancyhdr says so
+	// only here.
+	headRe  = regexp.MustCompile(`Package fancyhdr Warning: \\headheight is too small \(([0-9.]+)pt too short\)`)
+	pagesRe = regexp.MustCompile(`Output written on .*? \((\d+) pages?`)
 )
 
 // scanLog pulls the three things that matter out of a xelatex log.
-func scanLog(log string) (holes []string, overfull, pages int) {
+func scanLog(log string) (holes []string, overfull, pages int, headShortPt float64) {
 	seen := map[string]bool{}
 	for _, m := range missingRe.FindAllStringSubmatch(log, -1) {
 		// The log names the font with its whole OpenType feature string
@@ -406,7 +440,13 @@ func scanLog(log string) (holes []string, overfull, pages int) {
 	if m := pagesRe.FindStringSubmatch(log); m != nil {
 		pages, _ = strconv.Atoi(m[1])
 	}
-	return holes, overfull, pages
+	// The largest shortfall: the log repeats the warning once per page.
+	for _, m := range headRe.FindAllStringSubmatch(log, -1) {
+		if v, err := strconv.ParseFloat(m[1], 64); err == nil && v > headShortPt {
+			headShortPt = v
+		}
+	}
+	return holes, overfull, pages, headShortPt
 }
 
 func copyFile(src, dst string) error {

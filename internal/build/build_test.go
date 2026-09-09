@@ -84,3 +84,23 @@ func TestMissingCitations(t *testing.T) {
 		t.Errorf("unrelated warnings must not match: %v", n)
 	}
 }
+
+// A header that overflows its box prints the logo across the first line of every
+// page, and fancyhdr reports it only in the log. The parse has to be exact: the
+// warning is repeated per page and the largest shortfall is the real one.
+func TestScanLogFindsHeaderOverflow(t *testing.T) {
+	log := `[1] Package fancyhdr Warning: \headheight is too small (14.5pt too short).
+[2] Package fancyhdr Warning: \headheight is too small (23.17pt too short).
+Output written on doc.pdf (2 pages, 12345 bytes).`
+	_, _, pages, short := scanLog(log)
+	if pages != 2 {
+		t.Errorf("pages = %d, want 2", pages)
+	}
+	if short != 23.17 {
+		t.Errorf("headShortPt = %v, want 23.17 (the largest)", short)
+	}
+
+	if _, _, _, short := scanLog("Output written on doc.pdf (1 page, 10 bytes)."); short != 0 {
+		t.Errorf("a clean log reported %v pt short", short)
+	}
+}

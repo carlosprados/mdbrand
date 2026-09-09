@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/imgsize"
+	"github.com/carlosprados/mdbrand/internal/tex"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -90,7 +93,8 @@ func brandValidateCmd() *cobra.Command {
 wrong: a logo that is a bitmap wearing an SVG coat, artwork sitting outside the
 viewBox, the invalid data:img/ MIME type that makes rsvg-convert render nothing,
 text kept as <foreignObject> (which rsvg-convert drops), a display font whose
-path no longer exists, and colours that are not plain 6-digit hex.
+path no longer exists, colours that are not plain 6-digit hex, and a header
+whose declared height cannot hold the logo that goes in it.
 
 With no arguments, validates every installed bundle.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -112,6 +116,18 @@ With no arguments, validates every installed bundle.`,
 					continue
 				}
 				probs, warns := b.Check()
+				// The header's geometry depends on the logo's proportions, and
+				// getting it wrong prints the mark across the first line of every
+				// page. Checked here rather than in Check() because the arithmetic
+				// lives in tex, which imports brand: this is the one place that can
+				// see both without inverting the dependency — and validate saying
+				// "ok" before a build dies is the failure mode this whole command
+				// exists to prevent.
+				if h, err := headerGeometry(b); err != nil {
+					probs = append(probs, err.Error())
+				} else if h != "" {
+					warns = append(warns, h)
+				}
 				fmt.Fprintf(out, "%s (%s)\n", n, b.Dir)
 				for _, p := range probs {
 					fmt.Fprintf(out, "  PROBLEM  %s\n", p)
@@ -176,4 +192,30 @@ func brandPathCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// headerGeometry resolves the running header's box for a bundle. It returns a
+// note when mdbrand has to derive headheight itself (the bundle is fine, but
+// the number in brand.yaml is not the one used), and an error when the declared
+// value cannot hold the logo.
+func headerGeometry(b *brand.Brand) (string, error) {
+	logo := b.LogoPath()
+	if logo == "" {
+		return "", nil
+	}
+	aspect, err := imgsize.Aspect(logo)
+	if err != nil {
+		return fmt.Sprintf("page.headheight: cannot measure %s (%v), so the header height stays at %s — wrong unless the mark is wide",
+			filepath.Base(logo), err, b.Page.HeadHeight), nil
+	}
+	h, err := tex.HeaderHeightMM(b, aspect)
+	if err != nil {
+		return "", err
+	}
+	declared, derr := tex.ParseLenMM(b.Page.HeadHeight)
+	if derr != nil || math.Abs(h-declared) < 0.05 {
+		return "", nil
+	}
+	return fmt.Sprintf("page.headheight: using %.0fpt, derived from a logo %.2f as tall as it is wide; brand.yaml says %s",
+		h/(25.4/72.272), aspect, b.Page.HeadHeight), nil
 }

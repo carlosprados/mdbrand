@@ -111,10 +111,19 @@ type Page struct {
 	LogoWidthCover  string  `yaml:"logo_width_cover"`
 	LogoWidthHeader string  `yaml:"logo_width_header"`
 
+	// Whether headheight came from the bundle or from applyDefaults. The
+	// difference decides policy: an absent value is derived from the logo's
+	// real height, a declared one that cannot hold the logo fails the build
+	// instead of being silently overridden. Unexported, so YAML cannot set it.
+	headHeightDeclared bool
+
 	// The second logo appears on the cover only. The running header stays with
 	// one mark: at 16mm a second one is a smudge, not an identity.
 	LogoWidthCoverSecondary string `yaml:"logo_width_cover_secondary"`
 }
+
+// HeadHeightDeclared reports whether brand.yaml set page.headheight itself.
+func (p Page) HeadHeightDeclared() bool { return p.headHeightDeclared }
 
 // Diagrams carries the print numbers. They are per brand because they depend on
 // the text measure, which depends on the margin.
@@ -157,7 +166,11 @@ func (b *Brand) applyDefaults() {
 	if b.Page.LineStretch == 0 {
 		b.Page.LineStretch = 1.125
 	}
+	// Recorded before the default lands on top of it.
+	b.Page.headHeightDeclared = b.Page.HeadHeight != ""
 	if b.Page.HeadHeight == "" {
+		// A floor, not an answer: the real value depends on the header logo's
+		// height and is settled by tex.HeaderHeightMM.
 		b.Page.HeadHeight = "22pt"
 	}
 	if b.Page.HeadSep == "" {
@@ -537,6 +550,10 @@ page:
   logo_width_cover: 46mm    # tune per logo: a tall mark needs less width
   # logo_width_cover_secondary: 24mm
   logo_width_header: 16mm
+  # headheight / headsep: leave them out. mdbrand measures the logo and gives
+  # the running header the height it really needs — logo_width_header is a
+  # WIDTH, and a square mark is as tall as it is wide. Set headheight only to
+  # make the header taller than the mark requires.
 
 diagrams:
   d2_theme: 0         # light: paper has no prefers-color-scheme
