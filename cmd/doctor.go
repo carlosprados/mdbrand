@@ -36,11 +36,11 @@ LaTeX packages. Required only if the document has diagrams: d2, vl2svg.`,
 				}
 				checks = append(checks, c)
 			}
-			bin("pandoc", "apt install pandoc", true)
-			bin("xelatex", "apt install texlive-xetex", true)
-			bin("rsvg-convert", "apt install librsvg2-bin", true)
-			bin("d2", "https://d2lang.com/tour/install (or: brew install d2)", false)
-			bin("vl2svg", "npm i -g vega-cli vega-lite", false)
+			bin("pandoc", "apt install pandoc  ·  https://pandoc.org/installing.html", true)
+			bin("xelatex", "apt install texlive-xetex  ·  https://tug.org/texlive/", true)
+			bin("rsvg-convert", "apt install librsvg2-bin  ·  https://gitlab.gnome.org/GNOME/librsvg", true)
+			bin("d2", "curl -fsSL https://d2lang.com/install.sh | sh -s --  ·  https://d2lang.com/tour/install", false)
+			bin("vl2svg", "npm i -g vega-cli vega-lite  ·  https://vega.github.io/vega-lite/", false)
 
 			// LaTeX packages: a missing .sty is a build failure whose message
 			// names the file and not the package that carries it.
@@ -53,7 +53,7 @@ LaTeX packages. Required only if the document has diagrams: d2, vl2svg.`,
 				{"caption", "texlive-latex-recommended"},
 				{"xcolor", "texlive-latex-recommended"},
 			} {
-				c := check{name: "latex: " + p.sty, hint: "apt install " + p.pkg, required: true}
+				c := check{name: "latex: " + p.sty, hint: "apt install " + p.pkg + "  ·  https://ctan.org/pkg/" + p.sty, required: true}
 				if o, err := run.Cmd("", "kpsewhich", p.sty+".sty"); err == nil && strings.TrimSpace(o) != "" {
 					c.ok = true
 				}

@@ -74,6 +74,36 @@ labels inside the brand's `min_text_pt..max_text_pt` band and stays under
 the source and lower the scale by the same factor (shrinks whitespace, not
 text), or split the figure. Do not "fix" it by scaling the whole diagram down.
 
+## Dependencies
+
+`mdbrand doctor` checks every one of these and prints the install command plus
+the project's own page for whatever is missing.
+
+Always needed: **[pandoc](https://pandoc.org)**
+([install](https://pandoc.org/installing.html)) ·
+**[XeLaTeX](https://tug.org/texlive/)** from TeX Live, or
+[MiKTeX](https://miktex.org) on Windows ·
+**[rsvg-convert](https://gitlab.gnome.org/GNOME/librsvg)** from librsvg ·
+the LaTeX packages [fancyhdr](https://ctan.org/pkg/fancyhdr),
+[geometry](https://ctan.org/pkg/geometry),
+[fontspec](https://ctan.org/pkg/fontspec),
+[etoolbox](https://ctan.org/pkg/etoolbox),
+[microtype](https://ctan.org/pkg/microtype),
+[caption](https://ctan.org/pkg/caption),
+[xcolor](https://ctan.org/pkg/xcolor).
+
+Only for documents with figures: **[d2](https://d2lang.com)**
+([install](https://d2lang.com/tour/install)) for diagrams ·
+**[vl2svg](https://vega.github.io/vega-lite/)** from
+[vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) for charts.
+
+Fonts: the bundle's body font must be installed — [Inter](https://rsms.me/inter/)
+is the usual one — and is found through
+[fontconfig](https://www.freedesktop.org/wiki/Software/fontconfig/).
+
+Built with [Go](https://go.dev/dl/) 1.26+; prebuilt binaries are attached to
+every [release](https://github.com/carlosprados/mdbrand/releases).
+
 ## Hard rules
 
 - **XeLaTeX only.** pdflatex cannot take the Unicode. Not configurable.
