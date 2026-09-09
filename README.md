@@ -141,6 +141,9 @@ date: "7 de septiembre de 2026"
 lang: es-ES
 toc: true
 toc-depth: 2
+numbersections: true
+bibliography: refs.bib   # optional: one path, or a list of them
+csl: apa.csl             # optional, alongside a bibliography
 mdbrand:
   brand: amplia
   style: report          # report | note | letter
@@ -153,6 +156,17 @@ mdbrand:
 mdbrand new informe.md --title "…" --toc   # scaffold, front matter already right
 mdbrand build informe.md                   # build
 ```
+
+### Citations
+
+Declaring `bibliography:` is the whole switch: pandoc runs with `--citeproc`, so
+`@key` and `[@key, p. 42]` resolve and the reference list lands where the
+document puts its `# Referencias` heading. `csl:` selects the style.
+
+Paths resolve **against the document**, not against the working directory, and a
+`.bib` that is not there fails the build by name. So does a citation key with no
+entry: pandoc reports those as warnings and exits 0 anyway, which is how `(fml?)`
+ends up printed in the middle of a sentence.
 
 Flags override the front matter when you need a one-off: `--brand`, `--style`,
 `-o`, `--work` (keep the LaTeX, figures and log for inspection).
@@ -249,6 +263,7 @@ mdbrand brand path amplia
 name: amplia
 display_name: Amplía Soluciones S.L.
 logo: logo.svg                 # vector; an SVG wrapping a PNG will look soft
+logo_secondary: cliente.svg    # optional; right of the COVER only, same baseline
 
 colors:
   primary: "F68E1B"            # rules and accents — 6-digit hex, no '#'
@@ -270,7 +285,8 @@ page:
   margin: 22mm
   linestretch: 1.125
   logo_width_cover: 46mm
-  logo_width_header: 16mm
+  logo_width_cover_secondary: 24mm
+  logo_width_header: 16mm       # one mark only: at 16mm a second is a smudge
 
 diagrams:
   d2_theme: 0                  # light: paper has no prefers-color-scheme

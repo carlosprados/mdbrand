@@ -137,3 +137,39 @@ func TestWidthAttr(t *testing.T) {
 		t.Errorf("absent width = %g, want 0", got)
 	}
 }
+
+// `bibliography:` is pandoc's own key and people write it both ways. Accepting
+// only a sequence would silently ignore the single-file form, which is the
+// common one, and the PDF would come out full of "[@key?]".
+func TestBibliographyAcceptsScalarOrList(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		yaml string
+		want []string
+	}{
+		{"one file", "bibliography: refs.bib", []string{"refs.bib"}},
+		{"a list", "bibliography:\n  - a.bib\n  - b.bib", []string{"a.bib", "b.bib"}},
+		{"absent", "title: x", nil},
+		{"empty", `bibliography: ""`, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			p := filepath.Join(dir, "d.md")
+			if err := os.WriteFile(p, []byte("---\n"+tc.yaml+"\n---\n\nbody\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			f, err := Read(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(f.Meta.Bibliography) != len(tc.want) {
+				t.Fatalf("got %v, want %v", f.Meta.Bibliography, tc.want)
+			}
+			for i, w := range tc.want {
+				if f.Meta.Bibliography[i] != w {
+					t.Errorf("[%d] = %q, want %q", i, f.Meta.Bibliography[i], w)
+				}
+			}
+		})
+	}
+}

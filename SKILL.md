@@ -33,6 +33,9 @@ author: "Departamento de Tecnología — Amplía Soluciones S.L."
 date: "7 de septiembre de 2026"
 lang: es-ES
 toc: true                         # optional
+numbersections: true              # optional; pandoc's own key
+bibliography: refs.bib            # optional; one path or a list of them
+csl: apa.csl                      # optional, alongside a bibliography
 mdbrand:
   brand: amplia                   # bundle name; `none` for unbranded
   style: report                   # report | note | letter
@@ -48,6 +51,17 @@ mdbrand:
 
 Overrides exist as flags (`--brand`, `--style`, `-o`, `--work`) but a document
 should carry its own configuration so the build command never changes.
+
+## Citations
+
+Declaring `bibliography:` is the whole switch: mdbrand then runs pandoc with
+`--citeproc`, so `@key` and `[@key, p. 42]` resolve and the list lands wherever
+the document puts a `# Referencias` heading. `csl:` picks the style.
+
+**Paths resolve against the document, not the working directory**, and a missing
+`.bib` fails the build by name. So does a key with no entry: pandoc reports
+those as warnings and still exits 0, which is how `(fml?)` ends up printed in
+the middle of a sentence in a PDF nobody re-read.
 
 ## Diagrams
 
@@ -139,6 +153,12 @@ colours that are not plain 6-digit hex.
 
 Tune per bundle: `colors`, `fonts.body`, `fonts.display`, `page.margin`,
 `page.linestretch`, `page.logo_width_cover|header`, and the `diagrams` numbers.
+
+`logo_secondary:` adds a second mark at the right of the **cover only**, on the
+same baseline as the first, the way a letterhead sets two identities — a
+co-branded proposal, a funding body's emblem, an institution above a federation.
+Width is `page.logo_width_cover_secondary`. The running header keeps one mark:
+at 16 mm a second one is a smudge, not an identity.
 
 ## When a build looks wrong
 

@@ -39,6 +39,14 @@
 \newcommand{\brandLogo}[1]{\brandDisplayBold\color{brandText}{{texEscape .Brand.DisplayName}}}
 {{- end}}
 
+% The cover's second mark. Defined even when the bundle declares none, so the
+% cover template can call it unconditionally and get nothing.
+{{if .LogoSecondaryFile -}}
+\newcommand{\brandLogoSecondary}[1]{\includegraphics[width=#1]{ {{- .LogoSecondaryFile -}} }}
+{{- else -}}
+\newcommand{\brandLogoSecondary}[1]{}
+{{- end}}
+
 % ------------------------------------------------------------------ header ---
 \newcommand{\brandRunningTitle}{ {{- texEscape .HeaderTitle -}} }
 \pagestyle{fancy}

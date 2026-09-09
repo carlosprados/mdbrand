@@ -35,9 +35,12 @@ type Data struct {
 	Brand *brand.Brand
 	Style string
 
-	LogoFile        string // basename inside the work dir; "" when there is none
-	CoverLogoWidth  string
-	HeaderLogoWidth string
+	LogoFile          string // basename inside the work dir; "" when there is none
+	LogoSecondaryFile string // cover only; "" when the bundle declares none
+
+	CoverLogoWidth          string
+	CoverLogoSecondaryWidth string
+	HeaderLogoWidth         string
 
 	DisplayFont       bool
 	DisplayRegularDir string
