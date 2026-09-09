@@ -215,3 +215,22 @@ func HeaderHeightMM(b *brand.Brand, logoAspect float64) (float64, error) {
 	}
 	return height, nil
 }
+
+// HeaderHeightSpec returns the headheight to hand to geometry as a LaTeX
+// length: the bundle's own string whenever that is the value in force, and a
+// derived length only when mdbrand had to work it out.
+//
+// Passing "11.25mm" where the bundle said "32pt" is the same height to four
+// decimal places and still moves the header rule by a pixel, which is enough to
+// make a re-run of an unchanged document differ from the PDF already sent. A
+// tool upgrade must not do that.
+func HeaderHeightSpec(b *brand.Brand, logoAspect float64) (string, error) {
+	mm, err := HeaderHeightMM(b, logoAspect)
+	if err != nil {
+		return "", err
+	}
+	if declared, derr := ParseLenMM(b.Page.HeadHeight); derr == nil && math.Abs(mm-declared) < 1e-9 {
+		return b.Page.HeadHeight, nil
+	}
+	return strconv.FormatFloat(mm, 'f', 2, 64) + "mm", nil
+}

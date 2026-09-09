@@ -235,11 +235,11 @@ func Run(o Options) (*Report, error) {
 			logoAspect = a
 		}
 	}
-	headHeightMM, err := tex.HeaderHeightMM(b, logoAspect)
+	headHeight, err := tex.HeaderHeightSpec(b, logoAspect)
 	if err != nil {
 		return nil, err
 	}
-	geometry := fmt.Sprintf("margin=%s,headheight=%.2fmm,headsep=%s", b.Page.Margin, headHeightMM, b.Page.HeadSep)
+	geometry := fmt.Sprintf("margin=%s,headheight=%s,headsep=%s", b.Page.Margin, headHeight, b.Page.HeadSep)
 	args := []string{
 		mdName, "-s", "-o", stem + ".tex",
 		"--include-in-header=preamble.tex",
