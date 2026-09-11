@@ -19,6 +19,10 @@ mdbrand brand list|show|validate|new
 
 `mdbrand <cmd> --help` is the full manual. Read it instead of guessing flags.
 
+**There is nothing to set up first.** With no bundle configured, `mdbrand new`
+writes `brand: none` and the document builds on the built-in defaults, diagrams
+included. Reach for a bundle when the document needs an identity, not before.
+
 This document is embedded in the binary. If it looks out of step with the tool,
 `mdbrand skill install --force` rewrites it from the installed binary, and
 `mdbrand version` says which one that is.
@@ -173,6 +177,23 @@ mark is four times taller than the old fixed default could hold — it overflowe
 the box and printed over the first line of every page. A declared `headheight`
 that cannot hold the mark fails the build with the two fixes; `brand validate`
 prints the value actually in use.
+
+## Check the PDF before reporting it done
+
+A zero exit says the build ran, not that the document is right: a logo can land
+blank, a table can run past the measure, a figure can push a section onto a page
+of its own. None of that fails a build. Look at the pages you made.
+
+```sh
+pdftoppm -f 1 -l 1 -r 110 -png informe.pdf page   # then read page-1.png
+pdffonts informe.pdf                              # which faces really embedded
+pdfinfo informe.pdf                               # page size and count
+```
+
+Warnings go to **stderr** and do not stop the build. An overfull line is
+reported with how far it ran over and the text it could not fit, which is enough
+to find it in the Markdown without opening the log — so do not discard stderr
+and then call the document finished.
 
 ## When a build looks wrong
 
