@@ -22,7 +22,6 @@ type Meta struct {
 	Subtitle string `yaml:"subtitle"`
 	Author   any    `yaml:"author"` // string or list, as pandoc allows
 	Date     string `yaml:"date"`
-	Lang     string `yaml:"lang"`
 	TOC      *bool  `yaml:"toc"`
 
 	// Citations. These are pandoc's own metadata names and stay at the top
@@ -32,7 +31,40 @@ type Meta struct {
 	Bibliography StringList `yaml:"bibliography"`
 	CSL          string     `yaml:"csl"`
 
+	// Keys mdbrand has to refuse rather than drop. The preamble, the cover and
+	// the closing matter reach pandoc as --include-in-header,
+	// --include-before-body and --include-after-body; in pandoc each of those
+	// flags *sets the variable* of the same name as one of these fields, and a
+	// variable given on the command line replaces the metadata field it
+	// matches. So the flags that inject the design are precisely what evict
+	// whatever the document wrote here, and pandoc says nothing. Held as raw
+	// nodes so that any shape parses and the build can stop with a message
+	// instead of a YAML error.
+	HeaderIncludes yaml.Node `yaml:"header-includes"`
+	IncludeBefore  yaml.Node `yaml:"include-before"`
+	IncludeAfter   yaml.Node `yaml:"include-after"`
+
 	Options Options `yaml:"mdbrand"`
+}
+
+// ReservedKeys names the front matter keys this document sets that mdbrand
+// would silently discard. A key present but empty asks for nothing, so it does
+// not count.
+func (m Meta) ReservedKeys() []string {
+	var out []string
+	for _, k := range []struct {
+		name string
+		node yaml.Node
+	}{
+		{"header-includes", m.HeaderIncludes},
+		{"include-before", m.IncludeBefore},
+		{"include-after", m.IncludeAfter},
+	} {
+		if k.node.Kind != 0 && k.node.Tag != "!!null" {
+			out = append(out, k.name)
+		}
+	}
+	return out
 }
 
 // StringList accepts either one value or a list, the way pandoc reads

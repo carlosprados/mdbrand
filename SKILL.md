@@ -129,6 +129,13 @@ every [release](https://github.com/carlosprados/mdbrand/releases).
   without `☐` prints nothing at all and only the log would know. Fix the text
   (`[ ]` also takes a pen tick better) or change `fonts.body`. Override only
   deliberately with `--allow-missing-glyphs`.
+- **`header-includes` is refused, not applied.** So are `include-before` and
+  `include-after`. mdbrand injects its preamble and cover through pandoc's
+  `--include-in-header` and its two siblings, and a variable set on pandoc's
+  command line replaces the metadata field of that name — the document's lines
+  would vanish in silence. Anything a document needs in the preamble belongs in
+  the brand bundle. Everything else in the front matter still reaches pandoc
+  untouched (`numbersections`, `lang`, …).
 - **No `|md|` blocks in d2.** They become `<foreignObject>`, which
   `rsvg-convert` drops silently. Short labels; prose in the document.
 - **Never use d2's own PDF export** — it downloads a Playwright driver from

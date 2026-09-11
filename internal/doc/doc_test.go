@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 const sample = `---
@@ -168,6 +170,40 @@ func TestBibliographyAcceptsScalarOrList(t *testing.T) {
 			for i, w := range tc.want {
 				if f.Meta.Bibliography[i] != w {
 					t.Errorf("[%d] = %q, want %q", i, f.Meta.Bibliography[i], w)
+				}
+			}
+		})
+	}
+}
+
+// The keys pandoc lets a command-line variable evict. Detecting them is the
+// whole of the fix: undetected, the document builds and simply is not what it
+// asked to be, which is the failure mode this tool exists to remove.
+func TestReservedKeysAreDetected(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		yaml string
+		want []string
+	}{
+		{"none", "title: x\n", nil},
+		{"header-includes as a list", "header-includes:\n  - \\usepackage{polyglossia}\n", []string{"header-includes"}},
+		{"header-includes as a block", "header-includes: |\n  \\usepackage{polyglossia}\n", []string{"header-includes"}},
+		{"all three", "header-includes: a\ninclude-before: b\ninclude-after: c\n", []string{"header-includes", "include-before", "include-after"}},
+		// An empty key asks for nothing, so refusing the build would be noise.
+		{"present but empty", "header-includes:\n", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var m Meta
+			if err := yaml.Unmarshal([]byte(tc.yaml), &m); err != nil {
+				t.Fatalf("front matter did not parse: %v", err)
+			}
+			got := m.ReservedKeys()
+			if len(got) != len(tc.want) {
+				t.Fatalf("ReservedKeys() = %v, want %v", got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Errorf("ReservedKeys()[%d] = %q, want %q", i, got[i], tc.want[i])
 				}
 			}
 		})
