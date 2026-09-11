@@ -71,3 +71,33 @@
 % keep the caption small and grey.
 \usepackage{caption}
 \captionsetup{font={small,color=brandText},labelfont={bf},skip=6pt}
+
+% ------------------------------------------------------------- inline code ---
+% Inline code never breaks, and the reason is not the one everybody reaches for.
+% LaTeX gives the mono family \hyphenchar = -1, and that suppresses not only
+% pattern hyphenation but the discretionary TeX inserts after an explicit
+% hyphen: in prose `trainingplan-catalog-api` breaks after the hyphen, inside
+% \texttt it does not break at all. So a paragraph ending in a repo name
+% overflows the measure by the width of the whole token and no amount of
+% \emergencystretch can help. Neither can hyphenat's [htt]: measured, still
+% overfull.
+%
+% Allow a break after the characters code is actually made of, and only there.
+% Restoring \hyphenchar instead would invent hyphens inside identifiers, which
+% a reader would go on to copy. \allowbreak adds no character: what shows at
+% the end of the line is the separator the code already had. Prose is untouched
+% — this rewrites \texttt and nothing else.
+\ExplSyntaxOn
+\tl_new:N \l_mdbrand_code_tl
+\NewDocumentCommand \mdbrandCodeBreaks { m }
+  {
+    \tl_set:Nn \l_mdbrand_code_tl {#1}
+    \tl_replace_all:Nnn \l_mdbrand_code_tl {-} {-\allowbreak}
+    \tl_replace_all:Nnn \l_mdbrand_code_tl {/} {/\allowbreak}
+    \tl_replace_all:Nnn \l_mdbrand_code_tl {.} {.\allowbreak}
+    \tl_replace_all:Nnn \l_mdbrand_code_tl {\_} {\_\allowbreak}
+    \tl_use:N \l_mdbrand_code_tl
+  }
+\ExplSyntaxOff
+\let\mdbrandOrigTexttt\texttt
+\renewcommand{\texttt}[1]{\mdbrandOrigTexttt{\mdbrandCodeBreaks{#1}}}
