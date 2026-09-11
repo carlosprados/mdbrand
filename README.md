@@ -367,9 +367,11 @@ or it uses the invalid `data:img/` MIME type. `mdbrand brand validate` says
 which. If the artwork is off-canvas, find its bounding box with
 `inkscape --query-all file.svg` and rewrite the root `viewBox` around it.
 
-**`N line(s) overflow the measure`** — a wide table or an unbreakable URL. Note
-that a Markdown formatter which re-normalises pipe tables to the content width
-can strangle columns in the PDF; widen the separators before rebuilding.
+**`N line(s) overflow the measure`** — each one is quoted with how far past the
+measure it went, so it can be found in the Markdown without opening the log. The
+usual causes are a wide table and an unbreakable URL. Note that a Markdown
+formatter which re-normalises pipe tables to the content width can strangle
+columns in the PDF; widen the separators before rebuilding.
 
 **`the front matter sets header-includes`** — mdbrand owns the preamble, and
 pandoc's `--include-in-header` (with `--include-before-body` and
