@@ -371,7 +371,9 @@ which. If the artwork is off-canvas, find its bounding box with
 measure it went, so it can be found in the Markdown without opening the log. The
 usual causes are a wide table and an unbreakable URL. Note that a Markdown
 formatter which re-normalises pipe tables to the content width can strangle
-columns in the PDF; widen the separators before rebuilding.
+columns in the PDF; widen the separators before rebuilding. Inline code is not a
+cause: `-`, `/`, `.` and `_` are break points inside `` `code` ``, so a paragraph
+ending in a long repo name wraps instead of overflowing.
 
 **`the front matter sets header-includes`** — mdbrand owns the preamble, and
 pandoc's `--include-in-header` (with `--include-before-body` and
