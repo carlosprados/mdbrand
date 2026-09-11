@@ -39,16 +39,21 @@ same traps. They are now the tool's behaviour, not something to remember:
 
 ### From a release
 
-Every `v*` tag builds and publishes binaries automatically, for Linux, macOS and
-Windows on amd64 and arm64:
+Every `v*` tag builds and publishes binaries automatically: Linux and macOS on
+amd64 and arm64, Windows on amd64. This takes whichever release is current, so
+it does not go stale:
 
 ```sh
-v=v0.1.0
+v=$(curl -fsSL https://api.github.com/repos/carlosprados/mdbrand/releases/latest \
+      | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4)
 curl -fsSL "https://github.com/carlosprados/mdbrand/releases/download/$v/mdbrand_${v}_linux_amd64.tar.gz" | tar xz
 install -Dm755 mdbrand ~/.local/bin/mdbrand
+mdbrand version
 ```
 
-Checksums are attached to each release as `mdbrand_<version>_checksums.txt`.
+Swap `linux_amd64` for `linux_arm64`, `darwin_amd64`, `darwin_arm64` or
+`windows_amd64` (that one is a `.zip`). Checksums are attached to each release
+as `mdbrand_<version>_checksums.txt`.
 
 ### From source
 
@@ -123,8 +128,59 @@ npm i -g vega-cli vega-lite              # https://vega.github.io/vega-lite/
 #   MSYS2: https://www.msys2.org  ·  librsvg: https://gitlab.gnome.org/GNOME/librsvg
 ```
 
-Paths in `brand.yaml` are absolute, so a bundle written on Linux needs its
-`fonts.display.path` adjusted. Reports of what actually breaks are welcome.
+A bundle written on Linux usually travels unchanged: `fonts.display.path` is a
+list of candidates, relative ones resolve inside the bundle, and absolute ones
+expand `~` and `$VARS` — so add a Windows candidate to the list rather than
+rewriting the bundle. Reports of what actually breaks are welcome.
+
+## Your first PDF
+
+Nothing to configure and no brand bundle needed — `brand: none` uses the
+built-in defaults:
+
+```sh
+mdbrand new informe.md --title "Mi primer informe"
+mdbrand build informe.md
+```
+
+```console
+$ mdbrand build informe.md
+informe.pdf  (2 pages, brand none, style report)
+  fig fig00.d2               38×63 mm   text 12.0pt
+  fig fig01.vl.json          127×59 mm   text 12.0pt
+```
+
+`new` writes a document that already builds: front matter filled in, plus a D2
+diagram and a Vega-Lite chart carrying the settings that keep them legible on
+paper. Replace the prose with yours and run `build` again.
+
+Then **look at the result** — an exit code says nothing about whether the cover
+is right:
+
+```sh
+pdftoppm -f 1 -l 1 -r 110 -png informe.pdf page   # page-1.png
+```
+
+When you have an identity of your own, one word switches the document over:
+`brand: none` becomes `brand: amplia`. Nothing else in the document changes.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `mdbrand build <doc.md>` | Build the PDF. `-o` output path · `--brand` · `--style` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `--allow-missing-glyphs` |
+| `mdbrand new <doc.md>` | Scaffold a document that already builds. `--title` · `--subtitle` · `--author` · `--brand` · `--style` · `--toc` |
+| `mdbrand diagrams <doc.md>` | Figure sizes and smallest label size, without building. `--out <dir>` also keeps the rendered PDFs |
+| `mdbrand doctor` | Check the toolchain; prints the install command for anything missing |
+| `mdbrand brand list` · `show` · `validate` · `new` · `path` | Create and diagnose brand bundles |
+| `mdbrand config` · `config init` | What settings are in effect and where they came from |
+| `mdbrand skill install` · `show` · `path` | Install the agent skill, so an AI assistant drives the tool correctly |
+| `mdbrand version` | Which build this is |
+
+Flags always beat the front matter, so a one-off never means editing the
+document: `mdbrand build informe.md --style note -o /tmp/borrador.pdf`.
+
+`mdbrand <command> --help` is the complete manual for that command.
 
 ## Use
 
@@ -238,9 +294,9 @@ latencia.vl.json             126.7 × 60.2   mm   text 12.0 pt
 ## Brand bundles
 
 A bundle is a directory. It lives **outside** any code repository, because a
-corporate logo and a commercially licensed font must not be committed or
-redistributed — the display font is referenced by absolute path and never
-copied in.
+corporate logo and a commercially licensed font must not end up committed to a
+repository by accident. Whether a bundle may carry its own font is a licensing
+question, answered by the `fonts.display.path` rules further down.
 
 ```
 <brands dir>/amplia/
