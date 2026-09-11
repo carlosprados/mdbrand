@@ -94,6 +94,17 @@ func Run(o Options) (*Report, error) {
 	if err != nil {
 		return nil, err
 	}
+	if keys := d.Meta.ReservedKeys(); len(keys) > 0 {
+		return nil, fmt.Errorf(`the front matter sets %s, and the build would discard it in silence.
+mdbrand injects its preamble, its cover and its closing matter through pandoc's
+--include-in-header, --include-before-body and --include-after-body, and a
+variable set on pandoc's command line replaces the metadata field of the same
+name. Nothing written under those keys ever reaches the LaTeX; the document
+would build, and simply not be what it asked to be.
+Put the setting in the brand bundle, where every document of that identity gets
+it, or open an issue for the knob you need:
+  https://github.com/carlosprados/mdbrand/issues`, strings.Join(keys, ", "))
+	}
 
 	name := Pick(o.BrandName, d.Meta.Options.Brand, o.DefaultBrand)
 	b, err := brand.Load(o.BrandsDir, name)

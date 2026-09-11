@@ -49,7 +49,13 @@ what turns them on:
 
 Those paths resolve against the document, not the working directory, and one
 that is not there stops the build by name instead of shipping a PDF full of
-[@key?].`,
+[@key?].
+
+mdbrand owns the preamble, so a document that sets header-includes,
+include-before or include-after is refused rather than built without them:
+pandoc's --include-in-header and its two siblings, which is how the design gets
+in, replace the metadata fields of those names. Settings that should outlive one
+document belong in the brand bundle.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.Input = args[0]

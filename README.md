@@ -371,6 +371,13 @@ which. If the artwork is off-canvas, find its bounding box with
 that a Markdown formatter which re-normalises pipe tables to the content width
 can strangle columns in the PDF; widen the separators before rebuilding.
 
+**`the front matter sets header-includes`** — mdbrand owns the preamble, and
+pandoc's `--include-in-header` (with `--include-before-body` and
+`--include-after-body`, which place the design and the cover) *replaces* the
+metadata field of the same name. Those keys would therefore be dropped without a
+word, so the build stops instead. Put the setting in the brand bundle, where
+every document of that identity inherits it.
+
 **Something looks wrong in the LaTeX** — `--work ./out` keeps `preamble.tex`,
 `before.tex`, `after.tex`, the rewritten Markdown, every figure and the full
 XeLaTeX log.
