@@ -3,7 +3,9 @@ package build
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 )
@@ -102,5 +104,67 @@ Output written on doc.pdf (2 pages, 12345 bytes).`
 
 	if _, _, _, short := scanLog("Output written on doc.pdf (1 page, 10 bytes)."); short != 0 {
 		t.Errorf("a clean log reported %v pt short", short)
+	}
+}
+
+// The count alone sent the reader to the log with a grep and a map from .tex
+// line numbers back to the Markdown. The quote is the diagnosis. What has to be
+// right is the reassembly: the log hard-wraps at 79 columns with nothing
+// inserted at the break, mid-word and mid-font-name, so stripping before
+// joining would leave half a font name in the quote.
+func TestScanLogQuotesOverfullLines(t *testing.T) {
+	log := "Overfull \\hbox (7.1pt too wide) in paragraph at lines 9--12\n" +
+		"[]\\TU/Inter(2)/m/n/10 Descargar el resto de repos con \\TU/lmtt/m/n/10 cli\\TU/In\n" +
+		"ter(2)/m/n/10 .\n" +
+		" []\n" +
+		"\n" +
+		"Overfull \\hbox (3.2pt too wide) in paragraph at lines 20--21\n" +
+		"[]\\TU/Inter(2)/m/n/10 apenas se pasa\n" +
+		" []\n" +
+		"Output written on doc.pdf (2 pages, 12345 bytes)."
+
+	_, over, _, _ := scanLog(log)
+	if len(over) != 1 {
+		t.Fatalf("got %d overfull(s), want 1 — 3.2pt is below the 5pt floor: %+v", len(over), over)
+	}
+	if over[0].Pt != 7.1 {
+		t.Errorf("Pt = %v, want 7.1", over[0].Pt)
+	}
+	// Joined across the wrap, font runs gone with the space that terminates
+	// them, box markers gone, the text intact.
+	want := "Descargar el resto de repos con cli."
+	if over[0].Text != want {
+		t.Errorf("Text = %q, want %q", over[0].Text, want)
+	}
+}
+
+// A quote long enough to need cutting must still be readable, and must not cut
+// a multi-byte character in half.
+func TestOffendingTextEllipsizesOnAWordBoundary(t *testing.T) {
+	log := "Overfull \\hbox (50.3pt too wide) in paragraph at lines 152--154\n" +
+		"[]\\TU/Inter(2)/m/n/10 La identidad del modelo vive en el DNS y la regla de desp\n" +
+		"liegue la resuelve contra \\TU/lmtt/m/n/10 trainingplan-catalog-api\\TU/Inter(2\n" +
+		")/m/n/10 .\n" +
+		" []\n"
+
+	_, over, _, _ := scanLog(log)
+	if len(over) != 1 {
+		t.Fatalf("got %d overfull(s), want 1", len(over))
+	}
+	got := over[0].Text
+	if !strings.HasPrefix(got, "La identidad del modelo vive en el DNS") {
+		t.Errorf("Text = %q, want it to start with the line as written", got)
+	}
+	if !strings.HasSuffix(got, "…") {
+		t.Errorf("Text = %q, want a cut marked with an ellipsis", got)
+	}
+	if strings.ContainsAny(got, "\\[]") {
+		t.Errorf("Text = %q still carries TeX plumbing", got)
+	}
+	if n := len([]rune(got)); n > 61 {
+		t.Errorf("Text is %d runes, want it cut to 60 plus the ellipsis", n)
+	}
+	if !utf8.ValidString(got) {
+		t.Errorf("Text = %q is not valid UTF-8 — a rune was cut in half", got)
 	}
 }

@@ -334,9 +334,13 @@ across the first line of text on every page — and only the XeLaTeX log knew.
 Raise page.headheight by at least %.0fpt in the brand bundle, or lower
 page.logo_width_header so the mark is shorter.`, headShort, math.Ceil(headShort))
 	}
-	if over > 0 {
-		rep.Warnings = append(rep.Warnings, fmt.Sprintf(
-			"%d line(s) overflow the measure by more than 5pt — usually a wide table or an unbreakable URL", over))
+	if len(over) > 0 {
+		var w strings.Builder
+		fmt.Fprintf(&w, "%d line(s) overflow the measure by more than 5pt:", len(over))
+		for _, ov := range over {
+			fmt.Fprintf(&w, "\n    %5.1fpt  %q", ov.Pt, ov.Text)
+		}
+		rep.Warnings = append(rep.Warnings, w.String())
 	}
 
 	out := o.Output
@@ -417,6 +421,12 @@ func prepareLogoFile(b *brand.Brand, work, src, stem string) (string, error) {
 var (
 	missingRe = regexp.MustCompile(`Missing character: There is no (.+?) \(U\+([0-9A-Fa-f]+)\) in font ([^!]+)!`)
 	overRe    = regexp.MustCompile(`Overfull \\hbox \(([0-9.]+)pt too wide\)`)
+	// The font XeLaTeX was in when it printed the offending line, e.g.
+	// `\TU/Inter(2)/b/n/10 `. The trailing space belongs to the run — it is what
+	// terminates the font name — so it goes with it; the space *before* the run
+	// is real text and stays. Segments may not contain a space, which keeps the
+	// pattern off a path like cli_config/rule_generator.py sitting in the text.
+	fontRunRe = regexp.MustCompile(`\\[A-Za-z0-9]+(?:/[^/\s]+){3}/[0-9.]+ ?`)
 	// The belt to tex.HeaderHeightMM's braces. If anything still puts more in
 	// the running header than its box can hold — a logo whose size could not be
 	// measured, a headheight declared taller than this code can foresee — the
@@ -426,8 +436,17 @@ var (
 	pagesRe = regexp.MustCompile(`Output written on .*? \((\d+) pages?`)
 )
 
+// overfull is one line the measure could not hold: how far past it went, and
+// enough of its text to find it in the Markdown. The count on its own is a
+// smell detector and sends the reader to grep the log; the quote is a
+// diagnosis, in the same spirit as naming the character and font of a hole.
+type overfull struct {
+	Pt   float64
+	Text string
+}
+
 // scanLog pulls the three things that matter out of a xelatex log.
-func scanLog(log string) (holes []string, overfull, pages int, headShortPt float64) {
+func scanLog(log string) (holes []string, over []overfull, pages int, headShortPt float64) {
 	seen := map[string]bool{}
 	for _, m := range missingRe.FindAllStringSubmatch(log, -1) {
 		// The log names the font with its whole OpenType feature string
@@ -443,9 +462,15 @@ func scanLog(log string) (holes []string, overfull, pages int, headShortPt float
 		}
 	}
 	sort.Strings(holes)
-	for _, m := range overRe.FindAllStringSubmatch(log, -1) {
+	lines := strings.Split(log, "\n")
+	for i, ln := range lines {
+		m := overRe.FindStringSubmatch(ln)
+		if m == nil {
+			continue
+		}
+		// Under 5pt the measure is a matter of taste, not a defect.
 		if v, err := strconv.ParseFloat(m[1], 64); err == nil && v > 5 {
-			overfull++
+			over = append(over, overfull{Pt: v, Text: offendingText(lines[i+1:])})
 		}
 	}
 	if m := pagesRe.FindStringSubmatch(log); m != nil {
@@ -457,7 +482,49 @@ func scanLog(log string) (holes []string, overfull, pages int, headShortPt float
 			headShortPt = v
 		}
 	}
-	return holes, overfull, pages, headShortPt
+	return holes, over, pages, headShortPt
+}
+
+// offendingText reassembles the line XeLaTeX prints just below an Overfull
+// warning and reduces it to something quotable.
+//
+// The log is hard-wrapped at 79 columns with nothing inserted at the break, and
+// it wraps mid-word and even mid-font-name, so the continuation lines are
+// joined with no separator before anything else is done to them. Splitting the
+// other way round would leave half a font name in the quote.
+func offendingText(rest []string) string {
+	var raw strings.Builder
+	for _, ln := range rest {
+		// The content block ends at the paragraph's closing box marker or at
+		// the blank line after it.
+		if t := strings.TrimSpace(ln); t == "" || t == "[]" {
+			break
+		}
+		raw.WriteString(ln)
+		if raw.Len() > 400 { // far more than will ever be shown
+			break
+		}
+	}
+	s := fontRunRe.ReplaceAllString(raw.String(), "")
+	// Box markers, not text. A literal "[]" in the document loses its brackets
+	// in the quote, which is a fair price for not quoting TeX's plumbing.
+	s = strings.ReplaceAll(s, "[]", "")
+	s = strings.Join(strings.Fields(s), " ")
+	return ellipsize(s, 60)
+}
+
+// ellipsize cuts to at most n runes, preferring a word boundary in the second
+// half so the quote ends on something readable.
+func ellipsize(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	cut := string(r[:n])
+	if i := strings.LastIndexByte(cut, ' '); i > len(cut)/2 {
+		cut = cut[:i]
+	}
+	return strings.TrimRight(cut, " ") + "…"
 }
 
 func copyFile(src, dst string) error {
