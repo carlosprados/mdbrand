@@ -8,3 +8,7 @@
 *.out
 *.toc
 /out/
+
+# handoffs from other sessions: working notes that quote real documents, and
+# this repository is public. See CLAUDE.md, invariant 10.
+/docs/

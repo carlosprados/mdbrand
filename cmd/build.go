@@ -38,6 +38,17 @@ legibility band (min_text_pt..max_text_pt in the brand bundle) without growing
 taller than max_height_mm. If a diagram cannot satisfy that, the build stops and
 says what to change — it does not ship an illegible figure.
 
+Label sizes are mdbrand's to set: it appends the font-size globs to a copy of
+the .d2 before compiling it, so the source stays as you wrote it and a vars
+block does not collide with a glob you had to paste.
+
+Code blocks are fitted the same way figures are. A bare fence is set at the
+largest size whose longest line stays inside the measure, stepping down as far
+as \footnotesize; one that still does not fit is reported with the columns it
+has and the columns that fit. A fence that declares a language is wrapped
+instead — a bare fence never is, because it may well be an ASCII diagram and
+wrapping one destroys its alignment in silence.
+
 A document whose text uses a glyph the font lacks also stops the build: those
 characters print as nothing and only the XeLaTeX log would ever know.
 

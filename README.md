@@ -254,8 +254,6 @@ Write them inline, or link a side file. Both are rendered, placed and sized:
 
 ````markdown
 ```d2 caption="Arquitectura del motor"
-**.style.font-size: 32
-(** -> **)[*].style.font-size: 32
 mesa: Mesa de Teleservicios
 og: OpenGate { trainer; inferencer }
 mesa -> og.trainer: listas
@@ -268,10 +266,23 @@ Fence languages: `d2`, and `vegalite` / `vega` / `vl`. Side files: `*.d2`,
 `*.vl.json`, `*.vl.yaml`, `*.vega.json`. Per-figure attributes on the fence or
 after the link: `caption="…"`, `width=120mm`, `scale=0.4`.
 
-**The font-size globs matter.** `**` reaches shapes nested inside containers;
-`*` matches one level only, so without the double star a nested box keeps d2's
-16px default and lands at 8px once the SVG is halved. Every `.d2` needs both
-lines.
+**The label size is mdbrand's to set, not yours.** d2 defaults to 16px, which
+the render scale then halves — 8px on the page. mdbrand appends the font-size
+globs to a copy of the source before compiling it, sized from the bundle's
+`max_text_pt` and the scale in force, and leaves your file alone. Declare a
+`font-size` of your own anywhere in the `.d2` and mdbrand adds nothing: that is
+you taking the decision back.
+
+If you have `.d2` files carrying the two glob lines the old instructions asked
+for, they keep working. Be aware of what they cost, though: `**.style.font-size`
+also matches the keys inside a `vars` block, so d2 refuses the file with
+`"style" needs a value` — an error that names the glob and not the cause. Delete
+the lines and `vars` works.
+
+**Containers group, they do not reshape.** In d2 v0.7.1 a `direction:` inside a
+container is ignored by dagre and ELK alike — measured, both engines — so a
+container will not give you a row of boxes inside a column. Only the root
+`direction` is honoured.
 
 **How a figure gets its size.** The width is the largest that satisfies all
 three bounds from the bundle: the text measure, `max_text_pt` (so a diagram does
@@ -280,6 +291,20 @@ Then the smallest label must still print at `min_text_pt` or more. If it cannot,
 the build fails and tells you to raise the font size in the source and lower the
 scale by the same factor — which shrinks the layout whitespace instead of the
 text — or to split the figure.
+
+**How a code block gets its size.** The same doctrine, one dimension: a fenced
+block is placed at the largest size whose longest line stays inside the measure,
+stepping down to `\small` and then `\footnotesize` if it must. A block that is
+still too wide at the smallest legible size is reported with the two numbers
+that let you act — the columns it has and the columns that fit.
+
+A fence that declares a language (```` ```go ````, ```` ```sh ````) is wrapped
+instead, with a continuation arrow: you said it is code, and code survives being
+folded. A bare fence is never wrapped, because it is as likely to be an ASCII
+diagram, and wrapping one destroys its alignment silently. One line cannot be
+helped either way: a token with no spaces in it that is longer than the measure,
+such as a URL inside a string literal. That one is quoted back at you and is
+yours to shorten.
 
 Iterate on a diagram without rebuilding the document:
 
@@ -348,7 +373,7 @@ page:
 
 diagrams:
   d2_theme: 0                  # light: paper has no prefers-color-scheme
-  d2_scale: 0.5                # pairs with **.style.font-size: 32
+  d2_scale: 0.5                # mdbrand sizes d2 labels from this and max_text_pt
   min_text_pt: 8
   max_text_pt: 12
   max_height_mm: 150

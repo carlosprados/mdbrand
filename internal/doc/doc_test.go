@@ -209,3 +209,42 @@ func TestReservedKeysAreDetected(t *testing.T) {
 		})
 	}
 }
+
+// A figure's path has to come out absolute. The renderers run with their
+// working directory set to the source's own directory, so a relative path is
+// resolved twice and the file is looked for at diagrams/diagrams/x.d2 — which
+// is every side-file diagram in a document invoked by a relative path.
+func TestExtractFigsResolvesSideFilesAbsolutely(t *testing.T) {
+	dir := t.TempDir()
+	md := filepath.Join(dir, "doc.md")
+	if err := os.WriteFile(md, []byte("![c](diagrams/x.d2)\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rel, err := filepath.Rel(mustWD(t), md)
+	if err != nil {
+		t.Skip("temp dir is not relative to the working directory")
+	}
+	f, err := Read(rel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, figs, err := f.ExtractFigs(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(figs) != 1 {
+		t.Fatalf("got %d figure(s), want 1", len(figs))
+	}
+	if !filepath.IsAbs(figs[0].SrcPath) {
+		t.Errorf("SrcPath = %q, want an absolute path", figs[0].SrcPath)
+	}
+}
+
+func mustWD(t *testing.T) string {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return wd
+}

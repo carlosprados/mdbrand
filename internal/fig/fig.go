@@ -18,6 +18,7 @@
 package fig
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"os"
@@ -147,6 +148,13 @@ func renderD2(f *doc.Fig, b *brand.Brand, out string) error {
 	if s := f.Scale(); s > 0 {
 		scale = s
 	}
+	src, generated, err := d2Source(f, b, scale, filepath.Dir(out))
+	if err != nil {
+		return err
+	}
+	if generated {
+		defer os.Remove(src)
+	}
 	theme := strconv.Itoa(b.Diagrams.D2Theme)
 	// Both themes pinned to the light one: paper has no prefers-color-scheme,
 	// so a dark-mode media query inside the SVG would decide the ink colour by
@@ -155,7 +163,84 @@ func renderD2(f *doc.Fig, b *brand.Brand, out string) error {
 		"--theme", theme, "--dark-theme", theme,
 		"--pad", strconv.Itoa(b.Diagrams.D2Pad),
 		"--scale", strconv.FormatFloat(scale, 'f', -1, 64),
-		f.SrcPath, out)
+		src, out)
+}
+
+// How deep the shape globs reach. One selector per level, because the
+// recursive form cannot be used — see d2Globs.
+const d2MaxDepth = 6
+
+// d2Globs is the font-size declaration mdbrand appends to a d2 source.
+//
+// d2 defaults labels to 16px, which the render scale then halves: 8px on the
+// page, and a diagram nobody reads. The size has to be set in the source, since
+// d2 lays the boxes out around the text it was given and no CLI flag reaches
+// it. It used to be the author's job — two glob lines, pasted into every .d2 by
+// hand — and it is the tool's now, because the tool is what knows the point
+// size the label ends up at, having measured it.
+//
+// One glob per level of nesting rather than the recursive `**.style.font-size`:
+// the recursive form also matches the keys inside a `vars` block, and d2 then
+// refuses the whole file with `"style" needs a value`, an error that names the
+// glob and not the cause. `*.*.…` reaches the same shapes and never descends
+// into a scalar. Edges keep their own recursive selector, which is safe: an
+// edge cannot be declared inside vars.
+//
+// Appended, not prepended, so the line numbers d2 reports in an error still
+// point at the author's own source.
+func d2Globs(px int) string {
+	var b strings.Builder
+	b.WriteString("\n# --- added by mdbrand: label size for print legibility ---\n")
+	sel := "*"
+	for i := 0; i < d2MaxDepth; i++ {
+		fmt.Fprintf(&b, "%s.style.font-size: %d\n", sel, px)
+		sel += ".*"
+	}
+	fmt.Fprintf(&b, "(** -> **)[*].style.font-size: %d\n", px)
+	return b.String()
+}
+
+// d2FontPx is the source size that puts the labels at the top of the brand's
+// legible band once --scale has been applied and the SVG's pixels have become
+// points: the widest the tool may make them, since Render only ever shrinks a
+// figure from there.
+func d2FontPx(b *brand.Brand, scale float64) int {
+	if scale <= 0 {
+		scale = 0.5
+	}
+	px := int(math.Round(b.Diagrams.MaxTextPt / (scale * pxToPt)))
+	if px < 8 {
+		px = 8
+	}
+	return px
+}
+
+// d2Source returns the path to hand d2, writing a copy carrying the injected
+// globs unless the source sets a font size of its own — declaring one is the
+// author taking the decision back.
+//
+// The copy goes beside the original when the source imports anything, because
+// d2 resolves `@import` against the importing file's own directory and a copy
+// in the work directory would break it. Everything else is generated in the
+// work directory, where a read-only document tree cannot stop the build.
+func d2Source(f *doc.Fig, b *brand.Brand, scale float64, workDir string) (path string, generated bool, err error) {
+	raw, err := os.ReadFile(f.SrcPath)
+	if err != nil {
+		return "", false, err
+	}
+	if bytes.Contains(raw, []byte("font-size")) {
+		return f.SrcPath, false, nil
+	}
+	dir := workDir
+	if bytes.ContainsRune(raw, '@') {
+		dir = filepath.Dir(f.SrcPath)
+	}
+	gen := filepath.Join(dir, fmt.Sprintf(".mdbrand-fig%02d.d2", f.Index))
+	body := append(bytes.TrimRight(raw, "\n"), []byte(d2Globs(d2FontPx(b, scale)))...)
+	if err := os.WriteFile(gen, body, 0o644); err != nil {
+		return "", false, fmt.Errorf("writing the sized copy of %s: %w", filepath.Base(f.SrcPath), err)
+	}
+	return gen, true, nil
 }
 
 func renderVega(f *doc.Fig, out string) error {
