@@ -129,8 +129,16 @@ it, or open an issue for the knob you need:
 			return nil, err
 		}
 		defer os.RemoveAll(work)
-	} else if err := os.MkdirAll(work, 0o755); err != nil {
-		return nil, err
+	} else {
+		if err := os.MkdirAll(work, 0o755); err != nil {
+			return nil, err
+		}
+		// Absolute from here on. Every external tool is run with its cwd set
+		// somewhere inside this directory, so a relative --work would be
+		// resolved a second time against itself: `--work ./out` handed d2
+		// out/out/fig00.d2 and the build died on the flag that exists to
+		// diagnose builds.
+		work = mustAbs(work)
 	}
 	rep := &Report{Brand: b.Name, Style: style, WorkDir: work, Kept: keep}
 
@@ -318,26 +326,42 @@ else would have told you. Fix the key or add the entry.`,
 	}
 
 	logRaw, _ := os.ReadFile(filepath.Join(work, stem+".log"))
-	holes, over, pages, headShort := scanLog(string(logRaw))
-	rep.Pages = pages
-	if len(holes) > 0 && !o.AllowHoles {
+	sc := scanLog(string(logRaw))
+	rep.Pages = sc.Pages
+	if len(sc.Holes) > 0 && !o.AllowHoles {
 		return nil, fmt.Errorf(`the font has no glyph for %d character(s) the document uses, so they
 would print as nothing at all and only this log would know:
   %s
 Fix the text (a ballpoint tick beats a missing ☐ anyway) or pick a font that
 covers it; override with --allow-missing-glyphs if you truly want the holes`,
-			len(holes), strings.Join(holes, "\n  "))
+			len(sc.Holes), strings.Join(sc.Holes, "\n  "))
 	}
-	if headShort > 0 {
+	if sc.HeadShortPt > 0 {
 		return nil, fmt.Errorf(`the running header is %.1fpt taller than its box, so its logo prints
 across the first line of text on every page — and only the XeLaTeX log knew.
 Raise page.headheight by at least %.0fpt in the brand bundle, or lower
-page.logo_width_header so the mark is shorter.`, headShort, math.Ceil(headShort))
+page.logo_width_header so the mark is shorter.`, sc.HeadShortPt, math.Ceil(sc.HeadShortPt))
 	}
-	if len(over) > 0 {
+	if len(sc.Wide) > 0 {
 		var w strings.Builder
-		fmt.Fprintf(&w, "%d line(s) overflow the measure by more than 5pt:", len(over))
-		for _, ov := range over {
+		fmt.Fprintf(&w, "%d code block(s) stay past the measure at the smallest legible size:", len(sc.Wide))
+		for _, c := range sc.Wide {
+			fmt.Fprintf(&w, "\n    %d columns, where %d fit", c.Cols, c.Fits)
+		}
+		w.WriteString("\n  The size was already stepped down as far as it goes. Shorten the lines\n  or split the block; an ASCII diagram is not wrapped, by design.")
+		rep.Warnings = append(rep.Warnings, w.String())
+	}
+	if len(sc.Over) > 0 {
+		var w strings.Builder
+		fmt.Fprintf(&w, "%d line(s) overflow the measure by more than 5pt:", len(sc.Over))
+		for _, ov := range sc.Over {
+			// A verbatim line leaves nothing quotable in the log: TeX traces
+			// the box and not its characters. Saying so beats printing `""`
+			// and letting the reader hunt for a line that was never there.
+			if ov.Text == "" {
+				fmt.Fprintf(&w, "\n    %5.1fpt  (no quotable text — typically a code block, see above)", ov.Pt)
+				continue
+			}
 			fmt.Fprintf(&w, "\n    %5.1fpt  %q", ov.Pt, ov.Text)
 		}
 		rep.Warnings = append(rep.Warnings, w.String())
@@ -434,6 +458,10 @@ var (
 	// only here.
 	headRe  = regexp.MustCompile(`Package fancyhdr Warning: \\headheight is too small \(([0-9.]+)pt too short\)`)
 	pagesRe = regexp.MustCompile(`Output written on .*? \((\d+) pages?`)
+	// What the preamble's code-block fitter reports when even \footnotesize
+	// leaves the block past the measure. LaTeX is the only place that can count
+	// the columns, because only it knows the mono face the brand ended up with.
+	codeRe = regexp.MustCompile(`MDBRAND-CODE-TOOWIDE cols=(\d+) fits=(\d+)`)
 )
 
 // overfull is one line the measure could not hold: how far past it went, and
@@ -445,8 +473,32 @@ type overfull struct {
 	Text string
 }
 
-// scanLog pulls the three things that matter out of a xelatex log.
-func scanLog(log string) (holes []string, over []overfull, pages int, headShortPt float64) {
+// wideCode is a code block the fitter could not bring inside the measure: what
+// it has, and what would have fitted. Both counts are needed — "shorten it" is
+// advice, "shorten it by nine columns" is an instruction.
+type wideCode struct {
+	Cols int
+	Fits int
+}
+
+// scan is what a xelatex log is worth reading for.
+type scan struct {
+	Holes       []string
+	Over        []overfull
+	Wide        []wideCode
+	Pages       int
+	HeadShortPt float64
+}
+
+// scanLog pulls the things that matter out of a xelatex log.
+func scanLog(log string) scan {
+	var (
+		holes       []string
+		over        []overfull
+		wide        []wideCode
+		pages       int
+		headShortPt float64
+	)
 	seen := map[string]bool{}
 	for _, m := range missingRe.FindAllStringSubmatch(log, -1) {
 		// The log names the font with its whole OpenType feature string
@@ -473,6 +525,11 @@ func scanLog(log string) (holes []string, over []overfull, pages int, headShortP
 			over = append(over, overfull{Pt: v, Text: offendingText(lines[i+1:])})
 		}
 	}
+	for _, m := range codeRe.FindAllStringSubmatch(log, -1) {
+		cols, _ := strconv.Atoi(m[1])
+		fits, _ := strconv.Atoi(m[2])
+		wide = append(wide, wideCode{Cols: cols, Fits: fits})
+	}
 	if m := pagesRe.FindStringSubmatch(log); m != nil {
 		pages, _ = strconv.Atoi(m[1])
 	}
@@ -482,7 +539,7 @@ func scanLog(log string) (holes []string, over []overfull, pages int, headShortP
 			headShortPt = v
 		}
 	}
-	return holes, over, pages, headShortPt
+	return scan{Holes: holes, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt}
 }
 
 // offendingText reassembles the line XeLaTeX prints just below an Overfull

@@ -74,8 +74,6 @@ or side file, both rendered and placed automatically:
 
 ````markdown
 ```d2 caption="Arquitectura"
-**.style.font-size: 32
-(** -> **)[*].style.font-size: 32
 mesa: Mesa
 mesa -> og.trainer: listas
 ```
@@ -86,15 +84,37 @@ mesa -> og.trainer: listas
 Fences: `d2`, `vegalite`/`vega`/`vl`. Attributes: `caption="…"`, `width=120mm`,
 `scale=0.4`.
 
-**Both glob lines are mandatory in every `.d2`.** `**` reaches shapes nested in
-containers, `*` does not, so without them a nested box keeps the 16px default
-and prints at 8px once the SVG is halved.
+**Do not write font-size globs.** mdbrand sizes the labels itself, from the
+brand's band and the scale in force, on a copy of the source. The recursive glob
+the old instructions asked for also matched the keys inside a `vars` block, so
+d2 refused the file with `"style" needs a value`; nothing to paste means nothing
+to collide. Declaring a `font-size` anywhere in the `.d2` turns the injection
+off — do that only when you mean to own the number.
+
+`vars`, including `vars.d2-config`, works. **Containers do not change the shape
+of a layout**: in d2 v0.7.1 a `direction:` inside a container is ignored by both
+dagre and ELK, so containers group boxes and nothing more. Only the root
+`direction` is honoured.
 
 mdbrand places each figure at the widest size that fits the measure, keeps its
 labels inside the brand's `min_text_pt..max_text_pt` band and stays under
 `max_height_mm`. If that is impossible the build fails: raise the font size in
 the source and lower the scale by the same factor (shrinks whitespace, not
 text), or split the figure. Do not "fix" it by scaling the whole diagram down.
+
+## Code blocks
+
+Fitted the same way: a fenced block is set at the largest size whose longest
+line stays inside the measure, stepping down to `\small` and `\footnotesize`.
+A block still too wide at the smallest legible size is warned about with the
+columns it has and the columns that fit, so shorten or split it.
+
+A fence **with a language** is wrapped instead, marked with a continuation
+arrow. A **bare fence** is never wrapped: it is as likely to hold an ASCII
+diagram, and folding one destroys its alignment without a word. So put the
+language on real code, and leave it off pictures. Neither treatment can break a
+single token longer than the measure — a URL in a string literal — and that one
+comes back in the overfull warning, quoted.
 
 ## Dependencies
 

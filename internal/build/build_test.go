@@ -94,15 +94,15 @@ func TestScanLogFindsHeaderOverflow(t *testing.T) {
 	log := `[1] Package fancyhdr Warning: \headheight is too small (14.5pt too short).
 [2] Package fancyhdr Warning: \headheight is too small (23.17pt too short).
 Output written on doc.pdf (2 pages, 12345 bytes).`
-	_, _, pages, short := scanLog(log)
-	if pages != 2 {
-		t.Errorf("pages = %d, want 2", pages)
+	sc := scanLog(log)
+	if sc.Pages != 2 {
+		t.Errorf("pages = %d, want 2", sc.Pages)
 	}
-	if short != 23.17 {
-		t.Errorf("headShortPt = %v, want 23.17 (the largest)", short)
+	if sc.HeadShortPt != 23.17 {
+		t.Errorf("headShortPt = %v, want 23.17 (the largest)", sc.HeadShortPt)
 	}
 
-	if _, _, _, short := scanLog("Output written on doc.pdf (1 page, 10 bytes)."); short != 0 {
+	if short := scanLog("Output written on doc.pdf (1 page, 10 bytes).").HeadShortPt; short != 0 {
 		t.Errorf("a clean log reported %v pt short", short)
 	}
 }
@@ -123,7 +123,7 @@ func TestScanLogQuotesOverfullLines(t *testing.T) {
 		" []\n" +
 		"Output written on doc.pdf (2 pages, 12345 bytes)."
 
-	_, over, _, _ := scanLog(log)
+	over := scanLog(log).Over
 	if len(over) != 1 {
 		t.Fatalf("got %d overfull(s), want 1 — 3.2pt is below the 5pt floor: %+v", len(over), over)
 	}
@@ -147,7 +147,7 @@ func TestOffendingTextEllipsizesOnAWordBoundary(t *testing.T) {
 		")/m/n/10 .\n" +
 		" []\n"
 
-	_, over, _, _ := scanLog(log)
+	over := scanLog(log).Over
 	if len(over) != 1 {
 		t.Fatalf("got %d overfull(s), want 1", len(over))
 	}
@@ -166,5 +166,27 @@ func TestOffendingTextEllipsizesOnAWordBoundary(t *testing.T) {
 	}
 	if !utf8.ValidString(got) {
 		t.Errorf("Text = %q is not valid UTF-8 — a rune was cut in half", got)
+	}
+}
+
+// A code block the preamble could not bring inside the measure reports itself
+// through the log, because LaTeX is the only place that knows the mono face and
+// therefore the column count. Both numbers have to survive the parse: "shorten
+// it" is advice, "it is nine columns too wide" is an instruction.
+func TestScanLogFindsCodeBlocksThatStayTooWide(t *testing.T) {
+	log := "MDBRAND-CODE-TOOWIDE cols=101 fits=92\n" +
+		"Overfull \\hbox (36.9pt too wide) in paragraph at lines 282--284\n" +
+		"MDBRAND-CODE-TOOWIDE cols=200 fits=92\n" +
+		"Output written on doc.pdf (20 pages, 12345 bytes)."
+
+	wide := scanLog(log).Wide
+	if len(wide) != 2 {
+		t.Fatalf("got %d wide block(s), want 2: %+v", len(wide), wide)
+	}
+	if wide[0].Cols != 101 || wide[0].Fits != 92 {
+		t.Errorf("first block = %+v, want {Cols:101 Fits:92}", wide[0])
+	}
+	if wide[1].Cols != 200 {
+		t.Errorf("second block = %+v, want 200 columns", wide[1])
 	}
 }

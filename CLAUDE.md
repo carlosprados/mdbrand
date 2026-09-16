@@ -74,6 +74,12 @@ Do not relax one without understanding what it cost.
     distribution respects the licence (private or internal). That is a licensing
     judgement, and the tool must not make it quietly on someone's behalf.
 
+    The same rule covers working notes. **Handoffs from other sessions are never
+    tracked** — `/docs/` is ignored. They quote the documents that found the
+    defect, which are client documents under someone's brand, and this
+    repository is public. What a handoff is worth keeping for belongs here as an
+    invariant, in the tool's own words; the note itself stays on the machine.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.

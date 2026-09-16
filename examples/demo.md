@@ -25,13 +25,12 @@ colours and the type change; the Markdown does not.
 
 # Figures
 
-A D2 diagram, written inline. Both glob lines are mandatory: `**` reaches
-shapes nested inside containers and `*` does not, so without them a nested box
-keeps d2's 16px default and prints at 8px once the SVG is halved.
+A D2 diagram, written inline. No font-size in it: mdbrand sizes the labels
+itself, from the bundle's band and the render scale, on a copy of the source.
+`direction` is honoured here at the root — inside a container d2 v0.7.1 ignores
+it, so containers group boxes without reshaping the layout.
 
 ```d2 caption="Where the pieces sit"
-**.style.font-size: 32
-(** -> **)[*].style.font-size: 32
 direction: right
 md: Markdown
 mb: mdbrand {

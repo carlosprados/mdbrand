@@ -239,6 +239,14 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(docDir, p)
 		}
+		// Absolute, always. Every renderer runs with its working directory set
+		// to the source's own directory, so that d2 can resolve an @import —
+		// which means a relative path here is resolved a second time against
+		// itself and `mdbrand diagrams informe.md`, run from the document's own
+		// directory, cannot find diagrams/x.d2.
+		if abs, err := filepath.Abs(p); err == nil {
+			p = abs
+		}
 		kind := "vega"
 		if strings.HasSuffix(p, ".d2") {
 			kind = "d2"

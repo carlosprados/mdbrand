@@ -51,6 +51,7 @@ LaTeX packages. Required only if the document has diagrams: d2, vl2svg.`,
 				{"etoolbox", "texlive-latex-recommended"},
 				{"microtype", "texlive-latex-recommended"},
 				{"caption", "texlive-latex-recommended"},
+				{"fvextra", "texlive-latex-extra"},
 				{"xcolor", "texlive-latex-recommended"},
 			} {
 				c := check{name: "latex: " + p.sty, hint: "apt install " + p.pkg + "  ·  https://ctan.org/pkg/" + p.sty, required: true}
