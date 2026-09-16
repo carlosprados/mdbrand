@@ -128,13 +128,17 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64) (*R
 		res.Note = "no font-size found in the SVG; legibility not checked"
 	case res.TextPt < b.Diagrams.MinTextPt:
 		return res, fmt.Errorf(`%s would print its smallest label at %.1fpt, below the %.1fpt floor.
-  It is %.0f×%.0f mm on the page. Three fixes, in order of preference:
-   1. raise the font size in the source and lower the scale by the same factor,
-      so the layout whitespace shrinks and the text returns to reading size:
-        d2:   **.style.font-size: 48   with   scale=0.33
-        vega: "config": {"axis": {"labelFontSize": 14}}
-   2. split the figure along a distinction that matters anyway;
-   3. shorten the labels so the layout is less wide`,
+  It is %.0f×%.0f mm on the page. Four fixes, in order of preference:
+   1. lower the scale: scale=0.33 on the fence. mdbrand raises the source font
+      size by the same factor, so what shrinks is the layout whitespace and the
+      text comes back to reading size. (Vega-Lite takes no scale; raise the
+      sizes in the spec: "config": {"axis": {"labelFontSize": 14}})
+   2. try the other layout engine, in the .d2 itself:
+        vars: { d2-config: { layout-engine: elk } }
+      ELK often packs a graph tighter than dagre, at the cost of routing the
+      edges differently — look at the result before keeping it;
+   3. split the figure along a distinction that matters anyway;
+   4. shorten the labels so the layout is less wide`,
 			filepath.Base(f.SrcPath), res.TextPt, b.Diagrams.MinTextPt, res.WidthMM, res.HeightMM)
 	case res.HeightMM > b.Diagrams.MaxHeightMM && f.WidthMM() > 0:
 		res.Note = fmt.Sprintf("%.0f mm tall with an explicit width= — over the %.0f mm guide",

@@ -91,7 +91,11 @@ d2 refused the file with `"style" needs a value`; nothing to paste means nothing
 to collide. Declaring a `font-size` anywhere in the `.d2` turns the injection
 off — do that only when you mean to own the number.
 
-`vars`, including `vars.d2-config`, works. **Containers do not change the shape
+`vars`, including `vars.d2-config`, works — which is how you pick a layout
+engine: `vars: { d2-config: { layout-engine: elk } }`. ELK packs some graphs
+tighter than d2's default dagre and routes edges differently, so it is worth a
+try when a figure fails the legibility floor; look at the result before keeping
+it. **Containers do not change the shape
 of a layout**: in d2 v0.7.1 a `direction:` inside a container is ignored by both
 dagre and ELK, so containers group boxes and nothing more. Only the root
 `direction` is honoured.

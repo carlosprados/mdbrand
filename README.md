@@ -288,9 +288,11 @@ container will not give you a row of boxes inside a column. Only the root
 three bounds from the bundle: the text measure, `max_text_pt` (so a diagram does
 not shout over the body text) and `max_height_mm` (so it does not eat the page).
 Then the smallest label must still print at `min_text_pt` or more. If it cannot,
-the build fails and tells you to raise the font size in the source and lower the
-scale by the same factor — which shrinks the layout whitespace instead of the
-text — or to split the figure.
+the build fails and names the ways out: lower the `scale` (mdbrand raises the
+source font size by the same factor, so the whitespace shrinks and not the
+text), try `vars: { d2-config: { layout-engine: elk } }` in the `.d2` — ELK packs
+some graphs tighter than dagre, at the cost of routing edges differently — or
+split the figure.
 
 **How a code block gets its size.** The same doctrine, one dimension: a fenced
 block is placed at the largest size whose longest line stays inside the measure,
