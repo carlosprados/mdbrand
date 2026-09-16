@@ -83,6 +83,14 @@ Do not relax one without understanding what it cost.
     repository is public. What a handoff is worth keeping for belongs here as an
     invariant, in the tool's own words; the note itself stays on the machine.
 
+11. **The built-in bundle must build on a machine with nothing on it.** It
+    named Inter as its body face and died inside fontspec where Inter was
+    absent — on a CI runner, which is how it was found at all. A named bundle
+    whose body face is missing must stop, because a substituted face makes a
+    document that is not the one the bundle describes; `--brand none` has no
+    identity to betray and falls back to Latin Modern with a warning.
+    → `internal/brand/brand_test.go`, and `testdata/traps/absent-body-font.md`.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.

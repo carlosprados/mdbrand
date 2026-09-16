@@ -1,0 +1,11 @@
+# A bundle whose body face does not exist anywhere. Building with it must stop:
+# substituting a face nobody chose would produce a document that is not the one
+# the bundle describes, and nothing in the PDF would say so.
+name: ghost
+display_name: Ghost
+colors:
+  primary: "1A5FB4"
+  text: "1B1B1B"
+  rule: "C0C0C0"
+fonts:
+  body: MdbrandTestFaceNoSuchFamily

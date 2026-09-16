@@ -3,8 +3,10 @@ package brand
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/carlosprados/mdbrand/internal/run"
 	"gopkg.in/yaml.v3"
 )
 
@@ -224,5 +226,30 @@ func TestResolveDisplayChecksEveryFace(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("validate must warn about the substituted face, got %v", warns)
+	}
+}
+
+// fc-match answers every question with a font — that is its purpose — so the
+// check has to compare the answer with what was asked. Getting this wrong means
+// every family looks installed and an absent body font goes on dying inside
+// fontspec, which is the defect this guards.
+func TestBodyFontInstalledComparesTheAnswerWithTheQuestion(t *testing.T) {
+	if !run.Have("fc-match") {
+		t.Skip("no fontconfig on this machine, so there is nothing to ask")
+	}
+	b := Default()
+	b.Fonts.Body = "MdbrandTestFaceNoSuchFamily"
+	if b.BodyFontInstalled() {
+		t.Error("an invented family reports as installed: fc-match's substitute was taken for a match")
+	}
+	// Whatever fontconfig substitutes is by definition installed, so the same
+	// call the other way round must say so on any machine.
+	sub, err := run.Cmd("", "fc-match", "--format", "%{family}", "sans-serif")
+	if err != nil || sub == "" {
+		t.Skip("fontconfig has nothing to substitute")
+	}
+	b.Fonts.Body = strings.Split(sub, ",")[0]
+	if !b.BodyFontInstalled() {
+		t.Errorf("%q came from fontconfig itself and still reports as absent", b.Fonts.Body)
 	}
 }
