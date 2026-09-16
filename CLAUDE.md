@@ -30,6 +30,9 @@ internal/fig/            diagram source -> SVG -> PDF, and the print sizing math
 internal/tex/            templates/*.tmpl + escaping + page arithmetic
 internal/build/          the pipeline; owns the xelatex run and its log
 internal/run/            external commands, with their output on failure
+scripts/torture.sh       builds the fixtures and reads the PDFs and logs
+testdata/                torture.md, which must come out clean, and
+                         traps/, which must each fail naming the fix
 ```
 
 The one-way dependency is `cmd -> build -> {brand, doc, fig, tex} -> run`.
@@ -89,13 +92,23 @@ fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.
 ```sh
 make build          # or: go build -o mdbrand .
 make check          # gofmt -w . && go vet ./... && go test ./...
+make torture        # builds testdata/ and reads what came out — needs the toolchain
 make example        # builds examples/demo.md with the built-in default bundle
 make install        # into ~/.local/bin, version from git describe
 make skill          # dev symlink of SKILL.md into ~/.claude/skills/mdbrand
 ```
 
 `make example` matters: it uses `--brand none`, so it proves the tool works on a
-machine with no bundle configured. Run it before releasing.
+machine with no bundle configured.
+
+**`make torture` matters more, and is the check to reach for first.** Every
+defect this tool has shipped was invisible to `go test` and plain in a PDF or a
+XeLaTeX log, so the fixtures assert on those instead of on Go values:
+`testdata/torture.md` gathers every shape that has ever gone wrong and must come
+out with no warning, no overfull line and no missing glyph, and every document
+in `testdata/traps/` must fail with the words that name the fix. When a real
+document finds something new, the fix is not finished until its shape is in
+`testdata/`. Both run in CI, and a release will not publish without them.
 
 **When a build misbehaves, `--work ./out` keeps everything**: the generated
 `preamble.tex`, `before.tex`, `after.tex`, the rewritten Markdown, every figure
@@ -120,13 +133,16 @@ tests, cross-compiles linux/darwin/windows × amd64/arm64 with no cgo, archives
 each with LICENSE and README, writes checksums and publishes the release.
 
 ```sh
-make check && make example
+make check && make torture && make example
 git tag -a vX.Y.Z -m "…" && git push origin vX.Y.Z
 gh run watch --exit-status "$(gh run list --workflow=release --limit 1 --json databaseId --jq '.[0].databaseId')"
 ```
 
 `ci.yml` runs gofmt/vet/test on every push to main, and deliberately uses the
 same action versions as the release workflow so a bad bump surfaces there first.
+Both also build the fixtures, through the composite action in
+`.github/actions/document-toolchain`, which pins the d2 version because the
+fixtures assert behaviour that belongs to it.
 
 ## Keep these in step
 
