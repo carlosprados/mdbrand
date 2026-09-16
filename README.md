@@ -109,7 +109,10 @@ Required only if a document contains diagrams:
 
 Fonts: the body font named in the bundle must be installed and must cover the
 glyphs you type. [Inter](https://rsms.me/inter/) is a good default
-(`apt install fonts-inter`). Installed fonts are discovered through
+(`apt install fonts-inter`). A bundle whose body face is missing stops the build
+by name rather than letting XeLaTeX substitute one nobody chose; `--brand none`
+is the exception, and falls back to Latin Modern with a warning, because the
+built-in bundle is the one that has to work on a machine with nothing on it. Installed fonts are discovered through
 [fontconfig](https://www.freedesktop.org/wiki/Software/fontconfig/), so
 `fc-cache -f` after dropping files into `~/.local/share/fonts` is all it takes.
 

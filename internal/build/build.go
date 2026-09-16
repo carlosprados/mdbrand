@@ -265,10 +265,30 @@ it, or open an issue for the knob you need:
 		"--include-before-body=before.tex",
 		"--include-after-body=after.tex",
 		"--resource-path=" + work + ":" + filepath.Dir(mustAbs(o.Input)),
-		"-V", "mainfont=" + b.Fonts.Body,
 		"-V", "papersize=" + b.Page.PaperSize,
 		"-V", "geometry=" + geometry,
 		"-V", "linestretch=" + strconv.FormatFloat(b.Page.LineStretch, 'f', -1, 64),
+	}
+
+	// The body font, if the machine can actually supply it. An absent family
+	// dies inside fontspec with an error naming XeLaTeX's font machinery and
+	// not the bundle, so it is settled here instead.
+	switch {
+	case b.BodyFontInstalled():
+		args = append(args, "-V", "mainfont="+b.Fonts.Body)
+	case b.IsDefault():
+		// No mainfont at all: pandoc's template loads lmodern, so the document
+		// sets in Latin Modern, which every TeX Live has. The built-in bundle
+		// is the one that has to work on a machine with nothing installed —
+		// that is the whole reason it exists — and it carries no identity that
+		// a substituted face would betray.
+		rep.Warnings = append(rep.Warnings, fmt.Sprintf(
+			"%s is not installed; the default bundle set this document in Latin Modern instead", b.Fonts.Body))
+	default:
+		return nil, fmt.Errorf(`the %s bundle sets its body type in %q, and fontconfig cannot find it.
+The document would not be the one the bundle describes, so this stops here
+rather than letting XeLaTeX substitute a face nobody chose. Install the family,
+or change fonts.body in the bundle to one this machine has.`, b.Name, b.Fonts.Body)
 	}
 
 	// Citations. pandoc runs in the work directory, so a `bibliography:` left in

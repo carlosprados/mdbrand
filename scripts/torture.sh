@@ -37,12 +37,16 @@ if [ $status -eq 0 ]; then ok "builds"; else
 fi
 
 # A warning is a defect here: this document is made of the shapes that used to
-# produce them.
-if printf '%s\n' "$out" | grep -q '^  !'; then
+# produce them. The one exception is the body-font fallback, and it is an
+# exception on purpose — CI deliberately does not install Inter, so the default
+# bundle's "works on a machine with nothing on it" path is exercised on every
+# push instead of being asserted once and assumed forever.
+warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in Latin Modern')"
+if [ -n "$warnings" ]; then
 	bad "warnings, and this document must produce none:"
-	printf '%s\n' "$out" | grep '^  !' | sed 's/^/        /'
+	printf '%s\n' "$warnings" | sed 's/^/        /'
 else
-	ok "no warnings"
+	ok "no warnings beyond the body-font fallback"
 fi
 
 if [ -f "$log" ]; then
@@ -94,7 +98,7 @@ else
 fi
 
 # ------------------------------------------------------------------- the traps
-# file · expected exit (ok|fail) · a phrase the message must carry
+# file · expected exit (ok|fail) · a phrase the message must carry · extra args
 traps=(
 	"wide-code.md|ok|columns, where"
 	"illegible-figure.md|fail|below the 8.0pt floor"
@@ -102,13 +106,15 @@ traps=(
 	"missing-glyph.md|fail|no glyph for"
 	"missing-citation.md|fail|no entry for"
 	"header-includes.md|fail|header-includes"
+	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"
 )
 
 echo
 echo "testdata/traps — each must fail, naming the fix"
 for t in "${traps[@]}"; do
-	IFS='|' read -r file want phrase <<<"$t"
-	out="$("$bin" build "$root/testdata/traps/$file" --brand none \
+	IFS='|' read -r file want phrase extra <<<"$t"
+	# shellcheck disable=SC2086 — the extra arguments are meant to split.
+	out="$("$bin" build "$root/testdata/traps/$file" ${extra:---brand none} \
 		-o "$work/${file%.md}.pdf" 2>&1)"
 	status=$?
 	case "$want" in

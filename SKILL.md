@@ -145,7 +145,9 @@ Only for documents with figures: **[d2](https://d2lang.com)**
 
 Fonts: the bundle's body font must be installed — [Inter](https://rsms.me/inter/)
 is the usual one — and is found through
-[fontconfig](https://www.freedesktop.org/wiki/Software/fontconfig/).
+[fontconfig](https://www.freedesktop.org/wiki/Software/fontconfig/). If it is
+not there the build stops and says so; `--brand none` instead falls back to
+Latin Modern, so it works on a machine with nothing installed.
 
 Built with [Go](https://go.dev/dl/) 1.26+; prebuilt binaries are attached to
 every [release](https://github.com/carlosprados/mdbrand/releases).

@@ -389,6 +389,36 @@ func fontconfigDir(file string) string {
 	return ""
 }
 
+// BodyFontInstalled reports whether fontconfig can actually supply the body
+// family. It answers false only when it is sure: with no fontconfig on the
+// machine there is nothing to ask, and refusing to build on a machine we cannot
+// interrogate would be worse than letting XeLaTeX have its say.
+//
+// fc-match always answers with something — that is its job — so the answer has
+// to be compared with the question. Without this, an absent body font dies
+// inside fontspec with "the font cannot be found", which is the same defect
+// invariant 7 fixed for the display faces.
+func (b *Brand) BodyFontInstalled() bool {
+	if b.Fonts.Body == "" || !run.Have("fc-match") {
+		return true
+	}
+	out, err := run.Cmd("", "fc-match", "--format", "%{family}", b.Fonts.Body)
+	if err != nil {
+		return true
+	}
+	// fc-match returns every family name the match carries, comma separated.
+	for _, fam := range strings.Split(out, ",") {
+		if strings.EqualFold(strings.TrimSpace(fam), b.Fonts.Body) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsDefault reports the built-in bundle, the one `--brand none` uses. It has no
+// identity to betray, so it may degrade where a real bundle must stop.
+func (b *Brand) IsDefault() bool { return b.Name == "none" }
+
 // DisplayFontHint says how to make an absent display font resolvable. It is the
 // message a colleague who just cloned a bundle needs.
 func (b *Brand) DisplayFontHint() string {
