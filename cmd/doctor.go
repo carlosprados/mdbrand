@@ -44,6 +44,11 @@ LaTeX packages. Required only if the document has diagrams: d2, vl2svg.`,
 
 			// LaTeX packages: a missing .sty is a build failure whose message
 			// names the file and not the package that carries it.
+			// lmodern is not in the preamble: pandoc's own default template
+			// loads it, so a build dies with `File lmodern.sty not found`
+			// before mdbrand's LaTeX is ever reached. A minimal TeX Live, and
+			// any apt install with --no-install-recommends, lacks it. Found on
+			// a CI runner, which is the whole point of having one.
 			for _, p := range []struct{ sty, pkg string }{
 				{"fancyhdr", "texlive-latex-extra"},
 				{"geometry", "texlive-latex-base"},
@@ -52,6 +57,7 @@ LaTeX packages. Required only if the document has diagrams: d2, vl2svg.`,
 				{"microtype", "texlive-latex-recommended"},
 				{"caption", "texlive-latex-recommended"},
 				{"fvextra", "texlive-latex-extra"},
+				{"lmodern", "lmodern"},
 				{"xcolor", "texlive-latex-recommended"},
 			} {
 				c := check{name: "latex: " + p.sty, hint: "apt install " + p.pkg + "  ·  https://ctan.org/pkg/" + p.sty, required: true}
