@@ -27,3 +27,23 @@ jobs:
       - run: go test ./...
       - name: Build
         run: go build ./...
+
+  # The tests above cover the arithmetic. This covers the artifact, which is
+  # where every defect this tool has shipped actually lived: a code block past
+  # the margin, a glob that refused to compile, a path resolved twice. None of
+  # them was visible to `go test`; all of them were obvious in a PDF or a log.
+  document:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - name: Build the binary the fixtures will use
+        run: go build -o mdbrand .
+      - uses: ./.github/actions/document-toolchain
+      - name: Fixtures
+        run: make torture
+      - name: The bundled example, with no bundle configured
+        run: make example
