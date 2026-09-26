@@ -248,3 +248,53 @@ func mustWD(t *testing.T) string {
 	}
 	return wd
 }
+
+// TestExtractFigsSettlesPictures: an .svg is a figure (checked and sized like a
+// rendered diagram), and a raster or PDF picture keeps its markup but gets an
+// absolute path — xelatex runs in the work directory, where a relative one is
+// not. A picture that is not there must be named, not left for LaTeX.
+func TestExtractFigsSettlesPictures(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "img"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []string{"img/a.svg", "img/b.png"} {
+		if err := os.WriteFile(filepath.Join(dir, n), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	md := filepath.Join(dir, "doc.md")
+	body := "![vector](img/a.svg)\n\n![raster](img/b.png \"t\"){width=50%}\n\n![web](https://x.test/c.png)\n"
+	if err := os.WriteFile(md, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f, err := Read(md)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, figs, err := f.ExtractFigs(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(figs) != 1 || figs[0].Kind != "svg" || !filepath.IsAbs(figs[0].SrcPath) {
+		t.Fatalf("the .svg should be one figure of kind svg with an absolute path, got %+v", figs)
+	}
+	wantPNG := "![raster](" + filepath.Join(dir, "img/b.png") + " \"t\"){width=50%}"
+	if !strings.Contains(out, wantPNG) {
+		t.Errorf("raster picture not made absolute; body:\n%s", out)
+	}
+	if !strings.Contains(out, "![web](https://x.test/c.png)") {
+		t.Errorf("a URL must be left alone; body:\n%s", out)
+	}
+
+	if err := os.WriteFile(md, []byte("![gone](img/nope.pdf)\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if f, err = Read(md); err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = f.ExtractFigs(t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "img/nope.pdf") {
+		t.Errorf("a missing picture must stop the build naming it, got %v", err)
+	}
+}

@@ -59,6 +59,9 @@ LaTeX packages. Required only if the document has diagrams: d2, vl2svg.`,
 				{"fvextra", "texlive-latex-extra"},
 				{"lmodern", "lmodern"},
 				{"xcolor", "texlive-latex-recommended"},
+				// Only loaded when fonts.fallback redirects a character, but a
+				// bundle that declares one dies without it.
+				{"newunicodechar", "texlive-latex-extra"},
 			} {
 				c := check{name: "latex: " + p.sty, hint: "apt install " + p.pkg + "  ·  https://ctan.org/pkg/" + p.sty, required: true}
 				if o, err := run.Cmd("", "kpsewhich", p.sty+".sty"); err == nil && strings.TrimSpace(o) != "" {

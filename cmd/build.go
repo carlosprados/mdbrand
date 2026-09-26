@@ -50,7 +50,14 @@ instead — a bare fence never is, because it may well be an ASCII diagram and
 wrapping one destroys its alignment in silence.
 
 A document whose text uses a glyph the font lacks also stops the build: those
-characters print as nothing and only the XeLaTeX log would ever know.
+characters print as nothing and only the XeLaTeX log would ever know. A bundle
+may name fonts.fallback (Noto Sans Symbols2, say): the characters the body face
+lacks and that face has are set in it, and anything neither covers still stops.
+
+A picture linked as .svg is treated as a figure — checked for <foreignObject>,
+sized for legible labels and converted by rsvg-convert. PNG, JPEG and PDF
+pictures keep their markup; every relative path resolves against the document,
+and one that is not there stops the build by name.
 
 Citations need no flag either — declaring a bibliography in the front matter is
 what turns them on:
