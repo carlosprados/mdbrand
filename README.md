@@ -93,8 +93,10 @@ LaTeX packages, all on [CTAN](https://ctan.org):
 [fontspec](https://ctan.org/pkg/fontspec),
 [etoolbox](https://ctan.org/pkg/etoolbox),
 [microtype](https://ctan.org/pkg/microtype),
-[caption](https://ctan.org/pkg/caption) and
-[xcolor](https://ctan.org/pkg/xcolor). On Debian/Ubuntu they arrive with:
+[caption](https://ctan.org/pkg/caption),
+[xcolor](https://ctan.org/pkg/xcolor) and, for a bundle that declares
+`fonts.fallback`, [newunicodechar](https://ctan.org/pkg/newunicodechar).
+On Debian/Ubuntu they arrive with:
 
 ```sh
 apt install texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-xetex
@@ -269,6 +271,12 @@ Fence languages: `d2`, and `vegalite` / `vega` / `vl`. Side files: `*.d2`,
 `*.vl.json`, `*.vl.yaml`, `*.vega.json`. Per-figure attributes on the fence or
 after the link: `caption="…"`, `width=120mm`, `scale=0.4`.
 
+An **`.svg` rendered elsewhere** goes through the same door: linked as
+`![caption](figs/x.svg)`, it is checked, sized for legible labels and converted
+by `rsvg-convert`, rather than handed to pandoc as `\includesvg` (which needs
+Inkscape). PNG, JPEG and PDF pictures stay as they are. Every relative picture
+path resolves against the document, and a missing one stops the build by name.
+
 **The label size is mdbrand's to set, not yours.** d2 defaults to 16px, which
 the render scale then halves — 8px on the page. mdbrand appends the font-size
 globs to a copy of the source before compiling it, sized from the bundle's
@@ -358,6 +366,7 @@ colors:
 
 fonts:
   body: Inter                  # fontconfig family
+  fallback: Noto Sans Symbols2 # optional; only for the characters body lacks
   display:                     # optional; cover and header only
     family: Gotham
     regular: Gotham-Light.otf
@@ -438,8 +447,11 @@ works, and so does `--brands-dir`.
 
 **`the font has no glyph for N character(s)`** — the text uses a character the
 body font lacks; it would print as nothing. Change the character (`[ ]` beats a
-missing `☐`, and takes a ballpoint tick better) or set a `fonts.body` that
-covers it. `--allow-missing-glyphs` proceeds anyway.
+missing `☐`, and takes a ballpoint tick better), set a `fonts.body` that
+covers it, or name a `fonts.fallback` that does: mdbrand compares the two faces'
+coverage with the text and sets in the fallback only what the body lacks, so a
+character neither face has still stops the build. `--allow-missing-glyphs`
+proceeds anyway.
 
 **`would print its smallest label at 6.2pt`** — the figure cannot be placed
 legibly. Raise the font size in the source and lower the scale by the same

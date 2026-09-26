@@ -58,11 +58,11 @@ else
 	bad "no XeLaTeX log at $log"
 fi
 
-# Three figures, by two render routes and three source shapes: a fence using
-# vars, a side file that imports another, and a Vega-Lite spec.
+# Four figures, by three routes and four source shapes: a fence using vars, a
+# side file that imports another, a Vega-Lite spec, and an SVG already rendered.
 # The summary line, not the progress one: each figure is announced twice.
 n="$(printf '%s\n' "$out" | grep -c '^  fig .*mm')"
-[ "$n" -eq 3 ] && ok "three figures rendered" || bad "$n figure(s) rendered, want 3"
+[ "$n" -eq 4 ] && ok "four figures rendered" || bad "$n figure(s) rendered, want 4"
 
 if command -v pdfinfo >/dev/null; then
 	pages="$(pdfinfo "$work/torture.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
@@ -80,10 +80,10 @@ if command -v pdftotext >/dev/null; then
 	missing=""
 	# No colon in the pattern: the caption separator comes back through the
 	# font's ToUnicode map as something else entirely.
-	for caption in "Figure 1" "Figure 2" "Figure 3"; do
+	for caption in "Figure 1" "Figure 2" "Figure 3" "Figure 4"; do
 		printf '%s' "$text" | grep -qF "$caption" || missing="$missing $caption"
 	done
-	[ -z "$missing" ] && ok "all three figures placed in the PDF" \
+	[ -z "$missing" ] && ok "all four figures placed in the PDF" \
 		|| bad "the PDF has no$missing — rendered, but never placed"
 
 	printf '%s' "$text" | grep -qF "Prados Hijón" \
@@ -106,6 +106,7 @@ traps=(
 	"missing-glyph.md|fail|no glyph for"
 	"missing-citation.md|fail|no entry for"
 	"header-includes.md|fail|header-includes"
+	"missing-picture.md|fail|pictures not found"
 	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"
 )
 

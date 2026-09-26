@@ -156,7 +156,7 @@ func Read(path string) (*File, error) {
 
 // Fig is one diagram to render, extracted from the body.
 type Fig struct {
-	Kind        string            // "d2" or "vega"
+	Kind        string            // "d2", "vega", or "svg" (already rendered)
 	SrcPath     string            // absolute path of the source
 	Caption     string            //
 	Attrs       map[string]string // width=120mm, scale=0.6, …
@@ -166,8 +166,10 @@ type Fig struct {
 
 var (
 	fenceRe = regexp.MustCompile(`^` + "```" + `+\s*(d2|vega|vegalite|vl)\b([^\n]*)$`)
-	imgRe   = regexp.MustCompile(`!\[([^\]]*)\]\(([^)\s]+\.(?:d2|vl\.json|vl\.yaml|vega\.json))\)(\{[^}]*\})?`)
-	attrRe  = regexp.MustCompile(`(\w+)\s*=\s*"([^"]*)"|(\w+)\s*=\s*(\S+)`)
+	imgRe   = regexp.MustCompile(`!\[([^\]]*)\]\(([^)\s]+\.(?:d2|vl\.json|vl\.yaml|vega\.json|svg))\)(\{[^}]*\})?`)
+	// Pictures that go to LaTeX as they are. Only their path needs settling.
+	picRe  = regexp.MustCompile(`(!\[[^\]]*\]\()([^)\s]+\.(?:png|jpe?g|pdf))((?:\s+"[^"]*")?\))`)
+	attrRe = regexp.MustCompile(`(\w+)\s*=\s*"([^"]*)"|(\w+)\s*=\s*(\S+)`)
 )
 
 func normKind(k string) string {
@@ -247,9 +249,17 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 		if abs, err := filepath.Abs(p); err == nil {
 			p = abs
 		}
+		// An .svg is a figure too, already rendered. It goes through the same
+		// door as a diagram source — the <foreignObject> check, the legibility
+		// sizing, rsvg-convert — because left to pandoc it became \includesvg,
+		// which needs Inkscape, and its relative path was looked up from the
+		// work directory, where it is not.
 		kind := "vega"
-		if strings.HasSuffix(p, ".d2") {
+		switch {
+		case strings.HasSuffix(p, ".d2"):
 			kind = "d2"
+		case strings.HasSuffix(p, ".svg"):
+			kind = "svg"
 		}
 		attrs := map[string]string{}
 		if m[3] != "" {
@@ -260,6 +270,33 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 		figs = append(figs, &Fig{Kind: kind, SrcPath: p, Caption: m[1], Attrs: attrs, Placeholder: ph, Index: idx})
 		return ph
 	})
+
+	// Pass 3: plain pictures. pandoc hands their path to LaTeX untouched and
+	// xelatex runs in the work directory, so a relative path that worked in
+	// every Markdown viewer came back as "file not found" — and one that
+	// happened to exist there would have been the wrong picture.
+	var missing []string
+	body = picRe.ReplaceAllStringFunc(body, func(s string) string {
+		m := picRe.FindStringSubmatch(s)
+		p := m[2]
+		if strings.Contains(p, "://") {
+			return s
+		}
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(docDir, p)
+		}
+		if abs, err := filepath.Abs(p); err == nil {
+			p = abs
+		}
+		if _, err := os.Stat(p); err != nil {
+			missing = append(missing, m[2])
+		}
+		return m[1] + p + m[3]
+	})
+	if len(missing) > 0 {
+		return "", nil, fmt.Errorf("%s: pictures not found (paths resolve against the document): %s",
+			f.Path, strings.Join(missing, ", "))
+	}
 
 	return body, figs, nil
 }
