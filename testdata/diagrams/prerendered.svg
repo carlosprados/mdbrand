@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120" viewBox="0 0 400 120">
+  <rect x="10" y="10" width="170" height="60" rx="6" fill="#e8f0fe" stroke="#1f6feb" stroke-width="2"/>
+  <text x="95" y="46" font-family="sans-serif" font-size="16" text-anchor="middle">rendered</text>
+  <rect x="220" y="10" width="170" height="60" rx="6" fill="#e8f0fe" stroke="#1f6feb" stroke-width="2"/>
+  <text x="305" y="46" font-family="sans-serif" font-size="16" text-anchor="middle">elsewhere</text>
+  <path d="M180 40 H 220" stroke="#1f6feb" stroke-width="2"/>
+  <text x="200" y="104" font-family="sans-serif" font-size="16" text-anchor="middle">an SVG made by another tool</text>
+</svg>

@@ -190,3 +190,14 @@ func TestScanLogFindsCodeBlocksThatStayTooWide(t *testing.T) {
 		t.Errorf("second block = %+v, want 200 columns", wide[1])
 	}
 }
+
+// U+FE0F is the invisible "draw as emoji" after ⚠ in ⚠️. It has no glyph by
+// design, so it must not count as a hole — while a real one still does.
+func TestScanLogIgnoresVariationSelectors(t *testing.T) {
+	log := `Missing character: There is no ️ (U+FE0F) in font Inter Regular/OT:script=latn;!
+Missing character: There is no ☐ (U+2610) in font Inter Regular/OT:script=latn;!`
+	holes := scanLog(log).Holes
+	if len(holes) != 1 || !strings.Contains(holes[0], "U+2610") {
+		t.Errorf("holes = %q, want only the ballot box", holes)
+	}
+}

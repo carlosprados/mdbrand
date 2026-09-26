@@ -49,6 +49,11 @@ type Colors struct {
 type Fonts struct {
 	Body    string  `yaml:"body"`    // fontconfig family name, e.g. Inter
 	Display Display `yaml:"display"` // brand font for cover and header
+	// Fallback is a fontconfig family for the characters the body face lacks —
+	// ⛔ and ⭐ in Inter. Only the characters the document actually uses, the
+	// body lacks AND the fallback has are redirected to it; anything else
+	// missing still stops the build, so this cannot hide a missing glyph.
+	Fallback string `yaml:"fallback"`
 }
 
 // Display is referenced by path and never copied into the bundle, so a
@@ -406,13 +411,7 @@ func (b *Brand) BodyFontInstalled() bool {
 	if err != nil {
 		return true
 	}
-	// fc-match returns every family name the match carries, comma separated.
-	for _, fam := range strings.Split(out, ",") {
-		if strings.EqualFold(strings.TrimSpace(fam), b.Fonts.Body) {
-			return true
-		}
-	}
-	return false
+	return familyMatches(out, b.Fonts.Body)
 }
 
 // IsDefault reports the built-in bundle, the one `--brand none` uses. It has no
@@ -530,6 +529,12 @@ func (b *Brand) Check() (problems, warnings []string) {
 	if b.Fonts.Body == "" {
 		add(&problems, "fonts.body: empty")
 	}
+	if f := b.Fonts.Fallback; f != "" && run.Have("fc-match") {
+		if _, ok := FontCharset(f); !ok {
+			add(&problems, "fonts.fallback: fontconfig cannot find %q — install it, or remove "+
+				"the line and let the missing-glyph check name the characters", f)
+		}
+	}
 	if b.Diagrams.MinTextPt < 6 {
 		add(&warnings, "diagrams.min_text_pt: %.1f is below the readable floor on paper (~7pt)", b.Diagrams.MinTextPt)
 	}
@@ -563,6 +568,7 @@ colors:
 
 fonts:
   body: Inter         # fontconfig family; must cover the glyphs you type
+  # fallback: Noto Sans Symbols2   # optional: sets only the characters body lacks
   # display:          # optional brand font for cover and header, by path only
   #   family: Gotham
   #   regular: Gotham-Light.otf

@@ -106,6 +106,12 @@ labels inside the brand's `min_text_pt..max_text_pt` band and stays under
 the source and lower the scale by the same factor (shrinks whitespace, not
 text), or split the figure. Do not "fix" it by scaling the whole diagram down.
 
+**Pictures.** An `.svg` rendered elsewhere, linked as `![caption](x.svg)`, is
+a figure: checked, sized for legibility, converted by `rsvg-convert` — so it can
+fail the legibility floor like a diagram, and the fix is its source's font
+size. PNG, JPEG and PDF stay as they are. Relative picture paths resolve against
+the document; a missing one stops the build by name.
+
 ## Code blocks
 
 Fitted the same way: a fenced block is set at the largest size whose longest
@@ -136,7 +142,9 @@ the LaTeX packages [fancyhdr](https://ctan.org/pkg/fancyhdr),
 [etoolbox](https://ctan.org/pkg/etoolbox),
 [microtype](https://ctan.org/pkg/microtype),
 [caption](https://ctan.org/pkg/caption),
-[xcolor](https://ctan.org/pkg/xcolor).
+[xcolor](https://ctan.org/pkg/xcolor), and
+[newunicodechar](https://ctan.org/pkg/newunicodechar) when a bundle declares
+`fonts.fallback`.
 
 Only for documents with figures: **[d2](https://d2lang.com)**
 ([install](https://d2lang.com/tour/install)) for diagrams ·
@@ -157,8 +165,10 @@ every [release](https://github.com/carlosprados/mdbrand/releases).
 - **XeLaTeX only.** pdflatex cannot take the Unicode. Not configurable.
 - **A missing glyph fails the build**, naming the character and font — a font
   without `☐` prints nothing at all and only the log would know. Fix the text
-  (`[ ]` also takes a pen tick better) or change `fonts.body`. Override only
-  deliberately with `--allow-missing-glyphs`.
+  (`[ ]` also takes a pen tick better), change `fonts.body`, or declare a
+  `fonts.fallback` that covers it — only the characters the body lacks and the
+  fallback has are redirected, so one neither covers still stops the build.
+  Override only deliberately with `--allow-missing-glyphs`.
 - **`header-includes` is refused, not applied.** So are `include-before` and
   `include-after`. mdbrand injects its preamble and cover through pandoc's
   `--include-in-header` and its two siblings, and a variable set on pandoc's
@@ -188,7 +198,7 @@ artwork outside the `viewBox`, the invalid `data:img/` MIME type that converts
 to a blank page, `<foreignObject>`, a display font whose path has moved, and
 colours that are not plain 6-digit hex.
 
-Tune per bundle: `colors`, `fonts.body`, `fonts.display`, `page.margin`,
+Tune per bundle: `colors`, `fonts.body`, `fonts.display`, `fonts.fallback`, `page.margin`,
 `page.linestretch`, `page.logo_width_cover|header`, and the `diagrams` numbers.
 
 `logo_secondary:` adds a second mark at the right of the **cover only**, on the

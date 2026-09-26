@@ -32,6 +32,23 @@ func ValidStyle(s string) bool {
 }
 
 // Data is what the templates see.
+// FallbackChar is one character set in the fallback face: the character, and
+// its code point in hex for \char, because a definition that names the
+// character itself would call itself once the character is active.
+type FallbackChar struct {
+	Char string
+	Code string
+}
+
+// FallbackChars turns runes into the template's form.
+func FallbackChars(rs []rune) []FallbackChar {
+	out := make([]FallbackChar, 0, len(rs))
+	for _, r := range rs {
+		out = append(out, FallbackChar{Char: string(r), Code: fmt.Sprintf("%X", r)})
+	}
+	return out
+}
+
 type Data struct {
 	Brand *brand.Brand
 	Style string
@@ -48,6 +65,9 @@ type Data struct {
 	DisplayRegular    string
 	DisplayBoldDir    string
 	DisplayBold       string
+
+	FallbackFont  string         // fonts.fallback; "" when there is nothing to redirect
+	FallbackChars []FallbackChar // the characters redirected to it
 
 	HeaderTitle  string
 	Title        string

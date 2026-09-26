@@ -63,6 +63,15 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64) (*R
 		if err := renderD2(f, b, svg); err != nil {
 			return nil, err
 		}
+	case "svg":
+		// Already rendered: nothing to compile, everything else still applies.
+		raw, err := os.ReadFile(f.SrcPath)
+		if err != nil {
+			return nil, err
+		}
+		if err := os.WriteFile(svg, raw, 0o644); err != nil {
+			return nil, err
+		}
 	default:
 		if err := renderVega(f, svg); err != nil {
 			return nil, err

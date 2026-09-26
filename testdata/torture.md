@@ -109,6 +109,13 @@ A Vega-Lite chart, to keep the other render route honest.
 }
 ```
 
+An SVG rendered by some other tool, linked as a plain picture. Left to pandoc
+it became \includesvg — Inkscape, and a relative path looked up from the work
+directory — so it goes through the figure door instead: checked, sized, and
+converted by rsvg-convert like the rest.
+
+![A pre-rendered SVG](diagrams/prerendered.svg)
+
 # Typography the default font has to cover
 
 Accents and punctuation the body font must carry: añadir, más, según, «citas»,
