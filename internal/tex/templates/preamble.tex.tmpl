@@ -28,6 +28,17 @@
 \newcommand{\brandDisplayBold}{\bfseries}
 {{- end}}
 
+{{if .FallbackChars -}}
+% fonts.fallback: the characters this document uses that the body face lacks
+% and the fallback face has, found by comparing the two faces' coverage with
+% the text. Each is made active and set in the fallback face. Anything neither
+% face covers is not listed here, so the missing-glyph check still stops it.
+\usepackage{newunicodechar}
+\newfontfamily\brandFallback{ {{- .FallbackFont -}} }
+{{range .FallbackChars -}}
+\newunicodechar{ {{- .Char -}} }{\begingroup\brandFallback\char"{{.Code}}\relax\endgroup}
+{{end}}
+{{end -}}
 % pandoc calls \maketitle when the document has a title. The front page is
 % built by mdbrand as an include-before-body instead, with the strings already
 % escaped, so no \@title catcode games and no intercepting \subtitle.

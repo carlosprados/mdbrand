@@ -180,9 +180,16 @@ it, or open an issue for the knob you need:
 		body = strings.Replace(body, f.Placeholder, res.Markdown(), 1)
 	}
 
+	fallbackFont, fallbackChars, err := fallback(b, body, d.Meta)
+	if err != nil {
+		return nil, err
+	}
+
 	// LaTeX fragments.
 	data := &tex.Data{
-		Brand: b, Style: style,
+		FallbackFont:  fallbackFont,
+		FallbackChars: fallbackChars,
+		Brand:         b, Style: style,
 		LogoFile:                logoFile,
 		LogoSecondaryFile:       logoSecondFile,
 		CoverLogoWidth:          b.Page.LogoWidthCover,
@@ -398,14 +405,45 @@ page.logo_width_header so the mark is shorter.`, sc.HeadShortPt, math.Ceil(sc.He
 	return rep, nil
 }
 
+// fallback decides which characters go to fonts.fallback: those the document
+// uses, the body face lacks and the fallback face has. It compares fontconfig's
+// coverage of the two faces with the text before xelatex runs, so nothing is
+// redirected on a guess — and a character neither face has is left for the
+// missing-glyph check to stop, which is the point of that check.
+func fallback(b *brand.Brand, body string, m doc.Meta) (string, []tex.FallbackChar, error) {
+	if b.Fonts.Fallback == "" {
+		return "", nil, nil
+	}
+	fb, ok := brand.FontCharset(b.Fonts.Fallback)
+	if !ok {
+		return "", nil, fmt.Errorf(`the %s bundle names %q as fonts.fallback, and fontconfig cannot find it.
+Install it, or remove fonts.fallback and let the missing-glyph check name the
+characters the body face lacks`, b.Name, b.Fonts.Fallback)
+	}
+	bodyCov, ok := brand.FontCharset(b.Fonts.Body)
+	if !ok {
+		// The body face is absent: the build either stops over that or sets in
+		// Latin Modern, whose coverage is not the one we would be comparing.
+		return "", nil, nil
+	}
+	text := strings.Join([]string{body, m.Title, m.Subtitle, m.AuthorString(), m.Options.Reference}, "\n")
+	rs := brand.FallbackRunes(text, bodyCov, fb)
+	if len(rs) == 0 {
+		return "", nil, nil
+	}
+	return b.Fonts.Fallback, tex.FallbackChars(rs), nil
+}
+
 func figTools(figs []*doc.Fig) []string {
 	need := map[string]bool{}
 	for _, f := range figs {
-		if f.Kind == "d2" {
+		switch f.Kind {
+		case "d2":
 			need["d2"] = true
-		} else {
+		case "vega":
 			need["vl2svg"] = true
 		}
+		// "svg" is already rendered: rsvg-convert, which every build needs.
 	}
 	out := make([]string, 0, len(need))
 	for k := range need {
@@ -521,6 +559,13 @@ func scanLog(log string) scan {
 	)
 	seen := map[string]bool{}
 	for _, m := range missingRe.FindAllStringSubmatch(log, -1) {
+		// A variation selector (U+FE00-FE0F) is not a hole: it has no glyph by
+		// design. U+FE0F is the invisible "draw as emoji" that follows ⚠ in ⚠️,
+		// and printing nothing for it is exactly right — stopping the build over
+		// it would make every emoji-styled warning sign a false alarm.
+		if cp, err := strconv.ParseUint(m[2], 16, 32); err == nil && cp >= 0xFE00 && cp <= 0xFE0F {
+			continue
+		}
 		// The log names the font with its whole OpenType feature string
 		// appended; the family is the only part a reader needs.
 		font := strings.TrimSpace(m[3])
