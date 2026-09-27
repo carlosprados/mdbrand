@@ -56,6 +56,13 @@ example: build
 torture: build
     @scripts/torture.sh
 
+# Pictures are regenerated from the examples so they show what the tool prints
+# today. Needs freeze, vhs, ffmpeg and ImageMagick besides the toolchain.
+
+# Regenerate the README pictures in assets/readme
+shots: build
+    @scripts/shots.sh
+
 # Remove the binary and the built example
 clean:
     rm -f {{bin}} examples/demo.pdf
