@@ -23,6 +23,7 @@ type Meta struct {
 	Author   any    `yaml:"author"` // string or list, as pandoc allows
 	Date     string `yaml:"date"`
 	TOC      *bool  `yaml:"toc"`
+	Lang     string `yaml:"lang"`
 
 	// Citations. These are pandoc's own metadata names and stay at the top
 	// level rather than moving under `mdbrand:`, so a document already written
@@ -97,16 +98,56 @@ func (s *StringList) UnmarshalYAML(n *yaml.Node) error {
 // Options are the mdbrand-specific keys, nested under `mdbrand:` so they never
 // collide with a pandoc variable.
 type Options struct {
-	Brand        string `yaml:"brand"`
-	Style        string `yaml:"style"`
-	Confidential string `yaml:"confidential"` // stamped under the cover rule
-	Reference    string `yaml:"reference"`    // file/offer number on the cover
+	Brand        string    `yaml:"brand"`
+	Style        string    `yaml:"style"`
+	Confidential string    `yaml:"confidential"` // stamped under the cover rule
+	Reference    string    `yaml:"reference"`    // file/offer number on the cover
+	WordCount    WordCount `yaml:"wordcount"`
 
 	// letter style
 	To        []string `yaml:"to"`
 	Place     string   `yaml:"place"`
 	Greeting  string   `yaml:"greeting"`
 	Signature string   `yaml:"signature"`
+}
+
+// WordCount is the criterion {{words}} counts by: a profile name, or a mapping
+// with a base profile and the parts to add to it. The names themselves are
+// validated by the words package; unknown keys are refused here, since
+// `incluide: [tables]` would otherwise count by the default without a word.
+type WordCount struct {
+	Base    string
+	Include []string
+}
+
+func (w *WordCount) UnmarshalYAML(n *yaml.Node) error {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		return n.Decode(&w.Base)
+	case yaml.MappingNode:
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k, v := n.Content[i].Value, n.Content[i+1]
+			switch k {
+			case "base":
+				if err := v.Decode(&w.Base); err != nil {
+					return err
+				}
+			case "include":
+				var one string
+				if v.Kind == yaml.ScalarNode && v.Decode(&one) == nil {
+					w.Include = []string{one}
+					continue
+				}
+				if err := v.Decode(&w.Include); err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("mdbrand.wordcount: unknown key %q: the keys are base and include", k)
+			}
+		}
+		return nil
+	}
+	return fmt.Errorf("mdbrand.wordcount: expected a profile name or a mapping with base and include")
 }
 
 // AuthorString renders Author for the cover, joining a list with " · ".
@@ -150,13 +191,24 @@ func Read(path string) (*File, error) {
 	}
 	f := &File{Path: path, Body: string(raw)}
 	if m := fmRe.FindStringSubmatch(f.Body); m != nil {
-		f.FrontMatter = m[1]
 		f.Body = f.Body[len(m[0]):]
-		if err := yaml.Unmarshal([]byte(f.FrontMatter), &f.Meta); err != nil {
-			return nil, fmt.Errorf("%s: front matter: %w", path, err)
+		if err := f.SetFrontMatter(m[1]); err != nil {
+			return nil, err
 		}
 	}
 	return f, nil
+}
+
+// SetFrontMatter replaces the raw front matter and parses it again, so that
+// Meta and what pandoc reads never disagree — after {{words}} is filled in, the
+// cover takes its subtitle from Meta and pandoc its metadata from the raw text.
+func (f *File) SetFrontMatter(raw string) error {
+	var m Meta
+	if err := yaml.Unmarshal([]byte(raw), &m); err != nil {
+		return fmt.Errorf("%s: front matter: %w", f.Path, err)
+	}
+	f.FrontMatter, f.Meta = raw, m
+	return nil
 }
 
 // Fig is one diagram to render, extracted from the body.
