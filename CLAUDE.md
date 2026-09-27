@@ -98,18 +98,18 @@ fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.
 ## Working on it
 
 ```sh
-make build          # or: go build -o mdbrand .
-make check          # gofmt -w . && go vet ./... && go test ./...
-make torture        # builds testdata/ and reads what came out — needs the toolchain
-make example        # builds examples/demo.md with the built-in default bundle
-make install        # into ~/.local/bin, version from git describe
-make skill          # dev symlink of SKILL.md into ~/.claude/skills/mdbrand
+just build          # or: go build -o mdbrand .
+just check          # gofmt -w . && go vet ./... && go test ./...
+just torture        # builds testdata/ and reads what came out — needs the toolchain
+just example        # builds examples/demo.md with the built-in default bundle
+just install        # into ~/.local/bin, version from git describe
+just skill          # dev symlink of SKILL.md into ~/.claude/skills/mdbrand
 ```
 
-`make example` matters: it uses `--brand none`, so it proves the tool works on a
+`just example` matters: it uses `--brand none`, so it proves the tool works on a
 machine with no bundle configured.
 
-**`make torture` matters more, and is the check to reach for first.** Every
+**`just torture` matters more, and is the check to reach for first.** Every
 defect this tool has shipped was invisible to `go test` and plain in a PDF or a
 XeLaTeX log, so the fixtures assert on those instead of on Go values:
 `testdata/torture.md` gathers every shape that has ever gone wrong and must come
@@ -141,7 +141,7 @@ tests, cross-compiles linux/darwin/windows × amd64/arm64 with no cgo, archives
 each with LICENSE and README, writes checksums and publishes the release.
 
 ```sh
-make check && make torture && make example
+just check && just torture && just example
 git tag -a vX.Y.Z -m "…" && git push origin vX.Y.Z
 gh run watch --exit-status "$(gh run list --workflow=release --limit 1 --json databaseId --jq '.[0].databaseId')"
 ```
