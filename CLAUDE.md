@@ -104,6 +104,7 @@ just torture        # builds testdata/ and reads what came out — needs the too
 just example        # builds examples/demo.md with the built-in default bundle
 just install        # into ~/.local/bin, version from git describe
 just skill          # dev symlink of SKILL.md into ~/.claude/skills/mdbrand
+just shots          # regenerates the README pictures from examples/ (freeze, vhs, ffmpeg)
 ```
 
 `just example` matters: it uses `--brand none`, so it proves the tool works on a
@@ -162,6 +163,9 @@ common failure:
   it; re-run `mdbrand skill install --force` after upgrading a copy.
 - **`--help` text** — treated as the manual, both for humans and for agents
   driving the tool without reading a file.
+- **README pictures** — `just shots` whenever the result line, an error message
+  or the examples change; a screenshot of output the tool no longer prints is
+  documentation that lies.
 - **`mdbrand doctor`** — every dependency it names carries an install command
   *and* the project's own page. Check a URL with curl before writing it down;
   a dead link in an install guide is worse than none.
