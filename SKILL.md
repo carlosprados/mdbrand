@@ -60,6 +60,19 @@ mdbrand:
 Overrides exist as flags (`--brand`, `--style`, `-o`, `--work`) but a document
 should carry its own configuration so the build command never changes.
 
+## Word count
+
+Every build prints the word count; `{{words}}` in the body, the front matter or
+a caption puts it in the PDF, formatted for `lang`. The default criterion is the
+IB's (Extended Essay, TOK): prose, lists, headings, block quotes and content
+footnotes count; code, figures and captions, tables, math, citations,
+citation-only notes and the bibliography do not. Mark a heading `{.nocount}` to
+drop its section (appendix, abstract with its own limit). Change the criterion
+with `mdbrand: {wordcount: all}` or `wordcount: {base: ib, include: [tables]}`;
+`mdbrand build --help` lists the parts. When a user asks for a word limit,
+report the number the build printed and the criterion it names, not a count of
+your own.
+
 ## Citations
 
 Declaring `bibliography:` is the whole switch: mdbrand then runs pandoc with

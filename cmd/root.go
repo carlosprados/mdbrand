@@ -70,6 +70,7 @@ func initConfig() {
 	viper.SetDefault("brands_dir", defaultBrandsDir())
 	viper.SetDefault("brand", "")
 	viper.SetDefault("style", "report")
+	viper.SetDefault("wordcount", "ib")
 
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
@@ -125,6 +126,7 @@ func configCmd() *cobra.Command {
 			fmt.Fprintf(out, "brands_dir  : %s\n", brandsDir())
 			fmt.Fprintf(out, "brand       : %s\n", orNone(viper.GetString("brand")))
 			fmt.Fprintf(out, "style       : %s\n", viper.GetString("style"))
+			fmt.Fprintf(out, "wordcount   : %s\n", viper.GetString("wordcount"))
 			return nil
 		},
 	}
@@ -148,6 +150,9 @@ brands_dir: %s
 # Used when a document's front matter does not name one.
 brand: ""
 style: report
+
+# The criterion {{words}} counts by when a document does not set one: ib or all.
+wordcount: ib
 `, defaultBrandsDir())
 			if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 				return err

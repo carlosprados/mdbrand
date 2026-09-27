@@ -322,3 +322,31 @@ func TestExtractFigsReportsRefs(t *testing.T) {
 		t.Errorf("Refs = %v, want %v", f.Refs, want)
 	}
 }
+
+// TestWordCountShapes: a profile name, a mapping, a single part without a list —
+// and an unknown key refused, since `incluide:` read leniently would count by
+// the default criterion without a word.
+func TestWordCountShapes(t *testing.T) {
+	for _, c := range []struct {
+		src     string
+		base    string
+		include []string
+	}{
+		{"wordcount: all", "all", nil},
+		{"wordcount: {base: ib, include: [tables, captions]}", "ib", []string{"tables", "captions"}},
+		{"wordcount: {include: tables}", "", []string{"tables"}},
+	} {
+		var o Options
+		if err := yaml.Unmarshal([]byte(c.src), &o); err != nil {
+			t.Fatalf("%s: %v", c.src, err)
+		}
+		if o.WordCount.Base != c.base || strings.Join(o.WordCount.Include, ",") != strings.Join(c.include, ",") {
+			t.Errorf("%s: got %+v", c.src, o.WordCount)
+		}
+	}
+	var o Options
+	err := yaml.Unmarshal([]byte("wordcount: {base: ib, incluide: [tables]}"), &o)
+	if err == nil || !strings.Contains(err.Error(), "incluide") {
+		t.Errorf("an unknown key must be refused by name, got %v", err)
+	}
+}

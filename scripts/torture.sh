@@ -97,6 +97,28 @@ else
 	echo "  --    pdftotext absent, PDF contents not checked"
 fi
 
+# ------------------------------------------------------------------ word count
+# The number is worked out by hand in the document. What is asserted is the PDF:
+# the count printed where {{words}} was, in the subtitle and in the body, and
+# the placeholder left as written inside a code span.
+echo
+echo "testdata/wordcount.md — the count, as printed"
+out="$("$bin" build "$root/testdata/wordcount.md" -o "$work/wordcount.pdf" 2>&1)"
+status=$?
+if [ $status -ne 0 ]; then
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+elif command -v pdftotext >/dev/null; then
+	text="$(pdftotext "$work/wordcount.pdf" - 2>/dev/null)"
+	n="$(printf '%s\n' "$text" | grep -c '35 palabras')"
+	[ "$n" -eq 2 ] && ok "35 words, printed in the subtitle and the body" \
+		|| bad "want \"35 palabras\" twice in the PDF, found $n; the build said: $(printf '%s' "$out" | head -1)"
+	printf '%s' "$text" | grep -qF '{{words}}' \
+		&& ok "a placeholder in a code span left as written" \
+		|| bad "the placeholder in a code span was filled"
+else
+	echo "  --    pdftotext absent, PDF contents not checked"
+fi
+
 # ------------------------------------------------------------------- the traps
 # file · expected exit (ok|fail) · a phrase the message must carry · extra args
 traps=(
@@ -107,6 +129,8 @@ traps=(
 	"missing-citation.md|fail|no entry for"
 	"header-includes.md|fail|header-includes"
 	"missing-picture.md|fail|pictures not found"
+	"unknown-placeholder.md|fail|the ones that exist are {{words}}"
+	"wordcount-typo.md|fail|the keys are base and include"
 	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"
 )
 
