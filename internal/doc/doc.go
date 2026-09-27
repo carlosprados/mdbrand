@@ -133,6 +133,11 @@ type File struct {
 	FrontMatter string // raw YAML between the --- fences, without them
 	Body        string
 	Meta        Meta
+	// Refs is every file the body links to — side-file figures and pictures —
+	// absolute, whether or not it exists. ExtractFigs fills it, even when it
+	// fails: watch mode must watch the picture that is missing, since creating
+	// it is exactly the change that should rebuild.
+	Refs []string
 }
 
 var fmRe = regexp.MustCompile(`(?s)\A---\r?\n(.*?)\r?\n(?:---|\.\.\.)[ \t]*\r?\n`)
@@ -197,6 +202,7 @@ func parseAttrs(s string) map[string]string {
 // placeholders are swapped for rendered figures.
 func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) {
 	docDir := filepath.Dir(f.Path)
+	f.Refs = nil
 
 	// Pass 1: fenced blocks, line by line, so an indented or longer fence still
 	// terminates the block it opened.
@@ -268,6 +274,7 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 		idx := len(figs)
 		ph := fmt.Sprintf("@@MDBRAND_FIG_%d@@", idx)
 		figs = append(figs, &Fig{Kind: kind, SrcPath: p, Caption: m[1], Attrs: attrs, Placeholder: ph, Index: idx})
+		f.Refs = append(f.Refs, p)
 		return ph
 	})
 
@@ -288,6 +295,7 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 		if abs, err := filepath.Abs(p); err == nil {
 			p = abs
 		}
+		f.Refs = append(f.Refs, p)
 		if _, err := os.Stat(p); err != nil {
 			missing = append(missing, m[2])
 		}

@@ -19,6 +19,10 @@ mdbrand brand list|show|validate|new
 
 `mdbrand <cmd> --help` is the full manual. Read it instead of guessing flags.
 
+`mdbrand build --watch` is for a person writing beside a PDF viewer: it never
+returns. An agent builds once and reads the result; if it does start a watch,
+it runs it in the background and stops it when done.
+
 **There is nothing to set up first.** With no bundle configured, `mdbrand new`
 writes `brand: none` and the document builds on the built-in defaults, diagrams
 included. Reach for a bundle when the document needs an identity, not before.

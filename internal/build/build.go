@@ -56,6 +56,10 @@ type Report struct {
 	Warnings []string
 	WorkDir  string
 	Kept     bool
+	// Inputs is every file this build read that a person edits: the document,
+	// its linked figures and pictures, bibliography and CSL, the bundle's
+	// brand.yaml and logos. Watch mode rebuilds when one of them changes.
+	Inputs []string
 }
 
 // Tools are the external programs a build needs, whatever the document holds.
@@ -85,8 +89,21 @@ func Pick(values ...string) string {
 	return ""
 }
 
-// Run executes the pipeline.
+// Run executes the pipeline. The Report is never nil, even alongside an error:
+// its Inputs hold what the build had read before it stopped, which is what watch
+// mode must keep watching so the fix can trigger the next build.
 func Run(o Options) (*Report, error) {
+	var inputs []string
+	rep, err := pipeline(o, &inputs)
+	if rep == nil {
+		rep = &Report{}
+	}
+	rep.Inputs = inputs
+	return rep, err
+}
+
+func pipeline(o Options, inputs *[]string) (*Report, error) {
+	*inputs = append(*inputs, mustAbs(o.Input))
 	if missing := run.Missing(Tools...); len(missing) > 0 {
 		return nil, fmt.Errorf("missing tools: %s\n  run: mdbrand doctor", strings.Join(missing, ", "))
 	}
@@ -110,6 +127,14 @@ it, or open an issue for the knob you need:
 	b, err := brand.Load(o.BrandsDir, name)
 	if err != nil {
 		return nil, err
+	}
+	if b.Dir != "" {
+		*inputs = append(*inputs, filepath.Join(b.Dir, "brand.yaml"))
+		for _, logo := range []string{b.LogoPath(), b.LogoSecondaryPath()} {
+			if logo != "" {
+				*inputs = append(*inputs, logo)
+			}
+		}
 	}
 	if probs, _ := b.Check(); len(probs) > 0 {
 		return nil, fmt.Errorf("brand %q has problems that would break the build:\n  - %s\n  see: mdbrand brand validate %s",
@@ -158,6 +183,7 @@ it, or open an issue for the knob you need:
 	}
 
 	body, figs, err := d.ExtractFigs(work)
+	*inputs = append(*inputs, d.Refs...)
 	if err != nil {
 		return nil, err
 	}
@@ -310,6 +336,7 @@ or change fonts.body in the bundle to one this machine has.`, b.Name, b.Fonts.Bo
 			if !filepath.IsAbs(p) {
 				p = filepath.Join(docDir, p)
 			}
+			*inputs = append(*inputs, p)
 			if _, err := os.Stat(p); err != nil {
 				return nil, fmt.Errorf(`bibliography %s: %w
   Paths are resolved relative to the document, not to the working directory.`, ref, err)
@@ -320,6 +347,7 @@ or change fonts.body in the bundle to one this machine has.`, b.Name, b.Fonts.Bo
 			if !filepath.IsAbs(csl) {
 				csl = filepath.Join(docDir, csl)
 			}
+			*inputs = append(*inputs, csl)
 			if _, err := os.Stat(csl); err != nil {
 				return nil, fmt.Errorf("csl %s: %w", d.Meta.CSL, err)
 			}
@@ -649,15 +677,36 @@ func ellipsize(s string, n int) string {
 	return strings.TrimRight(cut, " ") + "…"
 }
 
+// copyFile lands dst whole or not at all: it writes a temporary beside it and
+// renames it into place. A PDF viewer that reloads on change (zathura, evince)
+// read a truncated file when os.WriteFile was caught halfway through, and in
+// watch mode that happens on every build.
 func copyFile(src, dst string) error {
 	raw, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+	dir := filepath.Dir(dst)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(dst, raw, 0o644)
+	tmp, err := os.CreateTemp(dir, "."+filepath.Base(dst)+".*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(raw); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(0o644); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), dst)
 }
 
 func mustAbs(p string) string {
