@@ -28,6 +28,7 @@ import (
 	"github.com/carlosprados/mdbrand/internal/imgsize"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/carlosprados/mdbrand/internal/tex"
+	"github.com/carlosprados/mdbrand/internal/words"
 )
 
 // Options drive one build.
@@ -41,9 +42,13 @@ type Options struct {
 	// document's own front matter says otherwise.
 	DefaultBrand string
 	DefaultStyle string
-	WorkDir      string // when set, the work directory is kept for inspection
-	AllowHoles   bool   // proceed even if the font lacks glyphs the text uses
-	Log          func(string, ...any)
+	// WordCount is the --wordcount profile. It replaces the document's whole
+	// criterion, parts included; DefaultWordCount is configuration's.
+	WordCount        string
+	DefaultWordCount string
+	WorkDir          string // when set, the work directory is kept for inspection
+	AllowHoles       bool   // proceed even if the font lacks glyphs the text uses
+	Log              func(string, ...any)
 }
 
 // Report is what the build produced.
@@ -56,6 +61,8 @@ type Report struct {
 	Warnings []string
 	WorkDir  string
 	Kept     bool
+	Words    int    // by WordRule; counted on every build
+	WordRule string // the criterion, as ib, ib+tables or all
 	// Inputs is every file this build read that a person edits: the document,
 	// its linked figures and pictures, bibliography and CSL, the bundle's
 	// brand.yaml and logos. Watch mode rebuilds when one of them changes.
@@ -185,6 +192,9 @@ it, or open an issue for the knob you need:
 	body, figs, err := d.ExtractFigs(work)
 	*inputs = append(*inputs, d.Refs...)
 	if err != nil {
+		return nil, err
+	}
+	if body, err = wordCount(o, d, body, figs, work, rep); err != nil {
 		return nil, err
 	}
 	if len(figs) > 0 {
@@ -324,36 +334,11 @@ rather than letting XeLaTeX substitute a face nobody chose. Install the family,
 or change fonts.body in the bundle to one this machine has.`, b.Name, b.Fonts.Body)
 	}
 
-	// Citations. pandoc runs in the work directory, so a `bibliography:` left in
-	// the front matter would be resolved against the wrong place and silently
-	// yield "[@key?]" in the PDF. Passing the files absolutely on the command
-	// line overrides the metadata and removes the whole class of error.
-	if len(d.Meta.Bibliography) > 0 {
-		docDir := filepath.Dir(mustAbs(o.Input))
-		args = append(args, "--citeproc")
-		for _, ref := range d.Meta.Bibliography {
-			p := ref
-			if !filepath.IsAbs(p) {
-				p = filepath.Join(docDir, p)
-			}
-			*inputs = append(*inputs, p)
-			if _, err := os.Stat(p); err != nil {
-				return nil, fmt.Errorf(`bibliography %s: %w
-  Paths are resolved relative to the document, not to the working directory.`, ref, err)
-			}
-			args = append(args, "--bibliography="+p)
-		}
-		if csl := d.Meta.CSL; csl != "" {
-			if !filepath.IsAbs(csl) {
-				csl = filepath.Join(docDir, csl)
-			}
-			*inputs = append(*inputs, csl)
-			if _, err := os.Stat(csl); err != nil {
-				return nil, fmt.Errorf("csl %s: %w", d.Meta.CSL, err)
-			}
-			args = append(args, "--csl="+csl)
-		}
+	cites, err := citeArgs(d, o.Input, inputs)
+	if err != nil {
+		return nil, err
 	}
+	args = append(args, cites...)
 
 	o.logf("  pandoc %s", stem+".md")
 	pandocOut, err := run.Cmd(work, "pandoc", args...)
@@ -735,4 +720,110 @@ func missingCitations(out string) []string {
 		}
 	}
 	return keys
+}
+
+// citeArgs turns the front matter's bibliography into pandoc flags. pandoc runs
+// in the work directory, so a `bibliography:` left in the front matter would be
+// resolved against the wrong place and silently yield "[@key?]" in the PDF.
+// Passing the files absolutely on the command line overrides the metadata and
+// removes the whole class of error.
+func citeArgs(d *doc.File, input string, inputs *[]string) ([]string, error) {
+	if len(d.Meta.Bibliography) == 0 {
+		return nil, nil
+	}
+	docDir := filepath.Dir(mustAbs(input))
+	args := []string{"--citeproc"}
+	for _, ref := range d.Meta.Bibliography {
+		p := ref
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(docDir, p)
+		}
+		*inputs = append(*inputs, p)
+		if _, err := os.Stat(p); err != nil {
+			return nil, fmt.Errorf(`bibliography %s: %w
+  Paths are resolved relative to the document, not to the working directory.`, ref, err)
+		}
+		args = append(args, "--bibliography="+p)
+	}
+	if csl := d.Meta.CSL; csl != "" {
+		if !filepath.IsAbs(csl) {
+			csl = filepath.Join(docDir, csl)
+		}
+		*inputs = append(*inputs, csl)
+		if _, err := os.Stat(csl); err != nil {
+			return nil, fmt.Errorf("csl %s: %w", d.Meta.CSL, err)
+		}
+		args = append(args, "--csl="+csl)
+	}
+	return args, nil
+}
+
+// wordCount counts the body by the document's criterion and fills {{words}} in
+// the body, the front matter and the figure captions. It runs after figure
+// extraction, since pandoc would read a ```d2 fence as inline code and count
+// the diagram's source as prose.
+func wordCount(o Options, d *doc.File, body string, figs []*doc.Fig, work string, rep *Report) (string, error) {
+	include := d.Meta.Options.WordCount.Include
+	if o.WordCount != "" {
+		include = nil
+	}
+	rules, err := words.NewRules(Pick(o.WordCount, d.Meta.Options.WordCount.Base, o.DefaultWordCount), include)
+	if err != nil {
+		return "", err
+	}
+	src := filepath.Join(work, ".mdbrand-words.md")
+	if err := os.WriteFile(src, []byte(body), 0o644); err != nil {
+		return "", err
+	}
+	args := []string{"-f", "markdown", "-t", "json", filepath.Base(src)}
+	if rules.NeedsCiteproc() {
+		var discard []string
+		cites, err := citeArgs(d, o.Input, &discard)
+		if err != nil {
+			return "", err
+		}
+		args = append(args, cites...)
+	}
+	ast, err := run.Stdout(work, "pandoc", args...)
+	if err != nil {
+		return "", err
+	}
+	n, seen, err := words.Count(ast, rules)
+	if err != nil {
+		return "", err
+	}
+	if rules.Has("captions") {
+		for _, f := range figs {
+			n += words.CountText(f.Caption)
+		}
+	}
+	rep.Words, rep.WordRule = n, rules.String()
+
+	vals := map[string]string{"words": words.Format(n, d.Meta.Lang)}
+	body, filled, err := words.Fill(body, vals, true)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", o.Input, err)
+	}
+	if filled != seen {
+		// The two readings of the document disagree about where prose ends and
+		// code or mathematics begins. Guessing would print {{words}} in the PDF
+		// or a number inside a code sample, so the build stops instead.
+		return "", fmt.Errorf(`%s: pandoc sees %d placeholder(s) in prose and mdbrand filled %d.
+Some construct around a placeholder is read differently by the two; put the
+placeholder in a plain sentence, and please report the case:
+  https://github.com/carlosprados/mdbrand/issues`, o.Input, seen, filled)
+	}
+	fm, _, err := words.Fill(d.FrontMatter, vals, false)
+	if err != nil {
+		return "", fmt.Errorf("%s: front matter: %w", o.Input, err)
+	}
+	if err := d.SetFrontMatter(fm); err != nil {
+		return "", err
+	}
+	for _, f := range figs {
+		if f.Caption, _, err = words.Fill(f.Caption, vals, false); err != nil {
+			return "", fmt.Errorf("%s: caption: %w", o.Input, err)
+		}
+	}
+	return body, nil
 }

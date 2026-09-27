@@ -81,6 +81,32 @@ pandoc's --include-in-header and its two siblings, which is how the design gets
 in, replace the metadata fields of those names. Settings that should outlive one
 document belong in the brand bundle.
 
+Every build counts the document's words and prints the number; {{words}},
+anywhere in the body, the front matter or a caption, puts it in the PDF,
+grouped the way the document's lang writes thousands (4.512 in es, 4,512 in
+en). It is a placeholder, not a template: inside code or mathematics it is left
+as written, and a {{name}} that does not exist stops the build.
+
+The default criterion is the International Baccalaureate's (Extended Essay, TOK
+essay), which is also a journal's "main text": prose, lists, headings, block
+quotes and footnotes with content count; the front matter and cover, code,
+figures and their captions, tables, mathematics, citations, notes that only
+cite and the bibliography do not. A heading marked {.nocount} leaves out its
+whole section — appendices, acknowledgements, an abstract with its own limit —
+and so does a ::: {.nocount} div.
+
+    mdbrand:
+      wordcount: all              # every word printed, bibliography included
+      wordcount:                  # or a profile with parts added to it
+        base: ib
+        include: [captions, tables]
+
+Parts: captions, tables, footnotes (every note, citations in it included), citations,
+references, code, math (one word per formula). --wordcount picks a profile and
+replaces the front matter's criterion, parts included. Word processors disagree
+with each other by a percent or two over dashes, numbers and URLs, and so does
+this: near a hard limit, leave a margin.
+
 --watch keeps mdbrand running and rebuilds whenever a file the build read
 changes: the document, its linked figures and pictures, the bibliography and
 CSL, the bundle's brand.yaml and logos. The set is taken from each build, so a
@@ -96,6 +122,7 @@ file. Ctrl-C stops it.
 			o.BrandsDir = brandsDir()
 			o.DefaultBrand = viper.GetString("brand")
 			o.DefaultStyle = viper.GetString("style")
+			o.DefaultWordCount = viper.GetString("wordcount")
 			if !quiet {
 				o.Log = func(f string, a ...any) { fmt.Fprintf(cmd.ErrOrStderr(), f+"\n", a...) }
 			}
@@ -130,6 +157,7 @@ file. Ctrl-C stops it.
 	c.Flags().StringVarP(&o.Output, "out", "o", "", "output PDF (default: alongside the input)")
 	c.Flags().StringVar(&o.BrandName, "brand", "", "brand bundle to use; overrides the front matter")
 	c.Flags().StringVar(&o.Style, "style", "", "report | note | letter; overrides the front matter")
+	c.Flags().StringVar(&o.WordCount, "wordcount", "", "ib | all: the {{words}} criterion; replaces the front matter's entirely")
 	c.Flags().StringVar(&o.WorkDir, "work", "", "keep intermediates here (LaTeX, figures, log) for debugging")
 	c.Flags().BoolVar(&o.AllowHoles, "allow-missing-glyphs", false, "build even if the font lacks glyphs the text uses")
 	c.Flags().BoolVarP(&quiet, "quiet", "q", false, "only print the result line")
@@ -138,8 +166,8 @@ file. Ctrl-C stops it.
 }
 
 func printReport(out, errOut io.Writer, rep *build.Report) {
-	fmt.Fprintf(out, "%s  (%d pages, brand %s, style %s)\n",
-		rep.Output, rep.Pages, rep.Brand, rep.Style)
+	fmt.Fprintf(out, "%s  (%d pages, %d words by %s, brand %s, style %s)\n",
+		rep.Output, rep.Pages, rep.Words, rep.WordRule, rep.Brand, rep.Style)
 	for _, f := range rep.Figures {
 		fmt.Fprintf(out, "  fig %-22s %.0f×%.0f mm   text %.1fpt\n",
 			filepath.Base(f.Fig.SrcPath), f.WidthMM, f.HeightMM, f.TextPt)
