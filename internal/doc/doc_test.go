@@ -298,3 +298,27 @@ func TestExtractFigsSettlesPictures(t *testing.T) {
 		t.Errorf("a missing picture must stop the build naming it, got %v", err)
 	}
 }
+
+// TestExtractFigsReportsRefs: watch mode rebuilds on changes to Refs, so they
+// must include a side-file figure and a picture that is not there yet — and be
+// set even when the missing picture fails the extraction, because creating it
+// is the change that should trigger the next build.
+func TestExtractFigsReportsRefs(t *testing.T) {
+	dir := t.TempDir()
+	md := filepath.Join(dir, "doc.md")
+	body := "![fig](diagrams/x.d2)\n\n![gone](img/nope.png)\n"
+	if err := os.WriteFile(md, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f, err := Read(md)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := f.ExtractFigs(t.TempDir()); err == nil {
+		t.Fatal("a missing picture must fail the extraction")
+	}
+	want := []string{filepath.Join(dir, "diagrams/x.d2"), filepath.Join(dir, "img/nope.png")}
+	if strings.Join(f.Refs, "|") != strings.Join(want, "|") {
+		t.Errorf("Refs = %v, want %v", f.Refs, want)
+	}
+}

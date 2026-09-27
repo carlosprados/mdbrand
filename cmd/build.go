@@ -2,16 +2,22 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/carlosprados/mdbrand/internal/build"
+	"github.com/carlosprados/mdbrand/internal/watch"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func buildCmd() *cobra.Command {
 	var o build.Options
-	var quiet bool
+	var quiet, watching bool
 
 	c := &cobra.Command{
 		Use:   "build <document.md>",
@@ -73,7 +79,17 @@ mdbrand owns the preamble, so a document that sets header-includes,
 include-before or include-after is refused rather than built without them:
 pandoc's --include-in-header and its two siblings, which is how the design gets
 in, replace the metadata fields of those names. Settings that should outlive one
-document belong in the brand bundle.`,
+document belong in the brand bundle.
+
+--watch keeps mdbrand running and rebuilds whenever a file the build read
+changes: the document, its linked figures and pictures, the bibliography and
+CSL, the bundle's brand.yaml and logos. The set is taken from each build, so a
+figure linked a minute ago is watched from the next save. A failed build prints
+its error and leaves the last good PDF where it was; the output is replaced by
+rename, so a viewer that reloads on change (zathura, evince) never reads half a
+file. Ctrl-C stops it.
+
+    mdbrand build informe.md --watch`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.Input = args[0]
@@ -83,24 +99,32 @@ document belong in the brand bundle.`,
 			if !quiet {
 				o.Log = func(f string, a ...any) { fmt.Fprintf(cmd.ErrOrStderr(), f+"\n", a...) }
 			}
-			rep, err := build.Run(o)
-			if err != nil {
-				return err
+			if !watching {
+				rep, err := build.Run(o)
+				if err != nil {
+					return err
+				}
+				printReport(cmd.OutOrStdout(), cmd.ErrOrStderr(), rep)
+				return nil
 			}
-			out := cmd.OutOrStdout()
-			fmt.Fprintf(out, "%s  (%d pages, brand %s, style %s)\n",
-				rep.Output, rep.Pages, rep.Brand, rep.Style)
-			for _, f := range rep.Figures {
-				fmt.Fprintf(out, "  fig %-22s %.0f×%.0f mm   text %.1fpt\n",
-					filepath.Base(f.Fig.SrcPath), f.WidthMM, f.HeightMM, f.TextPt)
-			}
-			for _, w := range rep.Warnings {
-				fmt.Fprintf(cmd.ErrOrStderr(), "  ! %s\n", w)
-			}
-			if rep.Kept {
-				fmt.Fprintf(cmd.ErrOrStderr(), "  work dir kept: %s\n", rep.WorkDir)
-			}
-			return nil
+
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			errOut := cmd.ErrOrStderr()
+			logf := func(f string, a ...any) { fmt.Fprintf(errOut, f+"\n", a...) }
+			return watch.Run(ctx, func() []string {
+				start := time.Now()
+				rep, err := build.Run(o)
+				stamp := start.Format("15:04:05")
+				if err != nil {
+					fmt.Fprintf(errOut, "%s  build failed, last good PDF kept:\n%v\n", stamp, err)
+				} else {
+					fmt.Fprintf(cmd.OutOrStdout(), "%s  %.1fs  ", stamp, time.Since(start).Seconds())
+					printReport(cmd.OutOrStdout(), errOut, rep)
+				}
+				fmt.Fprintf(errOut, "  watching %d file(s) — Ctrl-C to stop\n", len(rep.Inputs))
+				return rep.Inputs
+			}, logf)
 		},
 	}
 	c.Flags().StringVarP(&o.Output, "out", "o", "", "output PDF (default: alongside the input)")
@@ -109,5 +133,21 @@ document belong in the brand bundle.`,
 	c.Flags().StringVar(&o.WorkDir, "work", "", "keep intermediates here (LaTeX, figures, log) for debugging")
 	c.Flags().BoolVar(&o.AllowHoles, "allow-missing-glyphs", false, "build even if the font lacks glyphs the text uses")
 	c.Flags().BoolVarP(&quiet, "quiet", "q", false, "only print the result line")
+	c.Flags().BoolVarP(&watching, "watch", "w", false, "stay running and rebuild when a file the build read changes")
 	return c
+}
+
+func printReport(out, errOut io.Writer, rep *build.Report) {
+	fmt.Fprintf(out, "%s  (%d pages, brand %s, style %s)\n",
+		rep.Output, rep.Pages, rep.Brand, rep.Style)
+	for _, f := range rep.Figures {
+		fmt.Fprintf(out, "  fig %-22s %.0f×%.0f mm   text %.1fpt\n",
+			filepath.Base(f.Fig.SrcPath), f.WidthMM, f.HeightMM, f.TextPt)
+	}
+	for _, w := range rep.Warnings {
+		fmt.Fprintf(errOut, "  ! %s\n", w)
+	}
+	if rep.Kept {
+		fmt.Fprintf(errOut, "  work dir kept: %s\n", rep.WorkDir)
+	}
 }

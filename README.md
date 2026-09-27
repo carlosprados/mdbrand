@@ -173,7 +173,7 @@ When you have an identity of your own, one word switches the document over:
 
 | Command | What it does |
 |---|---|
-| `mdbrand build <doc.md>` | Build the PDF. `-o` output path · `--brand` · `--style` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `--allow-missing-glyphs` |
+| `mdbrand build <doc.md>` | Build the PDF. `-o` output path · `--brand` · `--style` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `-w`/`--watch` rebuild on every save · `--allow-missing-glyphs` |
 | `mdbrand new <doc.md>` | Scaffold a document that already builds. `--title` · `--subtitle` · `--author` · `--brand` · `--style` · `--toc` |
 | `mdbrand diagrams <doc.md>` | Figure sizes and smallest label size, without building. `--out <dir>` also keeps the rendered PDFs |
 | `mdbrand doctor` | Check the toolchain; prints the install command for anything missing |
@@ -217,6 +217,26 @@ mdbrand:
 mdbrand new informe.md --title "…" --toc   # scaffold, front matter already right
 mdbrand build informe.md                   # build
 ```
+
+### Watch while you write
+
+```sh
+mdbrand build informe.md --watch
+```
+
+Builds once, then rebuilds on every change to a file the build read: the
+document, its linked figures and pictures, the bibliography and CSL, and the
+bundle's `brand.yaml` and logos. The set comes from each build, so a figure you
+link now is watched from the next save. Leave a viewer that reloads on change
+open beside the editor — zathura and evince both do.
+
+A failed build prints its error and leaves the last good PDF in place; the fix
+triggers the next build. The PDF is replaced by rename, so the viewer never
+reads a half-written file. `Ctrl-C` stops it.
+
+It watches directories and filters by path, so editors that save by renaming a
+temporary over the file (Neovim, VS Code) are seen. Not watched: files a `.d2`
+pulls in with `@import`, fonts, and mdbrand's own configuration.
 
 ### Citations
 
