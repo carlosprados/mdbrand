@@ -44,6 +44,6 @@ jobs:
         run: go build -o mdbrand .
       - uses: ./.github/actions/document-toolchain
       - name: Fixtures
-        run: make torture
+        run: just torture
       - name: The bundled example, with no bundle configured
-        run: make example
+        run: just example

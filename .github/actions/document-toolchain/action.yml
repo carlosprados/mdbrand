@@ -7,7 +7,7 @@ description: >
 runs:
   using: composite
   steps:
-    - name: pandoc, XeLaTeX, librsvg, poppler
+    - name: pandoc, XeLaTeX, librsvg, poppler, just
       shell: bash
       run: |
         set -euo pipefail
@@ -16,7 +16,8 @@ runs:
         # carries Latin Modern, which is what `--brand none` sets type in, and
         # the lmodern package carries the .sty that pandoc's own template loads
         # — without it every build dies before reaching mdbrand's preamble.
-        # poppler-utils is how the fixtures read the PDF back.
+        # poppler-utils is how the fixtures read the PDF back, and just is what
+        # runs them, so a workflow calls the same recipe a person does.
         sudo apt-get install -y --no-install-recommends \
           pandoc \
           texlive-xetex \
@@ -26,7 +27,8 @@ runs:
           texlive-fonts-recommended \
           lmodern \
           librsvg2-bin \
-          poppler-utils
+          poppler-utils \
+          just
 
     - name: d2
       shell: bash

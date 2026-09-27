@@ -23,7 +23,7 @@ failures=0
 ok()   { printf '  \033[32mok\033[0m    %s\n' "$1"; }
 bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; failures=$((failures + 1)); }
 
-[ -x "$bin" ] || { echo "no binary at $bin — run make build first"; exit 1; }
+[ -x "$bin" ] || { echo "no binary at $bin — run just build first"; exit 1; }
 
 # ---------------------------------------------------------------- the clean one
 echo "testdata/torture.md — must come out clean"
