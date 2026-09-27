@@ -67,7 +67,7 @@ Or from a clone:
 
 ```sh
 git clone https://github.com/carlosprados/mdbrand
-cd mdbrand && make install     # builds and installs into ~/.local/bin
+cd mdbrand && just install     # builds and installs into ~/.local/bin (needs just)
 ```
 
 Then check the toolchain — `doctor` prints the install command for anything
