@@ -2,9 +2,11 @@
 
 Markdown in, branded A4 PDF out, in one command.
 
+![The demo's cover and first page, and the essay's cover with its word count](assets/readme/pages.png)
+
 ```console
 $ mdbrand build informe.md
-informe.pdf  (7 pages, brand amplia, style report)
+informe.pdf  (7 pages, 2841 words by ib, brand amplia, style report)
   fig arquitectura.d2      38×63 mm   text 12.0pt
   fig latencia.vl.json    127×60 mm   text 12.0pt
 ```
@@ -18,6 +20,12 @@ it.
 The identity lives in a *brand bundle* outside the tool — a directory with a
 `brand.yaml`, a logo and colours — so the same document publishes under another
 identity by changing one word.
+
+While you write, `mdbrand build informe.md --watch` rebuilds on every save, and
+`{{words}}` anywhere in the document prints its word count, by the
+International Baccalaureate's rules unless you choose others. The pages above
+come from the two documents in [`examples/`](examples/), built with no bundle
+at all.
 
 ## Why it exists
 
@@ -34,6 +42,11 @@ same traps. They are now the tool's behaviour, not something to remember:
 | A diagram scaled to fit takes its text down with it — under ~5 cm tall on A4 nothing is readable | Every figure is placed inside a legibility band and the build fails, with the fix, if it cannot be |
 | A vector logo that is really a 120×51 px PNG in an SVG coat, or artwork outside the `viewBox` that converts to a blank page | `mdbrand brand validate` diagnoses both |
 | A dark-themed diagram landing on white paper because the SVG asked the reader's OS | Both d2 themes pinned light; no dark-mode rules injected into Vega output |
+
+A build that would hand over a defective PDF stops instead, and says what to
+change:
+
+![A build stopping on a character the font lacks, naming the character, the font and the fix](assets/readme/trap.png)
 
 ## Install
 
@@ -67,8 +80,12 @@ Or from a clone:
 
 ```sh
 git clone https://github.com/carlosprados/mdbrand
-cd mdbrand && just install     # builds and installs into ~/.local/bin (needs just)
+cd mdbrand && just install     # builds and installs into ~/.local/bin
 ```
+
+`just install` needs [just](https://just.systems) (`apt install just`,
+`brew install just`); `PREFIX=/opt/tools just install` puts the binary in
+`/opt/tools/bin` instead. Without just, `go build -o mdbrand .` is all it does.
 
 Then check the toolchain — `doctor` prints the install command for anything
 absent:
@@ -114,7 +131,8 @@ glyphs you type. [Inter](https://rsms.me/inter/) is a good default
 (`apt install fonts-inter`). A bundle whose body face is missing stops the build
 by name rather than letting XeLaTeX substitute one nobody chose; `--brand none`
 is the exception, and falls back to Latin Modern with a warning, because the
-built-in bundle is the one that has to work on a machine with nothing on it. Installed fonts are discovered through
+built-in bundle is the one that has to work on a machine with nothing on it.
+Installed fonts are discovered through
 [fontconfig](https://www.freedesktop.org/wiki/Software/fontconfig/), so
 `fc-cache -f` after dropping files into `~/.local/share/fonts` is all it takes.
 
@@ -148,12 +166,7 @@ mdbrand new informe.md --title "Mi primer informe"
 mdbrand build informe.md
 ```
 
-```console
-$ mdbrand build informe.md
-informe.pdf  (2 pages, brand none, style report)
-  fig fig00.d2               38×63 mm   text 12.0pt
-  fig fig01.vl.json          127×59 mm   text 12.0pt
-```
+![mdbrand build: the pipeline's steps, then the PDF with its pages, words and the size of each figure](assets/readme/build.png)
 
 `new` writes a document that already builds: front matter filled in, plus a D2
 diagram and a Vega-Lite chart carrying the settings that keep them legible on
@@ -168,6 +181,18 @@ pdftoppm -f 1 -l 1 -r 110 -png informe.pdf page   # page-1.png
 
 When you have an identity of your own, one word switches the document over:
 `brand: none` becomes `brand: amplia`. Nothing else in the document changes.
+
+Two worked examples live in [`examples/`](examples/), and both build on a bare
+machine:
+
+| File | What it shows |
+|---|---|
+| [`demo.md`](examples/demo.md) | A `report` with a table of contents, an inline D2 diagram and a Vega-Lite chart sized for paper, code blocks and a table |
+| [`ensayo.md`](examples/ensayo.md) | An essay with a word limit: `{{words}}` on the cover, an appendix left out of the count with `{.nocount}` |
+
+```sh
+mdbrand build examples/ensayo.md --watch    # and edit it: the cover keeps count
+```
 
 ## Commands
 
@@ -221,14 +246,18 @@ mdbrand build informe.md                   # build
 ### Watch while you write
 
 ```sh
-mdbrand build informe.md --watch
+zathura informe.pdf &                  # any viewer that reloads on change
+mdbrand build informe.md --watch -q    # -q: one line per build
 ```
+
+![--watch through an edit that adds six words, a misspelt placeholder that stops the build, and the fix](assets/readme/watch.gif)
 
 Builds once, then rebuilds on every change to a file the build read: the
 document, its linked figures and pictures, the bibliography and CSL, and the
 bundle's `brand.yaml` and logos. The set comes from each build, so a figure you
 link now is watched from the next save. Leave a viewer that reloads on change
-open beside the editor — zathura and evince both do.
+open beside the editor: zathura, evince and okular do it out of the box, Skim
+on macOS once "check for file changes" is on in its preferences.
 
 A failed build prints its error and leaves the last good PDF in place; the fix
 triggers the next build. The PDF is replaced by rename, so the viewer never
@@ -245,9 +274,26 @@ Every build counts the words and prints the number on its result line.
 the cover or in the header), or in a figure caption — grouped the way the
 document's `lang` writes thousands: `4.512` for `es`, `4,512` for `en`.
 
-```yaml
-subtitle: "Extended Essay · {{words}} palabras"
+A whole essay, the way [`examples/ensayo.md`](examples/ensayo.md) does it:
+
+```markdown
+---
+title: "¿Puede una máquina leer un plano?"
+subtitle: "Monografía · {{words}} palabras"
+lang: es-ES
+mdbrand: {brand: none, style: report}
+---
+
+# Introducción
+
+Este texto tiene {{words}} palabras, y la portada lo repite.
+
+# Apéndice {.nocount}
+
+Nada de lo que cuelga de este título entra en la cuenta.
 ```
+
+![The essay counted by the default criterion and by all](assets/readme/wordcount.png)
 
 The default criterion is the International Baccalaureate's for the Extended
 Essay and the TOK essay, which is also what journals call the main text:
@@ -283,6 +329,14 @@ included), `citations`, `references`, `code`, `math` (one word per formula).
 `--wordcount all` replaces the document's criterion entirely. A misspelt key,
 profile or part stops the build rather than count by a criterion nobody chose.
 
+The result line carries the count on every build, placeholder or not, so a
+limit can be checked without opening the PDF:
+
+```sh
+n=$(mdbrand build ensayo.md -q | grep -o '[0-9]* words' | cut -d' ' -f1)
+[ "$n" -le 4000 ] || echo "over the limit: $n words"
+```
+
 `{{words}}` is a placeholder, not a template language: inside code or
 mathematics it is left as written, and a `{{name}}` that does not exist stops
 the build. Word processors disagree with each other by a percent or two over
@@ -299,9 +353,6 @@ Paths resolve **against the document**, not against the working directory, and a
 `.bib` that is not there fails the build by name. So does a citation key with no
 entry: pandoc reports those as warnings and exits 0 anyway, which is how `(fml?)`
 ends up printed in the middle of a sentence.
-
-Flags override the front matter when you need a one-off: `--brand`, `--style`,
-`-o`, `--work` (keep the LaTeX, figures and log for inspection).
 
 ### Styles
 
@@ -552,6 +603,25 @@ metadata field of the same name. Those keys would therefore be dropped without a
 word, so the build stops instead. Put the setting in the brand bundle, where
 every document of that identity inherits it.
 
+**`unknown placeholder {{palabras}}`** — only `{{words}}` exists. Placeholders
+are spelt without spaces; inside a code span or block they are left as written,
+which is how a document can show one.
+
+**`pandoc sees N placeholder(s) in prose and mdbrand filled M`** — the two read
+the text around a placeholder differently (an unusual construct next to
+mathematics or code), so the build stops rather than print `{{words}}` or put a
+number inside a code sample. Move the placeholder into a plain sentence, and
+please report the case.
+
+**`the count is not what Word says`** — no two word counters agree on dashes,
+numbers, URLs and hyphenated words; a percent or two is normal. Check the
+criterion the result line names (`by ib`, `by all`) before anything else: an
+appendix without `{.nocount}` is the usual reason for a count that is too high.
+
+**`watch: cannot watch …`** — a file the build names sits in a directory that
+does not exist yet, usually a bibliography path with a typo. The build has
+already said which; fix the path and save the document.
+
 **Something looks wrong in the LaTeX** — `--work ./out` keeps `preamble.tex`,
 `before.tex`, `after.tex`, the rewritten Markdown, every figure and the full
 XeLaTeX log.
@@ -578,6 +648,32 @@ that wrote it, so a stale one is visible. Installing refuses to overwrite a
 SKILL.md that differs unless you pass `--force`, because in a checkout of this
 repository that file is a symlink to the source and writing through it would
 edit the repository.
+
+## Development
+
+The tasks live in a [Justfile](Justfile); `just` on its own lists them.
+
+```sh
+just build      # the binary, versioned from git describe
+just check      # gofmt, go vet and the unit tests
+just torture    # builds testdata/ and reads the PDFs and logs that come out
+just example    # builds examples/demo.md with no bundle configured
+just shots      # regenerates the pictures in this README from the examples
+just install    # into ~/.local/bin, or $PREFIX/bin
+```
+
+`just torture` is the check that matters. Every defect this tool has shipped
+was invisible to `go test` and obvious in a PDF or a XeLaTeX log, so
+`testdata/torture.md` must come out with no warning, no overfull line and no
+missing glyph, and each document in `testdata/traps/` must fail with the words
+that name the fix. CI runs both on every push, and a release does not publish
+without them. [`CLAUDE.md`](CLAUDE.md) has the invariants behind the design, for
+people and agents working on the code.
+
+`just shots` needs [freeze](https://github.com/charmbracelet/freeze) and
+[vhs](https://github.com/charmbracelet/vhs), plus ffmpeg and ImageMagick. It
+builds the examples with `--brand none` in a temporary directory, so no bundle,
+logo or licensed font can end up in a published picture.
 
 ## Licence
 
