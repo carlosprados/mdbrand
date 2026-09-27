@@ -38,6 +38,21 @@ func Cmd(dir, bin string, args ...string) (string, error) {
 	return string(out), nil
 }
 
+// Stdout runs bin in dir and returns only its standard output, for tools whose
+// output is data: a pandoc warning on stderr inside its JSON would corrupt it.
+// On failure the error carries stderr.
+func Stdout(dir, bin string, args ...string) ([]byte, error) {
+	c := exec.Command(bin, args...)
+	c.Dir = dir
+	var stderr strings.Builder
+	c.Stderr = &stderr
+	out, err := c.Output()
+	if err != nil {
+		return nil, fmt.Errorf("%s %s: %w\n%s", bin, strings.Join(args, " "), err, tail(stderr.String(), 25))
+	}
+	return out, nil
+}
+
 // Quiet runs bin and discards output unless it fails.
 func Quiet(dir, bin string, args ...string) error {
 	_, err := Cmd(dir, bin, args...)

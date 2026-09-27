@@ -173,7 +173,7 @@ When you have an identity of your own, one word switches the document over:
 
 | Command | What it does |
 |---|---|
-| `mdbrand build <doc.md>` | Build the PDF. `-o` output path · `--brand` · `--style` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `-w`/`--watch` rebuild on every save · `--allow-missing-glyphs` |
+| `mdbrand build <doc.md>` | Build the PDF. `-o` output path · `--brand` · `--style` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `-w`/`--watch` rebuild on every save · `--wordcount ib\|all` · `--allow-missing-glyphs` |
 | `mdbrand new <doc.md>` | Scaffold a document that already builds. `--title` · `--subtitle` · `--author` · `--brand` · `--style` · `--toc` |
 | `mdbrand diagrams <doc.md>` | Figure sizes and smallest label size, without building. `--out <dir>` also keeps the rendered PDFs |
 | `mdbrand doctor` | Check the toolchain; prints the install command for anything missing |
@@ -237,6 +237,57 @@ reads a half-written file. `Ctrl-C` stops it.
 It watches directories and filters by path, so editors that save by renaming a
 temporary over the file (Neovim, VS Code) are seen. Not watched: files a `.d2`
 pulls in with `@import`, fonts, and mdbrand's own configuration.
+
+### Word count
+
+Every build counts the words and prints the number on its result line.
+`{{words}}` puts it in the PDF — in the body, in any front matter field (so on
+the cover or in the header), or in a figure caption — grouped the way the
+document's `lang` writes thousands: `4.512` for `es`, `4,512` for `en`.
+
+```yaml
+subtitle: "Extended Essay · {{words}} palabras"
+```
+
+The default criterion is the International Baccalaureate's for the Extended
+Essay and the TOK essay, which is also what journals call the main text:
+
+| Counts | Does not count |
+|---|---|
+| Prose, lists, headings | Front matter, cover, table of contents |
+| Block quotes | Code blocks, figures and their captions |
+| Footnotes with content | Tables, mathematics |
+| | Citations, and notes that only cite |
+| | The bibliography, and anything marked `{.nocount}` |
+
+`{.nocount}` on a heading leaves out its whole section, subsections included —
+appendices, acknowledgements, an abstract counted against its own limit. A
+`::: {.nocount}` div does the same for any stretch of text.
+
+Another criterion, per document or for one build:
+
+```yaml
+mdbrand:
+  wordcount: all          # every word printed, bibliography included
+```
+
+```yaml
+mdbrand:
+  wordcount:
+    base: ib
+    include: [captions, tables]
+```
+
+Parts: `captions`, `tables`, `footnotes` (every note, citations in it
+included), `citations`, `references`, `code`, `math` (one word per formula).
+`--wordcount all` replaces the document's criterion entirely. A misspelt key,
+profile or part stops the build rather than count by a criterion nobody chose.
+
+`{{words}}` is a placeholder, not a template language: inside code or
+mathematics it is left as written, and a `{{name}}` that does not exist stops
+the build. Word processors disagree with each other by a percent or two over
+dashes, numbers and URLs, and this count is no different — near a hard limit,
+leave a margin.
 
 ### Citations
 
@@ -457,6 +508,7 @@ mdbrand config init     # write a starter config file
 brands_dir: /home/you/Dropbox/3-Resources/brands
 brand: amplia
 style: report
+wordcount: ib   # the {{words}} criterion when a document sets none
 ```
 
 Resolution order, later wins: built-in default → config file → `MDBRAND_*`
