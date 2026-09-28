@@ -34,7 +34,7 @@ func Protected(s string) [][2]int {
 			}
 			trimmed := strings.TrimLeft(line, " ")
 			if fence == "" && len(line)-len(trimmed) <= 3 {
-				if f := fenceOf(trimmed); f != "" {
+				if f := Fence(trimmed); f != "" {
 					fence, fenceStart = f, i
 					i += len(line)
 					continue
@@ -93,7 +93,9 @@ func Protected(s string) [][2]int {
 	return spans
 }
 
-func fenceOf(line string) string {
+// Fence returns the run of three or more backticks or tildes that opens a code
+// fence at the start of line, or "".
+func Fence(line string) string {
 	for _, c := range []byte{'`', '~'} {
 		if n := countRun(line, c); n >= 3 {
 			return strings.Repeat(string(c), n)
