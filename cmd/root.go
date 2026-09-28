@@ -60,7 +60,7 @@ Front matter drives everything, so a build needs no flags:
 
 	cobra.OnInitialize(initConfig)
 
-	root.AddCommand(buildCmd(), newCmd(), doctorCmd(), brandCmd(), diagramsCmd(), skillCmd(), configCmd(), versionCmd())
+	root.AddCommand(buildCmd(), newCmd(), doctorCmd(), brandCmd(), diagramsCmd(), dataCmd(), skillCmd(), configCmd(), versionCmd())
 	return root
 }
 

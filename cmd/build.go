@@ -85,6 +85,10 @@ pandoc's --include-in-header and its two siblings, which is how the design gets
 in, replace the metadata fields of those names. Settings that should outlive one
 document belong in the brand bundle.
 
+{{data.maquinas[m5.large].ram}} prints a value from the data files beside the
+document (data/maquinas.yaml), literally and as written; a key that is not
+there stops the build. See mdbrand data --help.
+
 Every build counts the document's words and prints the number; {{words}},
 anywhere in the body, the front matter or a caption, puts it in the PDF,
 grouped the way the document's lang writes thousands (4.512 in es, 4,512 in

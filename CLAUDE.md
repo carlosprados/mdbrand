@@ -26,6 +26,8 @@ main.go                  //go:embed SKILL.md (a directive cannot reach outside
 cmd/                     cobra commands; the help text IS the manual
 internal/brand/          brand.yaml: parsing, defaults, validation, font resolution
 internal/doc/            front matter, and extracting figures from the body
+internal/data/           data/ files and the {{data…}} placeholders
+internal/mdtext/         where Markdown prose ends and code or math begins
 internal/fig/            diagram source -> SVG -> PDF, and the print sizing maths
 internal/tex/            templates/*.tmpl + escaping + page arithmetic
 internal/build/          the pipeline; owns the xelatex run and its log
@@ -35,7 +37,7 @@ testdata/                torture.md, which must come out clean, and
                          traps/, which must each fail naming the fix
 ```
 
-The one-way dependency is `cmd -> build -> {brand, doc, fig, tex} -> run`.
+The one-way dependency is `cmd -> build -> {brand, doc, data, fig, tex} -> run`.
 
 ## Invariants. Each of these was a real defect; each has a test
 
@@ -99,6 +101,16 @@ Do not relax one without understanding what it cost.
     `file://`; a remote URL is refused. `Loading failed` in its output fails
     the build as well.
     → `internal/fig/vega_test.go`, and `testdata/traps/missing-data.md`.
+
+13. **A data value prints as its characters, and a path that leads nowhere
+    stops the build.** Values are held as YAML nodes so `0.10` is not
+    reformatted, escaped so `$` or `*` from a spreadsheet does not become
+    Markdown, and put into the front matter's YAML tree rather than its text.
+    A CSV's separator is detected, its BOM stripped, Latin-1 and ragged rows
+    refused. No loops or conditions: that is the template language this tool
+    is not.
+    → `internal/data/data_test.go`, `testdata/data.md`, and
+    `testdata/traps/unknown-data-key.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

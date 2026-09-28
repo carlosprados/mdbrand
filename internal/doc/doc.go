@@ -92,7 +92,7 @@ func (s *StringList) UnmarshalYAML(n *yaml.Node) error {
 		*s = StringList(many)
 		return nil
 	}
-	return fmt.Errorf("bibliography: expected a path or a list of paths")
+	return fmt.Errorf("expected a path or a list of paths")
 }
 
 // Options are the mdbrand-specific keys, nested under `mdbrand:` so they never
@@ -103,6 +103,9 @@ type Options struct {
 	Confidential string    `yaml:"confidential"` // stamped under the cover rule
 	Reference    string    `yaml:"reference"`    // file/offer number on the cover
 	WordCount    WordCount `yaml:"wordcount"`
+	// Data replaces the default data/ beside the document with these
+	// directories or files, resolved against the document.
+	Data StringList `yaml:"data"`
 
 	// letter style
 	To        []string `yaml:"to"`
