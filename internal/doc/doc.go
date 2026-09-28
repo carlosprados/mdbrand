@@ -213,8 +213,12 @@ func (f *File) SetFrontMatter(raw string) error {
 
 // Fig is one diagram to render, extracted from the body.
 type Fig struct {
-	Kind        string            // "d2", "vega", or "svg" (already rendered)
-	SrcPath     string            // absolute path of the source
+	Kind    string // "d2", "vega", or "svg" (already rendered)
+	SrcPath string // absolute path of the source
+	// BaseDir is what a relative path inside the source means relative to:
+	// the document's directory for a fenced block, whose source is only a copy
+	// written into the work directory, and the file's own for a side file.
+	BaseDir     string
 	Caption     string            //
 	Attrs       map[string]string // width=120mm, scale=0.6, …
 	Placeholder string            // token left in the body
@@ -254,6 +258,10 @@ func parseAttrs(s string) map[string]string {
 // placeholders are swapped for rendered figures.
 func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) {
 	docDir := filepath.Dir(f.Path)
+	absDocDir := docDir
+	if abs, err := filepath.Abs(docDir); err == nil {
+		absDocDir = abs
+	}
 	f.Refs = nil
 
 	// Pass 1: fenced blocks, line by line, so an indented or longer fence still
@@ -287,7 +295,7 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 			return "", nil, err
 		}
 		ph := fmt.Sprintf("@@MDBRAND_FIG_%d@@", idx)
-		figs = append(figs, &Fig{Kind: kind, SrcPath: src, Caption: attrs["caption"], Attrs: attrs, Placeholder: ph, Index: idx})
+		figs = append(figs, &Fig{Kind: kind, SrcPath: src, BaseDir: absDocDir, Caption: attrs["caption"], Attrs: attrs, Placeholder: ph, Index: idx})
 		out = append(out, ph)
 	}
 	body = strings.Join(out, "\n")
@@ -325,7 +333,7 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 		}
 		idx := len(figs)
 		ph := fmt.Sprintf("@@MDBRAND_FIG_%d@@", idx)
-		figs = append(figs, &Fig{Kind: kind, SrcPath: p, Caption: m[1], Attrs: attrs, Placeholder: ph, Index: idx})
+		figs = append(figs, &Fig{Kind: kind, SrcPath: p, BaseDir: filepath.Dir(p), Caption: m[1], Attrs: attrs, Placeholder: ph, Index: idx})
 		f.Refs = append(f.Refs, p)
 		return ph
 	})

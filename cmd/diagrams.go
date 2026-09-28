@@ -71,7 +71,7 @@ cannot be placed inside that band is reported as an error with the fix.
 					if strings.HasSuffix(p, ".d2") {
 						kind = "d2"
 					}
-					figs = append(figs, &doc.Fig{Kind: kind, SrcPath: p, Attrs: map[string]string{}, Index: len(figs)})
+					figs = append(figs, &doc.Fig{Kind: kind, SrcPath: p, BaseDir: filepath.Dir(p), Attrs: map[string]string{}, Index: len(figs)})
 				}
 			}
 			if len(figs) == 0 {

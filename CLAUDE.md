@@ -91,6 +91,15 @@ Do not relax one without understanding what it cost.
     identity to betray and falls back to Latin Modern with a warning.
     → `internal/brand/brand_test.go`, and `testdata/traps/absent-body-font.md`.
 
+12. **A chart's data urls are settled before vl2svg sees them.** vl2svg
+    treats a file it cannot open as a warning: empty axes, exit 0. It also
+    resolves urls against its own base — the work directory, for a fenced
+    block — and prefixes that base even to an absolute path. So every
+    `data.url` is resolved against `Fig.BaseDir`, checked, and handed over as
+    `file://`; a remote URL is refused. `Loading failed` in its output fails
+    the build as well.
+    → `internal/fig/vega_test.go`, and `testdata/traps/missing-data.md`.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.

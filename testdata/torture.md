@@ -92,14 +92,13 @@ own directory.
 
 ![Side file with an import](diagrams/main.d2)
 
-A Vega-Lite chart, to keep the other render route honest.
+A Vega-Lite chart, to keep the other render route honest. Its data is a file
+beside the document: the fenced source is copied into the work directory, and
+vl2svg resolving the url from there drew an empty chart and exited 0.
 
 ```vegalite caption="Latency by percentile"
 {
-  "data": {"values": [
-    {"p": "p50", "ms": 41}, {"p": "p90", "ms": 88},
-    {"p": "p95", "ms": 140}, {"p": "p99", "ms": 310}
-  ]},
+  "data": {"url": "data/latency.csv"},
   "mark": "bar",
   "encoding": {
     "x": {"field": "p", "type": "nominal", "title": "Percentile"},
