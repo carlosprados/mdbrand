@@ -35,6 +35,26 @@ written in code. A path that leads nowhere stops the build listing the keys
 that exist. Keys starting with _ (an anchor to merge, _base: &base {…}) are
 left out of every listing but still answer when named.
 
+A table comes from the same data, declared in a fenced block:
+
+  ` + "```table" + `
+  source: maquinas            the key of a mapping of records is its id column
+  where: {familia: m5}        equality only; or rows: [m5.large, m5.xlarge]
+  columns:                    omitted: every field
+    id: Tipo
+    ram: {label: RAM, unit: GiB, align: right}
+    precio: {label: "€/hora", decimals: 3}
+  sort: -ram                  one field; - descends; numeric or collated
+  transpose: true             records become columns
+  caption: Instancias m5
+  ` + "```" + `
+
+or ![Caption](data/sedes.csv) alone on its line, for a whole file. decimals
+rounds exactly and writes the document's lang (0,192 in es). A decimal comma
+in the data is a number only where lang writes one. Any id, field or key that
+does not exist stops the build naming the ones that do; a record missing a
+column's field too (field: ~ is a deliberately empty cell).
+
   mdbrand data propuesta.md
   mdbrand data propuesta.md 'data.maquinas[m5.large]'`,
 		Args: cobra.RangeArgs(1, 2),

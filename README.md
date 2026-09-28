@@ -402,8 +402,51 @@ several proposals. `mdbrand data propuesta.md` lists what the document can reach
 and reads every file, and `mdbrand data propuesta.md 'data.maquinas[m5.large]'`
 shows one entry. Data files are watched by `build -w`.
 
-It is a placeholder, not a template language: there are no loops or conditions.
-Anything that needs them is prepared before the document, not inside it.
+**Tables** come from the same data, declared in a fenced block:
+
+````markdown
+```table
+source: maquinas
+where: {familia: m5}          # or rows: [m5.large, m5.xlarge], in that order
+columns:
+  id: Tipo
+  cpu: vCPU
+  ram: {label: RAM, unit: GiB}
+  precio: {label: "€/hora", decimals: 3}
+sort: -ram                    # one field; a leading - descends
+caption: Instancias m5 para {{data.cliente.nombre}}
+```
+````
+
+| Tipo | vCPU | RAM | €/hora |
+|:--|--:|--:|--:|
+| m5.xlarge | 4 | 16 GiB | 0,192 |
+| m5.large | 2 | 8 GiB | 0,096 |
+
+- The source is a mapping of records (its key is the `id` column), a list of
+  records, a CSV, or a single record. Without `columns`, every field shows.
+- `transpose: true` turns records into columns — the comparison a proposal
+  ends with. The first column becomes the header row.
+- Numbers align right by themselves. `unit` is bound to the number with a
+  no-break space; `decimals` rounds exactly (halves away from zero, never
+  through a float) and writes the result in the document's `lang`: `0,192` in
+  Spanish, `0.192` in English.
+- A decimal comma in the data (`0,085`, as a Spanish spreadsheet exports it) is
+  a number only when the document's `lang` writes one. Reading it everywhere
+  would turn an English `1,234` into one point two. Thousands marks are never
+  read as numbers.
+- Sorting is numeric when every value is a number, and otherwise follows the
+  language's collation, so *Ávila* sorts beside *Avilés* and not after *Zamora*.
+- Every mistake stops the build with the names that exist: an id in `rows`, a
+  field in `where`, `sort` or `columns`, a filter that leaves nothing, a
+  record missing a field (write `field: ~` for an empty cell), text in a
+  `decimals` column, an unknown key in the block.
+- The short form `![Sedes](data/sedes.csv)`, on its own line, is a table of the
+  whole file as it is; the text in brackets is the caption.
+
+It is declared, not programmed: equality is the only filter and there is one
+sort key, with no loops, conditions or expressions. Anything that needs them is
+prepared before the document, not inside it.
 
 ### Citations
 

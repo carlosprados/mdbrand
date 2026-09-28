@@ -775,6 +775,11 @@ func fillData(o Options, d *doc.File, body string, figs []*doc.Fig, inputs *[]st
 		return "", err
 	}
 	defer func() { *inputs = append(*inputs, store.Refs()...) }()
+	// Tables first: a caption may hold a {{data…}} value, which the pass
+	// below then fills like any other.
+	if body, err = store.Tables(body, d.Meta.Lang); err != nil {
+		return "", fmt.Errorf("%s: %w", o.Input, err)
+	}
 	if body, err = store.Fill(body); err != nil {
 		return "", fmt.Errorf("%s: %w", o.Input, err)
 	}
