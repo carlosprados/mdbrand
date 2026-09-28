@@ -83,6 +83,14 @@
 \usepackage{caption}
 \captionsetup{font={small,color=brandText},labelfont={bf},skip=6pt}
 
+% babel's Spanish labels a table "Cuadro", the humanities' usage; technical and
+% business Spanish says "Tabla", which is what babel's own es-tabla option does.
+% That option cannot be passed: pandoc has loaded babel before this preamble.
+% The caption hook runs again at \begin{document}, so appending to it works.
+\ifdefined\captionsspanish
+  \addto\captionsspanish{\renewcommand{\tablename}{Tabla}\renewcommand{\listtablename}{Índice de tablas}}%
+\fi
+
 % ------------------------------------------------------------- inline code ---
 % Inline code never breaks, and the reason is not the one everybody reaches for.
 % LaTeX gives the mono family \hyphenchar = -1, and that suppresses not only
