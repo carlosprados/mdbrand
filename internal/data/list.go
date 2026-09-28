@@ -74,7 +74,7 @@ func (s *Store) describe(name, path string) Entry {
 func shape(n *yaml.Node) string {
 	switch n.Kind {
 	case yaml.MappingNode:
-		pairs := mapPairs(n)
+		pairs := listed(mapPairs(n))
 		return fmt.Sprintf("mapping of %d: %s", len(pairs), keyList(pairs))
 	case yaml.SequenceNode:
 		if len(n.Content) > 0 {
@@ -107,7 +107,7 @@ func resolved(n *yaml.Node) *yaml.Node {
 	switch n.Kind {
 	case yaml.MappingNode:
 		m := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		for _, p := range mapPairs(n) {
+		for _, p := range listed(mapPairs(n)) {
 			k := *p[0]
 			k.Style = 0
 			m.Content = append(m.Content, &k, resolved(p[1]))

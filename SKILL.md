@@ -82,6 +82,8 @@ in the prose, captions or front matter (quote that scalar):
 `{{data.equipo.0.nombre}}` (index), `{{data.ec2[t3.micro].vcpu}}` (a record by
 its `id`). Values print literally — Markdown characters included; tag a YAML
 value `!md` for Markdown. A wrong key stops the build listing the real ones.
+Name anchor-only entries with a leading `_` (`_base: &base {…}`) so they are
+never listed as data.
 Run `mdbrand data doc.md` to see every namespace and its keys before writing
 placeholders, rather than opening the files. `mdbrand: {data: [dir, file]}`
 points elsewhere. No loops or conditions: prepare such content upstream.
