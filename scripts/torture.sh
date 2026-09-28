@@ -131,13 +131,21 @@ fi
 # character of the data printed as itself. pdftotext drops < > and the colon,
 # so the phrases checked avoid them; the page itself shows them.
 echo
-echo "testdata/data.md — data values, as printed"
-out="$("$bin" build "$root/testdata/data.md" -o "$work/data.pdf" 2>&1)"
+echo "testdata/data.md — data values and tables, as printed"
+out="$("$bin" build "$root/testdata/data.md" --work "$work/data" -o "$work/data.pdf" 2>&1)"
 status=$?
 if [ $status -ne 0 ]; then
 	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
-elif command -v pdftotext >/dev/null; then
-	text="$(pdftotext "$work/data.pdf" - 2>/dev/null | tr '\n' ' ')"
+else
+	# A generated table sized to the letter pushed "vCPU" past its column
+	# by 3pt — under the warning threshold, so the log is read directly.
+	warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in Latin Modern')"
+	[ -z "$warnings" ] && ok "no warnings" || bad "warnings: $warnings"
+	n="$(grep -c 'Overfull \\hbox' "$work/data/data.log")"
+	[ "$n" -eq 0 ] && ok "no overfull line, tables included" || bad "$n overfull line(s) in the log"
+fi
+if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
+	text="$(pdftotext "$work/data.pdf" - 2>/dev/null | sed 's/\xc2\xa0/ /g' | tr -s '[:space:]' ' ')"
 	for phrase in \
 		"ofrece 4 vCPU, 16 GiB de RAM y 100 GB" \
 		"a 0.192 €/hora" \
@@ -145,12 +153,16 @@ elif command -v pdftotext >/dev/null; then
 		'1.500 $ *neto* para @acme' \
 		"[aparte] & ~ ^" \
 		"Latencia para ACME" \
-		"{{data.maquinas[m5.large].cpu}}"; do
+		"{{data.maquinas[m5.large].cpu}}" \
+		"m5.xlarge 4 16 GiB 0,192" \
+		"Característica m5.large m5.xlarge c6i.2xlarge" \
+		"Instancias m5 para ACME" \
+		"Ávila 5 2100 Burgos 4 1875,25"; do
 		printf '%s' "$text" | grep -qF -- "$phrase" \
 			&& ok "prints \"$phrase\"" \
 			|| bad "the PDF lacks \"$phrase\""
 	done
-else
+elif [ $status -eq 0 ]; then
 	echo "  --    pdftotext absent, PDF contents not checked"
 fi
 
@@ -166,6 +178,7 @@ traps=(
 	"missing-picture.md|fail|pictures not found"
 	"missing-data.md|fail|data that is not there"
 	"unknown-data-key.md|fail|the ones that exist are m5.large, m5.xlarge"
+	"table-typo.md|fail|has no field \"famila\"; the fields are"
 	"unknown-placeholder.md|fail|the ones that exist are {{words}}"
 	"wordcount-typo.md|fail|the keys are base and include"
 	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"

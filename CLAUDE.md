@@ -108,9 +108,13 @@ Do not relax one without understanding what it cost.
     Markdown, and put into the front matter's YAML tree rather than its text.
     A CSV's separator is detected, its BOM stripped, Latin-1 and ragged rows
     refused. No loops or conditions: that is the template language this tool
-    is not.
-    → `internal/data/data_test.go`, `testdata/data.md`, and
-    `testdata/traps/unknown-data-key.md`.
+    is not. Tables likewise: equality filter, one sort key, `decimals`
+    rounded through `big.Rat` and never a float, a decimal comma read as a
+    number only where `lang` writes one (else an English 1,234 is 1.234),
+    collated sorting, and a column never narrower than its longest word — a
+    table sized to the letter overflowed by 3pt, under the warning threshold.
+    → `internal/data/*_test.go`, `testdata/data.md`, and
+    `testdata/traps/unknown-data-key.md`, `table-typo.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

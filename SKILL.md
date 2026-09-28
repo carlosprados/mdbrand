@@ -88,6 +88,23 @@ Run `mdbrand data doc.md` to see every namespace and its keys before writing
 placeholders, rather than opening the files. `mdbrand: {data: [dir, file]}`
 points elsewhere. No loops or conditions: prepare such content upstream.
 
+Tables from the same data — never type a table whose rows are in a data file:
+
+````markdown
+```table
+source: maquinas              # data path; the key of a mapping is the id column
+where: {familia: m5}          # equality only; or rows: [id, id] to pick and order
+columns: {id: Tipo, ram: {label: RAM, unit: GiB}, precio: {label: "€/h", decimals: 3}}
+sort: -ram                    # one field, - descends
+transpose: true               # optional: records become columns
+caption: Instancias m5
+```
+````
+
+Or `![Caption](data/file.csv)` alone on a line for a whole file. Numbers
+right-align and `decimals` localizes to `lang` on its own. A missing field
+fails the build: write `field: ~` for a deliberately empty cell.
+
 ## Citations
 
 Declaring `bibliography:` is the whole switch: mdbrand then runs pandoc with
