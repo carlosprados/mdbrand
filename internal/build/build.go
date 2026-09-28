@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/data"
 	"github.com/carlosprados/mdbrand/internal/doc"
 	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/imgsize"
@@ -192,6 +193,9 @@ it, or open an issue for the knob you need:
 	body, figs, err := d.ExtractFigs(work)
 	*inputs = append(*inputs, d.Refs...)
 	if err != nil {
+		return nil, err
+	}
+	if body, err = fillData(o, d, body, figs, inputs); err != nil {
 		return nil, err
 	}
 	if body, err = wordCount(o, d, body, figs, work, rep); err != nil {
@@ -759,6 +763,31 @@ func citeArgs(d *doc.File, input string, inputs *[]string) ([]string, error) {
 		args = append(args, "--csl="+csl)
 	}
 	return args, nil
+}
+
+// fillData prints the document's {{data…}} values into the body, the figure
+// captions and the front matter. It runs before the word count, which counts
+// what the reader will see, and after figure extraction, so that a caption is
+// filled where it now lives.
+func fillData(o Options, d *doc.File, body string, figs []*doc.Fig, inputs *[]string) (string, error) {
+	store, err := data.Open(o.Input, d.Meta.Options.Data)
+	if err != nil {
+		return "", err
+	}
+	defer func() { *inputs = append(*inputs, store.Refs()...) }()
+	if body, err = store.Fill(body); err != nil {
+		return "", fmt.Errorf("%s: %w", o.Input, err)
+	}
+	for _, f := range figs {
+		if f.Caption, err = store.Fill(f.Caption); err != nil {
+			return "", fmt.Errorf("%s: caption: %w", o.Input, err)
+		}
+	}
+	fm, err := store.FillFrontMatter(d.FrontMatter)
+	if err != nil {
+		return "", fmt.Errorf("%s: front matter: %w", o.Input, err)
+	}
+	return body, d.SetFrontMatter(fm)
 }
 
 // wordCount counts the body by the document's criterion and fills {{words}} in

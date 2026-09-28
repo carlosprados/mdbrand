@@ -1,0 +1,5 @@
+# A catalogue as a proposal would carry it: keyed by id, ids with dots, a shared
+# base merged into each entry, numbers without units and written as they are.
+_base: &base {familia: m5, disco: 50}
+m5.large:  {<<: *base, cpu: 2, ram: 8,  precio: 0.096}
+m5.xlarge: {<<: *base, cpu: 4, ram: 16, precio: 0.192, disco: 100}

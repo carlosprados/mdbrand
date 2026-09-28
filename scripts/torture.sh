@@ -125,6 +125,35 @@ else
 	echo "  --    pdftotext absent, PDF contents not checked"
 fi
 
+# ------------------------------------------------------------------------ data
+# Values from testdata/data/, printed where the document asked for them: in the
+# title, the prose and a caption, merged keys included, and every Markdown
+# character of the data printed as itself. pdftotext drops < > and the colon,
+# so the phrases checked avoid them; the page itself shows them.
+echo
+echo "testdata/data.md — data values, as printed"
+out="$("$bin" build "$root/testdata/data.md" -o "$work/data.pdf" 2>&1)"
+status=$?
+if [ $status -ne 0 ]; then
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+elif command -v pdftotext >/dev/null; then
+	text="$(pdftotext "$work/data.pdf" - 2>/dev/null | tr '\n' ' ')"
+	for phrase in \
+		"ofrece 4 vCPU, 16 GiB de RAM y 100 GB" \
+		"a 0.192 €/hora" \
+		"hereda 50 GB de disco de la familia m5" \
+		'1.500 $ *neto* para @acme' \
+		"[aparte] & ~ ^" \
+		"Latencia para ACME" \
+		"{{data.maquinas[m5.large].cpu}}"; do
+		printf '%s' "$text" | grep -qF -- "$phrase" \
+			&& ok "prints \"$phrase\"" \
+			|| bad "the PDF lacks \"$phrase\""
+	done
+else
+	echo "  --    pdftotext absent, PDF contents not checked"
+fi
+
 # ------------------------------------------------------------------- the traps
 # file · expected exit (ok|fail) · a phrase the message must carry · extra args
 traps=(
@@ -136,6 +165,7 @@ traps=(
 	"header-includes.md|fail|header-includes"
 	"missing-picture.md|fail|pictures not found"
 	"missing-data.md|fail|data that is not there"
+	"unknown-data-key.md|fail|the ones that exist are m5.large, m5.xlarge"
 	"unknown-placeholder.md|fail|the ones that exist are {{words}}"
 	"wordcount-typo.md|fail|the keys are base and include"
 	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"
