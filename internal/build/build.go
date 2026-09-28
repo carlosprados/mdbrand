@@ -204,6 +204,9 @@ it, or open an issue for the knob you need:
 		}
 	}
 	for _, f := range figs {
+		if f.Kind == "vega" {
+			*inputs = append(*inputs, fig.DataRefs(f)...)
+		}
 		o.logf("  fig %s", filepath.Base(f.SrcPath))
 		res, ferr := fig.Render(f, b, work, textWidth)
 		if ferr != nil {

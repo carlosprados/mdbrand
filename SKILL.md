@@ -101,6 +101,11 @@ mesa -> og.trainer: listas
 Fences: `d2`, `vegalite`/`vega`/`vl`. Attributes: `caption="…"`, `width=120mm`,
 `scale=0.4`.
 
+Chart data may live in a file: `"data": {"url": "data/ventas.csv"}` resolves
+against the document (fenced) or the spec's own file (linked). Keep it local —
+a missing file or an `https://` URL stops the build, since `vl2svg` would
+otherwise draw an empty chart and exit 0.
+
 **Do not write font-size globs.** mdbrand sizes the labels itself, from the
 brand's band and the scale in force, on a copy of the source. The recursive glob
 the old instructions asked for also matched the keys inside a `vars` block, so
