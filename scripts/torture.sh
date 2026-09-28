@@ -155,13 +155,30 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 		"Latencia para ACME" \
 		"{{data.maquinas[m5.large].cpu}}" \
 		"m5.xlarge 4 16 GiB 0,192" \
-		"Característica m5.large m5.xlarge c6i.2xlarge" \
+		"RAM 8 GiB 16 GiB 16 GiB Disco 50 GB 100 GB 100 GB" \
 		"Instancias m5 para ACME" \
 		"Ávila 5 2100 Burgos 4 1875,25"; do
 		printf '%s' "$text" | grep -qF -- "$phrase" \
 			&& ok "prints \"$phrase\"" \
 			|| bad "the PDF lacks \"$phrase\""
 	done
+	# The three-row table used to split: caption, header and one row at the
+	# foot of page 1, two rows alone on page 2. Wherever it lands, it lands
+	# whole — the page holding its first row holds its last and its caption.
+	pages="$(pdfinfo "$work/data.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
+	whole=""
+	for p in $(seq 1 "${pages:-1}"); do
+		pt="$(pdftotext -f "$p" -l "$p" "$work/data.pdf" - 2>/dev/null)"
+		if printf '%s' "$pt" | grep -qF Zamora; then
+			printf '%s' "$pt" | grep -qF Burgos && printf '%s' "$pt" | grep -qF "Tabla 3" && whole=yes
+		fi
+	done
+	[ -n "$whole" ] && ok "a short table is never split across pages" \
+		|| bad "the Sedes table is split across a page break"
+
+	printf '%s' "$text" | grep -qE 'Cuadro [0-9]' \
+		&& bad "a table is labelled Cuadro" \
+		|| ok "tables are labelled Tabla in Spanish"
 elif [ $status -eq 0 ]; then
 	echo "  --    pdftotext absent, PDF contents not checked"
 fi

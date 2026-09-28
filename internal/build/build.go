@@ -360,6 +360,15 @@ else would have told you. Fix the key or add the entry.`,
 			len(keys), strings.Join(keys, ", "))
 	}
 
+	texPath := filepath.Join(work, stem+".tex")
+	texSrc, err := os.ReadFile(texPath)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(texPath, []byte(tex.KeepTableRows(string(texSrc))), 0o644); err != nil {
+		return nil, err
+	}
+
 	// xelatex, run here so the log is ours to read.
 	passes := 2
 	if d.Meta.TOC != nil && *d.Meta.TOC {
