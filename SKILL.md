@@ -105,6 +105,10 @@ Or `![Caption](data/file.csv)` alone on a line for a whole file. Numbers
 right-align and `decimals` localizes to `lang` on its own. A missing field
 fails the build: write `field: ~` for a deliberately empty cell.
 
+Every table — data or hand-written — is kept together by the tool (no page
+break leaves fewer than three rows on a side) and labelled *Tabla* in Spanish;
+do not add `\needspace` or raw LaTeX to fix either.
+
 ## Citations
 
 Declaring `bibliography:` is the whole switch: mdbrand then runs pandoc with
