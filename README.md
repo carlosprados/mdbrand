@@ -202,6 +202,7 @@ mdbrand build examples/ensayo.md --watch    # and edit it: the cover keeps count
 | `mdbrand build <doc.md>` | Build the PDF. `-o` output path · `--brand` · `--style` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `-w`/`--watch` rebuild on every save · `--wordcount ib\|all` · `--allow-missing-glyphs` |
 | `mdbrand new <doc.md>` | Scaffold a document that already builds. `--title` · `--subtitle` · `--author` · `--brand` · `--style` · `--toc` |
 | `mdbrand diagrams <doc.md>` | Figure sizes and smallest label size, without building. `--out <dir>` also keeps the rendered PDFs |
+| `mdbrand data <doc.md> [path]` | The data files a document can print, with their shape; or what one path names |
 | `mdbrand doctor` | Check the toolchain; prints the install command for anything missing |
 | `mdbrand brand list` · `show` · `validate` · `new` · `path` | Create and diagnose brand bundles |
 | `mdbrand config` · `config init` | What settings are in effect and where they came from |
@@ -343,6 +344,66 @@ mathematics it is left as written, and a `{{name}}` that does not exist stops
 the build. Word processors disagree with each other by a percent or two over
 dashes, numbers and URLs, and this count is no different — near a hard limit,
 leave a margin.
+
+### Data
+
+Figures a document quotes — machine types, rates, a client's name — can live in
+files beside it, the way Hugo reads `data/`:
+
+```
+propuesta/
+├── propuesta.md
+└── data/
+    ├── cliente.yaml
+    └── maquinas.yaml
+```
+
+```yaml
+# data/maquinas.yaml
+_base: &base {familia: m5, disco: 50}
+m5.large:  {<<: *base, cpu: 2, ram: 8,  precio: 0.096}
+m5.xlarge: {<<: *base, cpu: 4, ram: 16, precio: 0.192}
+```
+
+```markdown
+---
+title: "Oferta para {{data.cliente.nombre}}"
+---
+
+La m5.xlarge ofrece {{data.maquinas[m5.xlarge].cpu}} vCPU y
+{{data.maquinas[m5.xlarge].ram}} GiB, a {{data.maquinas[m5.xlarge].precio}} €/hora.
+```
+
+The file name is the namespace (`data/aws/ec2.csv` is `data.aws.ec2`), and the
+path goes on into the file: a key, a list index from 0, or the `id` of a record.
+Brackets take any key, which catalogues need because their ids carry dots.
+YAML, JSON, CSV and TSV; YAML anchors and `<<` merges are followed. A key
+starting with `_`, like `_base` above, is scaffolding: it merges and answers
+when named, but no listing or error message offers it as an entry.
+
+What it guards against:
+
+- **A key that is not there stops the build**, listing the ones that are. A
+  template engine prints nothing, and the sentence reaches the client with a
+  hole in it.
+- **A value prints as written.** `0.10` stays `0.10`, where decoding to a number
+  prints `0.1`; and `1.500 $ *neto*` prints those characters, where Markdown
+  would open a formula at the `$`. Tag a YAML value `!md` when it is Markdown.
+- **A CSV from a spreadsheet** is read with its separator detected (`;` from a
+  Spanish Excel), its BOM stripped, and stopped by line if it is Latin-1 or a
+  row has the wrong number of fields — each of which otherwise reads as data.
+- **In the front matter** the value is placed into the YAML, not its text, so a
+  client called `ACME: División Norte` does not break it. Quote the scalar that
+  holds the placeholder.
+
+`mdbrand: {data: [../catalogo, tarifas.json]}` replaces `data/` with other
+directories or files, resolved against the document, so one catalogue serves
+several proposals. `mdbrand data propuesta.md` lists what the document can reach
+and reads every file, and `mdbrand data propuesta.md 'data.maquinas[m5.large]'`
+shows one entry. Data files are watched by `build -w`.
+
+It is a placeholder, not a template language: there are no loops or conditions.
+Anything that needs them is prepared before the document, not inside it.
 
 ### Citations
 
