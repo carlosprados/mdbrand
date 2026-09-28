@@ -86,6 +86,12 @@ if command -v pdftotext >/dev/null; then
 	[ -z "$missing" ] && ok "all four figures placed in the PDF" \
 		|| bad "the PDF has no$missing — rendered, but never placed"
 
+	# The chart's labels come only from its CSV: an empty chart has axes and
+	# no p99.
+	printf '%s' "$text" | grep -qF "p99" \
+		&& ok "the chart drew its data file" \
+		|| bad "the chart has no p99 — its data never loaded"
+
 	printf '%s' "$text" | grep -qF "Prados Hijón" \
 		&& ok "the bibliography printed" \
 		|| bad "the bibliography is not in the PDF"
@@ -129,6 +135,7 @@ traps=(
 	"missing-citation.md|fail|no entry for"
 	"header-includes.md|fail|header-includes"
 	"missing-picture.md|fail|pictures not found"
+	"missing-data.md|fail|data that is not there"
 	"unknown-placeholder.md|fail|the ones that exist are {{words}}"
 	"wordcount-typo.md|fail|the keys are base and include"
 	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"

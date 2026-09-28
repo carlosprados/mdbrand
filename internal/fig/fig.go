@@ -256,11 +256,6 @@ func d2Source(f *doc.Fig, b *brand.Brand, scale float64, workDir string) (path s
 	return gen, true, nil
 }
 
-func renderVega(f *doc.Fig, out string) error {
-	// No dark-mode rules are injected: this SVG is going onto white paper.
-	return run.Quiet(filepath.Dir(f.SrcPath), "vl2svg", f.SrcPath, out)
-}
-
 var fontRe = regexp.MustCompile(`font-size\s*[:=]\s*"?\s*([0-9.]+)`)
 
 // svgSize returns the root element's size in pixels and the factor that turns

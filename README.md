@@ -41,6 +41,7 @@ same traps. They are now the tool's behaviour, not something to remember:
 | `vl2pdf` writes points equal to the spec's pixels, so charts come out 33% off the SVG route | Same SVG route for both, so 1px = 0.75pt everywhere |
 | A diagram scaled to fit takes its text down with it — under ~5 cm tall on A4 nothing is readable | Every figure is placed inside a legibility band and the build fails, with the fix, if it cannot be |
 | A vector logo that is really a 120×51 px PNG in an SVG coat, or artwork outside the `viewBox` that converts to a blank page | `mdbrand brand validate` diagnoses both |
+| A chart whose data file cannot be opened: `vl2svg` warns, draws empty axes and exits 0 — and it looks for a fenced chart's `data/x.csv` in a temporary directory | Every `data.url` resolved against the document before rendering; a missing file or a remote URL stops the build by name |
 | A dark-themed diagram landing on white paper because the SVG asked the reader's OS | Both d2 themes pinned light; no dark-mode rules injected into Vega output |
 
 A build that would hand over a defective PDF stops instead, and says what to
@@ -398,6 +399,14 @@ An **`.svg` rendered elsewhere** goes through the same door: linked as
 by `rsvg-convert`, rather than handed to pandoc as `\includesvg` (which needs
 Inkscape). PNG, JPEG and PDF pictures stay as they are. Every relative picture
 path resolves against the document, and a missing one stops the build by name.
+
+**A chart's data** follows the same rule. `"data": {"url": "data/ventas.csv"}`
+resolves against the document in a fenced block, and against the spec's own
+file in a linked one, wherever it sits in the spec (layers, concatenations, a
+lookup's `from`). A file that is not there stops the build, where `vl2svg` alone
+would have drawn an empty chart and exited 0; so does a remote URL, because a
+build that depends on the network does not reproduce. The data files are
+watched by `build -w` like the document itself.
 
 **The label size is mdbrand's to set, not yours.** d2 defaults to 16px, which
 the render scale then halves — 8px on the page. mdbrand appends the font-size
