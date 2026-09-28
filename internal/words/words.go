@@ -92,20 +92,30 @@ func (r Rules) String() string {
 // like most of continental Europe, groups with a point; English with a comma.
 // An unknown or absent language gets no separator rather than a wrong one.
 func Format(n int, lang string) string {
-	s := fmt.Sprint(n)
-	var sep string
+	sep, _ := Separators(lang)
+	return Group(fmt.Sprint(n), sep)
+}
+
+// Separators are the thousands and decimal marks of the document's language.
+// An unknown language gets no thousands mark and a decimal point.
+func Separators(lang string) (thousands, decimal string) {
 	switch strings.ToLower(strings.SplitN(lang, "-", 2)[0]) {
 	case "en":
-		sep = ","
+		return ",", "."
 	case "es", "ca", "gl", "eu", "pt", "it", "de", "nl", "da":
-		sep = "."
+		return ".", ","
 	}
-	if sep == "" || len(s) <= 3 {
-		return s
+	return "", "."
+}
+
+// Group puts sep between every three digits of an unsigned integer's digits.
+func Group(digits, sep string) string {
+	if sep == "" || len(digits) <= 3 {
+		return digits
 	}
 	var b strings.Builder
-	for i, c := range s {
-		if i > 0 && (len(s)-i)%3 == 0 {
+	for i, c := range digits {
+		if i > 0 && (len(digits)-i)%3 == 0 {
 			b.WriteString(sep)
 		}
 		b.WriteRune(c)
