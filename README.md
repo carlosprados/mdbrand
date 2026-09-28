@@ -42,6 +42,7 @@ same traps. They are now the tool's behaviour, not something to remember:
 | A diagram scaled to fit takes its text down with it — under ~5 cm tall on A4 nothing is readable | Every figure is placed inside a legibility band and the build fails, with the fix, if it cannot be |
 | A vector logo that is really a 120×51 px PNG in an SVG coat, or artwork outside the `viewBox` that converts to a blank page | `mdbrand brand validate` diagnoses both |
 | A chart whose data file cannot be opened: `vl2svg` warns, draws empty axes and exits 0 — and it looks for a fenced chart's `data/x.csv` in a temporary directory | Every `data.url` resolved against the document before rendering; a missing file or a remote URL stops the build by name |
+| A short table split by a page break: caption, header and one row at the foot of a page, the rest alone on the next | No break leaves fewer than three rows on either side, so a table of five rows or fewer moves whole; in Spanish it is a *Tabla*, not babel's *Cuadro* |
 | A dark-themed diagram landing on white paper because the SVG asked the reader's OS | Both d2 themes pinned light; no dark-mode rules injected into Vega output |
 
 A build that would hand over a defective PDF stops instead, and says what to

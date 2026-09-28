@@ -116,6 +116,16 @@ Do not relax one without understanding what it cost.
     → `internal/data/*_test.go`, `testdata/data.md`, and
     `testdata/traps/unknown-data-key.md`, `table-typo.md`.
 
+14. **No page break leaves fewer than `tex.TableKeep` rows of a table on
+    either side.** pandoc writes every table as a longtable, which may break
+    after any row: a three-row table put its caption, header and first row at
+    the foot of a page. mdbrand rewrites the row ends of pandoc's `.tex` to
+    `\\*` where a break would orphan rows, between pandoc and xelatex — the
+    one place both hand-written and data tables pass. In Spanish, tables are
+    *Tabla*: babel's default *Cuadro* is appended over in the preamble,
+    because pandoc loads babel before it and `es-tabla` cannot be passed.
+    → `internal/tex/tables_test.go`, and the page checks on `testdata/data.md`.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.
