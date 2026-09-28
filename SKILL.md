@@ -73,6 +73,19 @@ with `mdbrand: {wordcount: all}` or `wordcount: {base: ib, include: [tables]}`;
 report the number the build printed and the criterion it names, not a count of
 your own.
 
+## Data
+
+Numbers and names the document quotes (machine specs, rates, client name) go in
+`data/` beside it — YAML, JSON, CSV, TSV — and print with `{{data.file.key}}`
+in the prose, captions or front matter (quote that scalar):
+`{{data.maquinas[m5.large].ram}}` (brackets for keys with dots),
+`{{data.equipo.0.nombre}}` (index), `{{data.ec2[t3.micro].vcpu}}` (a record by
+its `id`). Values print literally — Markdown characters included; tag a YAML
+value `!md` for Markdown. A wrong key stops the build listing the real ones.
+Run `mdbrand data doc.md` to see every namespace and its keys before writing
+placeholders, rather than opening the files. `mdbrand: {data: [dir, file]}`
+points elsewhere. No loops or conditions: prepare such content upstream.
+
 ## Citations
 
 Declaring `bibliography:` is the whole switch: mdbrand then runs pandoc with
