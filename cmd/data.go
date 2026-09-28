@@ -32,7 +32,8 @@ The value prints as its characters: * $ @ < and the rest do not become
 Markdown. Tag a YAML value !md when it is Markdown. Placeholders work in the
 prose, figure captions and front matter (quote the scalar), and are left as
 written in code. A path that leads nowhere stops the build listing the keys
-that exist.
+that exist. Keys starting with _ (an anchor to merge, _base: &base {…}) are
+left out of every listing but still answer when named.
 
   mdbrand data propuesta.md
   mdbrand data propuesta.md 'data.maquinas[m5.large]'`,

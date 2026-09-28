@@ -345,7 +345,22 @@ func deref(n *yaml.Node) *yaml.Node {
 	return n
 }
 
+// listed drops the keys that start with _, which hold what the data is built
+// from rather than data: `_base: &base {…}` exists to be merged into the real
+// entries, and listing it among the machine types would offer it as one. Such
+// a key still answers when a path names it.
+func listed(pairs [][2]*yaml.Node) [][2]*yaml.Node {
+	var out [][2]*yaml.Node
+	for _, p := range pairs {
+		if !strings.HasPrefix(p[0].Value, "_") {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 func keyList(pairs [][2]*yaml.Node) string {
+	pairs = listed(pairs)
 	keys := make([]string, len(pairs))
 	for i, p := range pairs {
 		keys[i] = p[0].Value

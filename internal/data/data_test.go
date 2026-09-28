@@ -30,7 +30,7 @@ func tree(t *testing.T, files map[string]string, declared ...string) (*Store, st
 }
 
 const catalogue = `
-base: &base {familia: m5, disco: 50}
+_base: &base {familia: m5, disco: 50}
 m5.large:  {<<: *base, cpu: 2, ram: 8, precio: 0.10}
 m5.xlarge: {<<: *base, cpu: 4, ram: 16, disco: 100}
 nota: !md "ver *anexo*"
@@ -51,6 +51,8 @@ func TestLookup(t *testing.T) {
 		// A BOM-prefixed, semicolon-separated export, found by its id column.
 		"data.aws.ec2[c6i.large].precio": "0,085",
 		"data.aws.ec2.0.id":              "t3.micro",
+		// Hidden from listings, still reachable by name.
+		"data.maquinas._base.familia": "m5",
 	} {
 		v, err := s.Lookup(expr)
 		if err != nil {
@@ -64,6 +66,11 @@ func TestLookup(t *testing.T) {
 	if v, _ := s.Lookup("data.maquinas.nota"); !v.Markdown {
 		t.Error("a !md value lost its tag")
 	}
+	for _, e := range s.Namespaces() {
+		if strings.Contains(e.Shape, "_base") {
+			t.Errorf("%s lists its _base: %s", e.Name, e.Shape)
+		}
+	}
 }
 
 // Every one of these would print nothing, or the wrong thing, in a template
@@ -75,7 +82,7 @@ func TestLookupRefuses(t *testing.T) {
 		"data/dup.json":      `{"a": 1}`,
 	})
 	for expr, want := range map[string]string{
-		"data.maquinas[m5.largo].cpu": `the ones that exist are base, m5.large, m5.xlarge`,
+		"data.maquinas[m5.largo].cpu": `the ones that exist are m5.large, m5.xlarge`,
 		"data.maquinas[m5.large]":     "is a mapping, not a value",
 		"data.maquinas.vacio":         "has no value",
 		"data.maquina.x":              "there is dup, maquinas",

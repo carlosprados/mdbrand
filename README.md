@@ -360,7 +360,7 @@ propuesta/
 
 ```yaml
 # data/maquinas.yaml
-base: &base {familia: m5, disco: 50}
+_base: &base {familia: m5, disco: 50}
 m5.large:  {<<: *base, cpu: 2, ram: 8,  precio: 0.096}
 m5.xlarge: {<<: *base, cpu: 4, ram: 16, precio: 0.192}
 ```
@@ -377,7 +377,9 @@ La m5.xlarge ofrece {{data.maquinas[m5.xlarge].cpu}} vCPU y
 The file name is the namespace (`data/aws/ec2.csv` is `data.aws.ec2`), and the
 path goes on into the file: a key, a list index from 0, or the `id` of a record.
 Brackets take any key, which catalogues need because their ids carry dots.
-YAML, JSON, CSV and TSV; YAML anchors and `<<` merges are followed.
+YAML, JSON, CSV and TSV; YAML anchors and `<<` merges are followed. A key
+starting with `_`, like `_base` above, is scaffolding: it merges and answers
+when named, but no listing or error message offers it as an entry.
 
 What it guards against:
 

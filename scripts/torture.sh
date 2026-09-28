@@ -165,7 +165,7 @@ traps=(
 	"header-includes.md|fail|header-includes"
 	"missing-picture.md|fail|pictures not found"
 	"missing-data.md|fail|data that is not there"
-	"unknown-data-key.md|fail|the ones that exist are base, m5.large, m5.xlarge"
+	"unknown-data-key.md|fail|the ones that exist are m5.large, m5.xlarge"
 	"unknown-placeholder.md|fail|the ones that exist are {{words}}"
 	"wordcount-typo.md|fail|the keys are base and include"
 	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"
