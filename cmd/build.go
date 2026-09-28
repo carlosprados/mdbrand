@@ -44,6 +44,10 @@ legibility band (min_text_pt..max_text_pt in the brand bundle) without growing
 taller than max_height_mm. If a diagram cannot satisfy that, the build stops and
 says what to change — it does not ship an illegible figure.
 
+A chart's "data": {"url": "data/x.csv"} resolves against the document, or
+against the spec's own file when it is linked. A missing file or a remote URL
+stops the build: vl2svg alone would draw an empty chart and exit 0.
+
 Label sizes are mdbrand's to set: it appends the font-size globs to a copy of
 the .d2 before compiling it, so the source stays as you wrote it and a vars
 block does not collide with a glob you had to paste.
