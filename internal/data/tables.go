@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/mdtext"
+	"github.com/carlosprados/mdbrand/internal/paths"
 )
 
 // Tables replaces every ```table block, and every link to a data file standing
@@ -97,7 +98,7 @@ func (s *Store) linkedTables(md, lang string) (string, error) {
 }
 
 func (s *Store) fileTable(ref, caption, lang string) (string, error) {
-	p := expandPath(ref)
+	p := paths.Expand(ref)
 	if !filepath.IsAbs(p) {
 		p = filepath.Join(s.docDir, p)
 	}
