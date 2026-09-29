@@ -415,6 +415,7 @@ columns:
   ram: {label: RAM, unit: GiB}
   precio: {label: "€/hora", decimals: 3}
 sort: -ram                    # one field; a leading - descends
+total: [ram, precio]          # a closing Total row
 caption: Instancias m5 para {{data.cliente.nombre}}
 ```
 ````
@@ -423,6 +424,7 @@ caption: Instancias m5 para {{data.cliente.nombre}}
 |:--|--:|--:|--:|
 | m5.xlarge | 4 | 16 GiB | 0,192 |
 | m5.large | 2 | 8 GiB | 0,096 |
+| **Total** | | 24 GiB | 0,288 |
 
 - The source is a mapping of records (its key is the `id` column), a list of
   records, a CSV, or a single record. Without `columns`, every field shows.
@@ -442,8 +444,21 @@ caption: Instancias m5 para {{data.cliente.nombre}}
   field in `where`, `sort` or `columns`, a filter that leaves nothing, a
   record missing a field (write `field: ~` for an empty cell), text in a
   `decimals` column, an unknown key in the block.
+- `total` sums columns exactly — `0.192 + 0.096 + 0.34` is `0.628`, not a
+  float's `0.6280000000000001` — in the column's own format; transposed, the
+  total is the last column. A blank or non-numeric cell in a summed column
+  stops the build: a price nobody filled in would make the total quietly
+  smaller than the offer.
 - The short form `![Sedes](data/sedes.csv)`, on its own line, is a table of the
   whole file as it is; the text in brackets is the caption.
+
+**Charts** read the same data by name: `"data": {"name": "sedes"}` in a
+Vega-Lite spec is filled with the records a table of `data.sedes` would show,
+numbers parsed by the same rule — so a Spanish spreadsheet's `1250,5` is a
+number in the chart exactly when it is one in the table. A field the chart plots
+that mixes numbers and text stops the build: Vega-Lite drops a value it cannot
+read as a number, draws the rest and exits 0. A name the spec declares itself
+under `datasets` is left alone.
 
 It is declared, not programmed: equality is the only filter and there is one
 sort key, with no loops, conditions or expressions. Anything that needs them is

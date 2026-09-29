@@ -96,6 +96,7 @@ source: maquinas              # data path; the key of a mapping is the id column
 where: {familia: m5}          # equality only; or rows: [id, id] to pick and order
 columns: {id: Tipo, ram: {label: RAM, unit: GiB}, precio: {label: "€/h", decimals: 3}}
 sort: -ram                    # one field, - descends
+total: [ram, precio]          # optional: exact Total row
 transpose: true               # optional: records become columns
 caption: Instancias m5
 ```
@@ -104,6 +105,9 @@ caption: Instancias m5
 Or `![Caption](data/file.csv)` alone on a line for a whole file. Numbers
 right-align and `decimals` localizes to `lang` on its own. A missing field
 fails the build: write `field: ~` for a deliberately empty cell.
+
+A chart reads the same data with `"data": {"name": "maquinas"}` instead of a
+url — prefer it when a table shows the same numbers, so both read them alike.
 
 Every table — data or hand-written — is kept together by the tool (no page
 break leaves fewer than three rows on a side) and labelled *Tabla* in Spanish;

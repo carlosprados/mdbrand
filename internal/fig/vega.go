@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/doc"
@@ -25,10 +26,16 @@ import (
 
 var schemeRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*:`)
 
+// Datasets supplies the rows for a spec's "data": {"name": …}: the document's
+// data namespace, read the way its tables read it. nil where there is no
+// document to read from.
+type Datasets func(name string) ([]map[string]any, error)
+
 // VegaSpec returns the figure's spec as JSON with every local data url made
-// absolute, and the data files it names — absolute, whether they exist or not,
-// since watch mode must watch the missing one: creating it is the fix.
-func VegaSpec(f *doc.Fig) (spec []byte, refs []string, err error) {
+// absolute and every named dataset filled in from ds, and the data files it
+// names — absolute, whether they exist or not, since watch mode must watch the
+// missing one: creating it is the fix.
+func VegaSpec(f *doc.Fig, ds Datasets) (spec []byte, refs []string, err error) {
 	raw, err := os.ReadFile(f.SrcPath)
 	if err != nil {
 		return nil, nil, err
@@ -51,9 +58,27 @@ func VegaSpec(f *doc.Fig) (spec []byte, refs []string, err error) {
 	if base == "" {
 		base = filepath.Dir(f.SrcPath)
 	}
-	r := &dataURLs{base: base}
+	r := &dataURLs{base: base, ds: ds, own: map[string]bool{}, named: map[string][]map[string]any{}}
+	// A name the spec declares itself, under "datasets", is standard
+	// Vega-Lite and stays exactly as written.
+	if top, ok := v.(map[string]any); ok {
+		if own, ok := top["datasets"].(map[string]any); ok {
+			for k := range own {
+				r.own[k] = true
+			}
+		}
+	}
 	r.walk(v)
 	sort.Strings(r.refs)
+	if len(r.errs) == 0 {
+		used := map[string]bool{}
+		usedFields(v, used)
+		r.errs = mixedFields(r.named, used)
+	}
+
+	if len(r.errs) > 0 {
+		return nil, r.refs, fmt.Errorf("%s: %s", figName(f), strings.Join(r.errs, "\n  "))
+	}
 
 	if len(r.remote) > 0 {
 		sort.Strings(r.remote)
@@ -76,17 +101,22 @@ the spec's own file for a linked one`, figName(f), strings.Join(r.missing, "\n  
 	return spec, r.refs, err
 }
 
-// DataRefs lists the data files a Vega-Lite figure reads, for watch mode.
+// DataRefs lists the data files a Vega-Lite figure reads by url, for watch
+// mode. Files read through a name are the data store's to report.
 func DataRefs(f *doc.Fig) []string {
-	_, refs, _ := VegaSpec(f)
+	_, refs, _ := VegaSpec(f, nil)
 	return refs
 }
 
 type dataURLs struct {
 	base    string
+	ds      Datasets
+	own     map[string]bool // names the spec's own datasets declare
+	named   map[string][]map[string]any
 	refs    []string
 	missing []string // "as written  →  resolved"
 	remote  []string
+	errs    []string
 }
 
 // walk visits every "data" in the spec: the top level's, each layer's and
@@ -111,6 +141,7 @@ func (r *dataURLs) data(v any) {
 	switch t := v.(type) {
 	case map[string]any:
 		r.url(t)
+		r.name(t)
 	case []any:
 		for _, c := range t {
 			if m, ok := c.(map[string]any); ok {
@@ -145,6 +176,92 @@ func (r *dataURLs) url(m map[string]any) {
 	m["url"] = "file://" + filepath.ToSlash(p)
 }
 
+// name fills a Vega-Lite "data": {"name": …} from the document's data. Only
+// the object form is read: in a Vega spec's array of datasets, a name is the
+// declaration of one, not a reference to be supplied.
+func (r *dataURLs) name(m map[string]any) {
+	n, ok := m["name"].(string)
+	if !ok || r.own[n] {
+		return
+	}
+	for _, k := range []string{"url", "values", "sequence", "graticule", "sphere"} {
+		if _, ok := m[k]; ok {
+			return
+		}
+	}
+	if r.ds == nil {
+		r.errs = append(r.errs, fmt.Sprintf("the chart names its data %q, which only a document's data files can supply", n))
+		return
+	}
+	rows, err := r.ds(n)
+	if err != nil {
+		r.errs = append(r.errs, err.Error())
+		return
+	}
+	delete(m, "name")
+	m["values"] = rows
+	r.named[n] = rows
+}
+
+// usedFields collects every "field" the spec encodes or transforms by,
+// without descending into the data itself.
+func usedFields(v any, used map[string]bool) {
+	switch t := v.(type) {
+	case map[string]any:
+		for k, c := range t {
+			switch {
+			case k == "values" || k == "datasets":
+			case k == "field":
+				if f, ok := c.(string); ok {
+					used[f] = true
+				}
+			default:
+				usedFields(c, used)
+			}
+		}
+	case []any:
+		for _, c := range t {
+			usedFields(c, used)
+		}
+	}
+}
+
+// mixedFields finds a field the chart uses that holds numbers and text at
+// once. Vega-Lite drops a value it cannot read as a number, draws the rest and
+// exits 0 — which is what 1250,5 from a Spanish spreadsheet does in an
+// English document, where a decimal comma is text. Only the fields the spec
+// names are checked: an id column mixing 2026 and m5.large harms no chart.
+func mixedFields(named map[string][]map[string]any, used map[string]bool) []string {
+	var errs []string
+	for name, rows := range named {
+		var mixed []string
+		for field := range used {
+			nums := 0
+			var texts []string
+			for _, row := range rows {
+				switch t := row[field].(type) {
+				case float64:
+					nums++
+				case string:
+					texts = append(texts, strconv.Quote(t))
+				}
+			}
+			if nums > 0 && len(texts) > 0 {
+				mixed = append(mixed, fmt.Sprintf("%s: %d number(s) and %s", field, nums, strings.Join(texts, ", ")))
+			}
+		}
+		if len(mixed) > 0 {
+			sort.Strings(mixed)
+			errs = append(errs, fmt.Sprintf(`data %q mixes numbers and text in a field the chart uses, and Vega-Lite silently drops what it cannot read as a number:
+    %s
+  Fix the data, or set the document's lang to one that writes these numbers
+  (a decimal comma is a number only where lang writes one)`, name, strings.Join(mixed, "\n    ")))
+		}
+	}
+	sort.Strings(errs)
+	return errs
+}
+
 // figName names a figure for a message. A fenced block's source is a copy in
 // the work directory called fig00.vl.json, which the author has never seen, so
 // its caption is the better handle when it has one.
@@ -156,8 +273,8 @@ func figName(f *doc.Fig) string {
 }
 
 // renderVega renders a copy of the spec whose data urls have been settled.
-func renderVega(f *doc.Fig, out string) error {
-	spec, _, err := VegaSpec(f)
+func renderVega(f *doc.Fig, out string, ds Datasets) error {
+	spec, _, err := VegaSpec(f, ds)
 	if err != nil {
 		return err
 	}
