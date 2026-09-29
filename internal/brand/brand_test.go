@@ -1,6 +1,7 @@
 package brand
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -232,5 +233,31 @@ func TestBodyFontInstalledComparesTheAnswerWithTheQuestion(t *testing.T) {
 	b.Fonts.Body = strings.Split(sub, ",")[0]
 	if !b.BodyFontInstalled() {
 		t.Errorf("%q came from fontconfig itself and still reports as absent", b.Fonts.Body)
+	}
+}
+
+// An empty brands directory joined to a name is a path relative to wherever
+// mdbrand runs; a folder there sharing the brand's name must not be taken for
+// the bundle.
+func TestLoadRefusesEmptyBrandsDir(t *testing.T) {
+	work := t.TempDir()
+	t.Chdir(work)
+	if err := os.MkdirAll("acme", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("acme/brand.yaml", []byte("name: acme\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load("", "acme"); !errors.Is(err, ErrNoBrandsDir) {
+		t.Errorf("Load(\"\", acme) = %v, want ErrNoBrandsDir", err)
+	}
+	if _, err := Load("", "none"); err != nil {
+		t.Errorf("--brand none needs no directory: %v", err)
+	}
+	if _, err := Scaffold("", "nuevo"); !errors.Is(err, ErrNoBrandsDir) {
+		t.Errorf("Scaffold(\"\") = %v", err)
+	}
+	if _, err := os.Stat("nuevo"); err == nil {
+		t.Error("Scaffold created a bundle in the working directory")
 	}
 }

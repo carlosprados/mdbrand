@@ -695,6 +695,13 @@ Resolution order, later wins: built-in default → config file → `MDBRAND_*`
 environment → flag. So `MDBRAND_BRANDS_DIR=/tmp/brands mdbrand build x.md`
 works, and so does `--brands-dir`.
 
+With no home directory (some containers and CI runners) and no
+`XDG_CONFIG_HOME`, there is no configuration file and no default brands
+directory. `--brand none` builds as ever; a named brand needs `--brands-dir` or
+`MDBRAND_BRANDS_DIR`, and `config init` or `skill install` without `--dir` stop
+and say so, rather than writing `.config/` or `.claude/` into the current
+directory.
+
 ## Troubleshooting
 
 **`the font has no glyph for N character(s)`** — the text uses a character the

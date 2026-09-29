@@ -42,7 +42,10 @@ func brandListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List installed bundles",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dir := brandsDir()
+			dir, err := needBrandsDir()
+			if err != nil {
+				return err
+			}
 			names := brand.List(dir)
 			if len(names) == 0 {
 				fmt.Fprintf(cmd.OutOrStdout(), "no bundles in %s\n  create one: mdbrand brand new <name>\n", dir)
@@ -98,7 +101,10 @@ whose declared height cannot hold the logo that goes in it.
 
 With no arguments, validates every installed bundle.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dir := brandsDir()
+			dir, err := needBrandsDir()
+			if err != nil {
+				return err
+			}
 			names := args
 			if len(names) == 0 {
 				names = brand.List(dir)
@@ -180,11 +186,15 @@ func brandPathCmd() *cobra.Command {
 		Short: "Print the brands directory, or one bundle's directory",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			dir, err := needBrandsDir()
+			if err != nil {
+				return err
+			}
 			if len(args) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), brandsDir())
+				fmt.Fprintln(cmd.OutOrStdout(), dir)
 				return nil
 			}
-			p := filepath.Join(brandsDir(), args[0])
+			p := filepath.Join(dir, args[0])
 			if _, err := os.Stat(p); err != nil {
 				return err
 			}
