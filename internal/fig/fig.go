@@ -50,8 +50,8 @@ type Result struct {
 }
 
 // Render renders one figure and computes its placement. textWidthMM is the
-// document's text measure.
-func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64) (*Result, error) {
+// document's text measure; ds supplies a chart's named data, and may be nil.
+func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64, ds Datasets) (*Result, error) {
 	if _, err := os.Stat(f.SrcPath); err != nil {
 		return nil, fmt.Errorf("figure %d: %w", f.Index, err)
 	}
@@ -73,7 +73,7 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64) (*R
 			return nil, err
 		}
 	default:
-		if err := renderVega(f, svg); err != nil {
+		if err := renderVega(f, svg, ds); err != nil {
 			return nil, err
 		}
 	}

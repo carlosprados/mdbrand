@@ -146,3 +146,67 @@ func TestTablesScanner(t *testing.T) {
 		t.Errorf("a table link inside a sentence: err = %v", err)
 	}
 }
+
+func TestTableTotals(t *testing.T) {
+	s, _ := tree(t, map[string]string{
+		"data/maquinas.yaml": machines,
+		"data/sedes.csv":     "sede;coste\nZamora;1250,5\nÁvila;2100\nBurgos;1875,25\n",
+		"data/cuotas.yaml":   "a: {n: 0.1}\nb: {n: 0.2}\nc: {n: ~}\n",
+	})
+	got, err := s.Table("source: maquinas\ncolumns: {id: Tipo, ram: {label: RAM, unit: GiB}, precio: {label: €/h, decimals: 3}}\ntotal: [ram, precio]", "es")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 16+8+16 GiB, and 0.192+0.096+0.34 exactly: a float sum is 0.6280000000000001.
+	if !strings.Contains(got, "| **Total** | 40 GiB | 0,628 |") {
+		t.Errorf("total row:\n%s", got)
+	}
+	// No decimals declared: as many places as the longest value, and the
+	// data's own decimal comma.
+	got, err = s.Table("source: sedes\ntotal: coste", "es")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "| **Total** | 5225,75 |") {
+		t.Errorf("total of a Spanish CSV:\n%s", got)
+	}
+	// Transposed, the total is the last column.
+	got, err = s.Table("source: maquinas\ncolumns: {id: Tipo, cpu: vCPU}\ntotal: cpu\ntranspose: true", "es")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "| Tipo | m5.xlarge | m5.large | c6i.2xlarge | **Total** |") || !strings.Contains(got, "| vCPU | 4 | 2 | 8 | 14 |") {
+		t.Errorf("transposed total:\n%s", got)
+	}
+	for spec, want := range map[string]string{
+		"source: cuotas\ntotal: n":                                 "has no n, so the total would leave it out",
+		"source: maquinas\ncolumns: [id, cpu]\ntotal: ram":         `"ram" is not one of the table's columns`,
+		"source: maquinas\ncolumns: [cpu, ram]\ntotal: cpu":        "first column",
+		"source: maquinas\ncolumns: [id, familia]\ntotal: familia": `"m5", not a number`,
+	} {
+		if _, err := s.Table(spec, "es"); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%q: err = %v, want %q", spec, err, want)
+		}
+	}
+}
+
+// A chart reads the same numbers the tables read: the decimal comma of a
+// Spanish CSV is a number in a Spanish document and text in an English one.
+func TestRecordsTyped(t *testing.T) {
+	s, _ := tree(t, map[string]string{"data/sedes.csv": "sede;coste;activa\nZamora;1250,5;true\n"})
+	es, err := s.Records("sedes", "es")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if es[0]["coste"] != 1250.5 || es[0]["sede"] != "Zamora" {
+		t.Errorf("es: %v", es[0])
+	}
+	en, err := s.Records("sedes", "en")
+	if err != nil || en[0]["coste"] != "1250,5" {
+		t.Errorf("en: a decimal comma is text, got %#v, %v", en, err)
+	}
+	// CSV carries no types: "true" stays the string it is.
+	if es[0]["activa"] != "true" {
+		t.Errorf("activa = %#v", es[0]["activa"])
+	}
+}

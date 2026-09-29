@@ -195,7 +195,13 @@ it, or open an issue for the knob you need:
 	if err != nil {
 		return nil, err
 	}
-	if body, err = fillData(o, d, body, figs, inputs); err != nil {
+	store, err := data.Open(o.Input, d.Meta.Options.Data)
+	if err != nil {
+		return nil, err
+	}
+	// Deferred, so that it also holds what a chart read through a name.
+	defer func() { *inputs = append(*inputs, store.Refs()...) }()
+	if body, err = fillData(o, d, store, body, figs); err != nil {
 		return nil, err
 	}
 	if body, err = wordCount(o, d, body, figs, work, rep); err != nil {
@@ -212,7 +218,7 @@ it, or open an issue for the knob you need:
 			*inputs = append(*inputs, fig.DataRefs(f)...)
 		}
 		o.logf("  fig %s", filepath.Base(f.SrcPath))
-		res, ferr := fig.Render(f, b, work, textWidth)
+		res, ferr := fig.Render(f, b, work, textWidth, Datasets(store, d.Meta.Lang))
 		if ferr != nil {
 			return nil, ferr
 		}
@@ -778,12 +784,8 @@ func citeArgs(d *doc.File, input string, inputs *[]string) ([]string, error) {
 // captions and the front matter. It runs before the word count, which counts
 // what the reader will see, and after figure extraction, so that a caption is
 // filled where it now lives.
-func fillData(o Options, d *doc.File, body string, figs []*doc.Fig, inputs *[]string) (string, error) {
-	store, err := data.Open(o.Input, d.Meta.Options.Data)
-	if err != nil {
-		return "", err
-	}
-	defer func() { *inputs = append(*inputs, store.Refs()...) }()
+func fillData(o Options, d *doc.File, store *data.Store, body string, figs []*doc.Fig) (string, error) {
+	var err error
 	// Tables first: a caption may hold a {{data…}} value, which the pass
 	// below then fills like any other.
 	if body, err = store.Tables(body, d.Meta.Lang); err != nil {
@@ -802,6 +804,14 @@ func fillData(o Options, d *doc.File, body string, figs []*doc.Fig, inputs *[]st
 		return "", fmt.Errorf("%s: front matter: %w", o.Input, err)
 	}
 	return body, d.SetFrontMatter(fm)
+}
+
+// Datasets lets a chart's "data": {"name": …} read the document's data, with
+// numbers parsed by the document's language, as its tables parse them.
+func Datasets(store *data.Store, lang string) fig.Datasets {
+	return func(name string) ([]map[string]any, error) {
+		return store.Records(name, lang)
+	}
 }
 
 // wordCount counts the body by the document's criterion and fills {{words}} in

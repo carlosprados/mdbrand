@@ -28,9 +28,26 @@ type tableSpec struct {
 	Sort      string            `yaml:"sort"`
 	Transpose bool              `yaml:"transpose"`
 	Caption   string            `yaml:"caption"`
+	Total     names             `yaml:"total"`
 }
 
-var specKeys = []string{"source", "rows", "where", "columns", "sort", "transpose", "caption"}
+var specKeys = []string{"source", "rows", "where", "columns", "sort", "transpose", "total", "caption"}
+
+// names is one field or a list of them, so `total: precio` needs no brackets.
+type names []string
+
+func (n *names) UnmarshalYAML(v *yaml.Node) error {
+	if v.Kind == yaml.ScalarNode {
+		*n = names{v.Value}
+		return nil
+	}
+	var many []string
+	if err := v.Decode(&many); err != nil {
+		return fmt.Errorf("expected a field or a list of fields")
+	}
+	*n = many
+	return nil
+}
 
 type column struct {
 	Field    string
@@ -327,20 +344,30 @@ func render(n *yaml.Node, shown string, spec *tableSpec, lang string) (string, e
 		}
 	}
 
+	// After alignment: the total row's blank cells must not turn a number
+	// column left-aligned.
+	if len(spec.Total) > 0 {
+		row, num, err := totalRow(recs, cols, spec.Total, dec, lang, shown)
+		if err != nil {
+			return "", err
+		}
+		cells, numeric = append(cells, row), append(numeric, num)
+	}
+
 	if spec.Transpose {
 		th := append([]string{header[0]}, column0(cells)...)
 		var body [][]string
 		for c := 1; c < len(cols); c++ {
 			row := []string{header[c]}
-			for r := range recs {
+			for r := range cells {
 				row = append(row, cells[r][c])
 			}
 			body = append(body, row)
 		}
 		talign := []string{"left"}
-		for r := range recs {
+		for r := range cells {
 			a := "left"
-			if allNumeric(len(cols)-1, func(c int) bool { return numeric[r][c+1] }) {
+			if r >= len(recs) || allNumeric(len(cols)-1, func(c int) bool { return numeric[r][c+1] }) {
 				a = "right"
 			}
 			talign = append(talign, a)
@@ -348,6 +375,72 @@ func render(n *yaml.Node, shown string, spec *tableSpec, lang string) (string, e
 		return pipeTable(th, body, talign, spec.Caption), nil
 	}
 	return pipeTable(header, cells, align, spec.Caption), nil
+}
+
+// totalRow sums the named columns over the records shown, exactly. A blank
+// cell in a summed column stops the table: a price nobody filled in would make
+// the total quietly smaller than the offer. A column without decimals totals
+// to as many places as its longest value, with the data's own decimal mark.
+func totalRow(recs []record, cols []column, fields []string, dec, lang, shown string) ([]string, []bool, error) {
+	want := map[string]bool{}
+	for _, f := range fields {
+		found := false
+		for i, c := range cols {
+			if c.Field == f {
+				found = true
+				if i == 0 {
+					return nil, nil, fmt.Errorf("total: %s is the first column, which carries the word Total", f)
+				}
+			}
+		}
+		if !found {
+			return nil, nil, fmt.Errorf("total: %q is not one of the table's columns", f)
+		}
+		want[f] = true
+	}
+	row := make([]string, len(cols))
+	num := make([]bool, len(cols))
+	row[0] = "**Total**"
+	for c, col := range cols {
+		if !want[col.Field] {
+			continue
+		}
+		sum := new(big.Rat)
+		scale, comma := 0, false
+		for _, r := range recs {
+			n, ok := r.cells[col.Field]
+			v := ""
+			if ok {
+				v = strings.TrimSpace(deref(n).Value)
+			}
+			if !ok || v == "" || deref(n).ShortTag() == "!!null" {
+				return nil, nil, fmt.Errorf("total: %s%s has no %s, so the total would leave it out", shown, formatPath([]string{r.id}), col.Field)
+			}
+			x, isNum := parseNumber(v, dec)
+			if !isNum {
+				return nil, nil, fmt.Errorf("total: %s%s.%s is %q, not a number", shown, formatPath([]string{r.id}), col.Field, v)
+			}
+			sum.Add(sum, x)
+			if i := strings.LastIndexAny(v, ".,"); i >= 0 && !strings.ContainsAny(v, "eE") {
+				scale = max(scale, len(v)-i-1)
+				comma = comma || v[i] == ','
+			}
+		}
+		var text string
+		if col.Decimals != nil {
+			text = formatDecimal(sum, *col.Decimals, lang)
+		} else {
+			text = sum.FloatString(scale)
+			if comma {
+				text = strings.Replace(text, ".", ",", 1)
+			}
+		}
+		if col.Unit != "" {
+			text += "\u00a0" + escapeMarkdown(Value{Text: col.Unit})
+		}
+		row[c], num[c] = text, true
+	}
+	return row, num, nil
 }
 
 func column0(cells [][]string) []string {
