@@ -157,7 +157,8 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 		"m5.xlarge 4 16 GiB 0,192" \
 		"RAM 8 GiB 16 GiB 16 GiB Disco 50 GB 100 GB 100 GB" \
 		"Instancias m5 para ACME" \
-		"Ávila 5 2100 Burgos 4 1875,25"; do
+		"Ávila 5 2100 Burgos 4 1875,25" \
+		"24 GiB 0,288"; do
 		printf '%s' "$text" | grep -qF -- "$phrase" \
 			&& ok "prints \"$phrase\"" \
 			|| bad "the PDF lacks \"$phrase\""
@@ -175,6 +176,12 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	done
 	[ -n "$whole" ] && ok "a short table is never split across pages" \
 		|| bad "the Sedes table is split across a page break"
+
+	# Charted by name, the CSV's decimal commas are numbers: three bars. Read
+	# as text, Vega-Lite drew Ávila alone and exited 0.
+	n="$(grep -o 'sede: [^"]*"' "$work/data/fig01.svg" 2>/dev/null | wc -l)"
+	[ "$n" -eq 3 ] && ok "the chart by name draws all three bars" \
+		|| bad "the chart by name drew $n bar(s), want 3"
 
 	printf '%s' "$text" | grep -qE 'Cuadro [0-9]' \
 		&& bad "a table is labelled Cuadro" \
@@ -196,6 +203,7 @@ traps=(
 	"missing-data.md|fail|data that is not there"
 	"unknown-data-key.md|fail|the ones that exist are m5.large, m5.xlarge"
 	"table-typo.md|fail|has no field \"famila\"; the fields are"
+	"chart-mixed-data.md|fail|coste: 1 number(s) and \"1250,5\", \"1875,25\""
 	"unknown-placeholder.md|fail|the ones that exist are {{words}}"
 	"wordcount-typo.md|fail|the keys are base and include"
 	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"

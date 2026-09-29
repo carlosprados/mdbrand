@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/build"
+	"github.com/carlosprados/mdbrand/internal/data"
 	"github.com/carlosprados/mdbrand/internal/doc"
 	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/tex"
@@ -50,6 +52,8 @@ cannot be placed inside that band is reported as an error with the fix.
 			defer os.RemoveAll(work)
 
 			var figs []*doc.Fig
+			// A chart may name its data; that needs the document it came from.
+			sets := map[*doc.Fig]fig.Datasets{}
 			for _, a := range args {
 				switch {
 				case strings.HasSuffix(a, ".md"):
@@ -60,6 +64,13 @@ cannot be placed inside that band is reported as an error with the fix.
 					_, fs, err := d.ExtractFigs(work)
 					if err != nil {
 						return err
+					}
+					store, err := data.Open(a, d.Meta.Options.Data)
+					if err != nil {
+						return err
+					}
+					for _, f := range fs {
+						sets[f] = build.Datasets(store, d.Meta.Lang)
 					}
 					figs = append(figs, fs...)
 				default:
@@ -83,7 +94,7 @@ cannot be placed inside that band is reported as an error with the fix.
 				b.Name, textWidth, b.Diagrams.MinTextPt, b.Diagrams.MaxTextPt, b.Diagrams.MaxHeightMM)
 			bad := 0
 			for _, f := range figs {
-				res, err := fig.Render(f, b, work, textWidth)
+				res, err := fig.Render(f, b, work, textWidth, sets[f])
 				if err != nil {
 					bad++
 					fmt.Fprintf(out, "%-26s FAIL\n%v\n\n", filepath.Base(f.SrcPath), err)
