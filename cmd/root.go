@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/paths"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -78,24 +79,50 @@ func initConfig() {
 	} else {
 		viper.SetConfigName("config")
 		viper.SetConfigType("yaml")
-		viper.AddConfigPath(configDir())
+		// Without a home there is no user configuration to read, and looking
+		// in a relative .config/ would read whatever the current directory has.
+		if dir, err := configDir(); err == nil {
+			viper.AddConfigPath(dir)
+		}
 	}
 	_ = viper.ReadInConfig() // absent config is the normal case, not an error
 }
 
-func configDir() string {
+// configDir is where mdbrand keeps its settings. With neither XDG_CONFIG_HOME
+// nor a home directory there is no such place, and it says so: the home it
+// ignored the error for was "", so the path came out relative, config init
+// wrote into the current directory and a stray .config/ there was read as ours.
+func configDir() (string, error) {
 	if x := os.Getenv("XDG_CONFIG_HOME"); x != "" {
-		return filepath.Join(x, "mdbrand")
+		return filepath.Join(x, "mdbrand"), nil
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "mdbrand")
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return "", fmt.Errorf("no home directory and XDG_CONFIG_HOME is unset, so mdbrand has nowhere to keep its configuration: set HOME or XDG_CONFIG_HOME")
+	}
+	return filepath.Join(home, ".config", "mdbrand"), nil
 }
 
+// defaultBrandsDir is empty when there is no configuration directory, which
+// brand.Load refuses by name rather than resolving against the working
+// directory.
 func defaultBrandsDir() string {
-	return filepath.Join(configDir(), "brands")
+	dir, err := configDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(dir, "brands")
 }
 
 func brandsDir() string { return paths.Expand(viper.GetString("brands_dir")) }
+
+// needBrandsDir is brandsDir for the commands that write or list bundles.
+func needBrandsDir() (string, error) {
+	if dir := brandsDir(); dir != "" {
+		return dir, nil
+	}
+	return "", brand.ErrNoBrandsDir
+}
 
 func versionCmd() *cobra.Command {
 	return &cobra.Command{
@@ -116,7 +143,11 @@ func configCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
 			fmt.Fprintf(out, "config file : %s\n", orNone(viper.ConfigFileUsed()))
-			fmt.Fprintf(out, "brands_dir  : %s\n", brandsDir())
+			if dir := brandsDir(); dir != "" {
+				fmt.Fprintf(out, "brands_dir  : %s\n", dir)
+			} else {
+				fmt.Fprintf(out, "brands_dir  : (not set) %v\n", brand.ErrNoBrandsDir)
+			}
 			fmt.Fprintf(out, "brand       : %s\n", orNone(viper.GetString("brand")))
 			fmt.Fprintf(out, "style       : %s\n", viper.GetString("style"))
 			fmt.Fprintf(out, "wordcount   : %s\n", viper.GetString("wordcount"))
@@ -127,7 +158,10 @@ func configCmd() *cobra.Command {
 		Use:   "init",
 		Short: "Write a starter config file",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dir := configDir()
+			dir, err := configDir()
+			if err != nil {
+				return err
+			}
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				return err
 			}

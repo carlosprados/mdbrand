@@ -20,9 +20,15 @@ var SkillDoc string
 // compared against the embedded one without the version line getting in the way.
 var stampRe = regexp.MustCompile(`(?m)\n<!-- installed by mdbrand [^>]* -->\n?$`)
 
-func skillDir() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".claude", "skills", "mdbrand")
+// skillDir is the personal skills directory. Without a home it is an error:
+// the relative path it used to become put .claude/skills/ in whatever
+// directory the command ran from.
+func skillDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return "", fmt.Errorf("no home directory, so there is no ~/.claude/skills to install into: set HOME, or use --project or --dir")
+	}
+	return filepath.Join(home, ".claude", "skills", "mdbrand"), nil
 }
 
 func skillCmd() *cobra.Command {
@@ -62,9 +68,12 @@ func skillPathCmd() *cobra.Command {
 		Use:   "path",
 		Short: "Print where the skill would be installed",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dir := skillDir()
-			if project {
-				dir = filepath.Join(".claude", "skills", "mdbrand")
+			dir := filepath.Join(".claude", "skills", "mdbrand")
+			if !project {
+				var err error
+				if dir, err = skillDir(); err != nil {
+					return err
+				}
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), filepath.Join(dir, "SKILL.md"))
 			return nil
@@ -98,7 +107,10 @@ the link.`,
 			case project:
 				target = filepath.Join(".claude", "skills", "mdbrand")
 			default:
-				target = skillDir()
+				var err error
+				if target, err = skillDir(); err != nil {
+					return err
+				}
 			}
 			file := filepath.Join(target, "SKILL.md")
 			body := stampRe.ReplaceAllString(strings.TrimRight(SkillDoc, "\n"), "") +

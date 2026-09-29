@@ -72,6 +72,12 @@ Do not relax one without understanding what it cost.
 8. **No machine's absolute path in anything shared.** `fonts.display.path` is a
    candidate list; relative entries resolve inside the bundle, `~` and `$VARS`
    expand, and fontconfig is the last resort. This bug shipped twice.
+   Expansion lives in `internal/paths` alone. Its mirror image is a path that
+   silently turns relative: with no home, `configDir`, `skillDir` and the
+   default brands directory came out relative, and `config init`, `skill
+   install` and `brand new` wrote into the working directory while
+   `brand.Load` read a local `acme/` as the bundle. Each now refuses by name.
+   → `internal/paths/paths_test.go`, `cmd/home_test.go`.
 9. **Never write through a symlink.** `skill install` uses `os.Lstat`: in a
    checkout the installed skill is a symlink to this repository's `SKILL.md`.
 10. **Licensed fonts and client logos never enter a repository that can be read
