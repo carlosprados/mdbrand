@@ -42,25 +42,6 @@ func TestPathListAcceptsBothShapes(t *testing.T) {
 	}
 }
 
-func TestExpandPath(t *testing.T) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Skip("no home directory")
-	}
-	if got := expandPath("~/fonts"); got != filepath.Join(home, "fonts") {
-		t.Errorf("~ not expanded: %q", got)
-	}
-	t.Setenv("MDBRAND_TEST_FONTS", "/opt/x")
-	if got := expandPath("$MDBRAND_TEST_FONTS/gotham"); got != "/opt/x/gotham" {
-		t.Errorf("variable not expanded: %q", got)
-	}
-	// An unset variable must collapse to nothing rather than to a plausible
-	// path: "/gotham" could exist and would be the wrong font.
-	if got := expandPath("$MDBRAND_UNSET_XYZ"); got != "" {
-		t.Errorf("unset variable = %q, want empty", got)
-	}
-}
-
 func TestDisplayFontDirPicksFirstExistingCandidate(t *testing.T) {
 	real := t.TempDir()
 	if err := os.WriteFile(filepath.Join(real, "Gotham-Light.otf"), []byte("x"), 0o644); err != nil {

@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/carlosprados/mdbrand/internal/paths"
 	"gopkg.in/yaml.v3"
 
 	"github.com/carlosprados/mdbrand/internal/run"
@@ -92,19 +93,6 @@ func (p *PathList) UnmarshalYAML(n *yaml.Node) error {
 		return nil
 	}
 	return fmt.Errorf("fonts.display.path: expected a path or a list of paths")
-}
-
-// expandPath resolves ~ and environment variables. A candidate naming an unset
-// variable simply will not exist, which is the behaviour we want.
-func expandPath(p string) string {
-	p = os.ExpandEnv(strings.TrimSpace(p))
-	if p == "~" || strings.HasPrefix(p, "~/") {
-		home, err := os.UserHomeDir()
-		if err == nil {
-			p = filepath.Join(home, strings.TrimPrefix(p, "~"))
-		}
-	}
-	return p
 }
 
 type Page struct {
@@ -359,7 +347,7 @@ func (b *Brand) DisplayFontDir() (string, bool) {
 // ship the font next to brand.yaml and work on a fresh clone with no install,
 // no environment variable and no edit.
 func (b *Brand) resolveFontDir(cand string) string {
-	dir := expandPath(cand)
+	dir := paths.Expand(cand)
 	if dir == "" {
 		return ""
 	}

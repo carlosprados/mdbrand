@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/carlosprados/mdbrand/internal/paths"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -94,15 +95,7 @@ func defaultBrandsDir() string {
 	return filepath.Join(configDir(), "brands")
 }
 
-func brandsDir() string { return expand(viper.GetString("brands_dir")) }
-
-func expand(p string) string {
-	if p == "~" || len(p) > 1 && p[:2] == "~/" {
-		home, _ := os.UserHomeDir()
-		return filepath.Join(home, p[1:])
-	}
-	return os.ExpandEnv(p)
-}
+func brandsDir() string { return paths.Expand(viper.GetString("brands_dir")) }
 
 func versionCmd() *cobra.Command {
 	return &cobra.Command{

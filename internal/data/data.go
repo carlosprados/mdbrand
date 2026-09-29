@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/carlosprados/mdbrand/internal/paths"
 	"gopkg.in/yaml.v3"
 )
 
@@ -50,7 +51,7 @@ func Open(docPath string, declared []string) (*Store, error) {
 		return s, nil
 	}
 	for _, d := range declared {
-		p := expandPath(d)
+		p := paths.Expand(d)
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(docDir, p)
 		}
@@ -427,16 +428,4 @@ func formatPath(segs []string) string {
 		}
 	}
 	return b.String()
-}
-
-// expandPath is the invariant-8 rule for a path someone else will read: ~ and
-// $VARS expand, so no machine's home directory has to be written down.
-func expandPath(p string) string {
-	p = os.ExpandEnv(strings.TrimSpace(p))
-	if p == "~" || strings.HasPrefix(p, "~/") {
-		if home, err := os.UserHomeDir(); err == nil {
-			p = filepath.Join(home, strings.TrimPrefix(p, "~"))
-		}
-	}
-	return p
 }
