@@ -90,7 +90,10 @@ LaTeX packages. Required only if the document has diagrams: d2, vl2svg.`,
 			dir := brandsDir()
 			names := brand.List(dir)
 			fmt.Fprintf(out, "\n  brands dir: %s\n", dir)
-			if _, err := os.Stat(dir); err != nil {
+			if dir == "" {
+				fmt.Fprintf(out, "    not set: %v\n", brand.ErrNoBrandsDir)
+				names = nil
+			} else if _, err := os.Stat(dir); err != nil {
 				fmt.Fprintf(out, "    does not exist yet -> mdbrand brand new <name>\n")
 			} else if len(names) == 0 {
 				fmt.Fprintf(out, "    no bundles yet -> mdbrand brand new <name>\n")
