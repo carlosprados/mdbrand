@@ -46,6 +46,7 @@ A table comes from the same data, declared in a fenced block:
     precio: {label: "€/hora", decimals: 3}
   sort: -ram                  one field; - descends; numeric or collated
   transpose: true             records become columns
+  total: [ram, precio]        a Total row, summed exactly in each column's format
   caption: Instancias m5
   ` + "```" + `
 
@@ -53,7 +54,12 @@ or ![Caption](data/sedes.csv) alone on its line, for a whole file. decimals
 rounds exactly and writes the document's lang (0,192 in es). A decimal comma
 in the data is a number only where lang writes one. Any id, field or key that
 does not exist stops the build naming the ones that do; a record missing a
-column's field too (field: ~ is a deliberately empty cell).
+column's field too (field: ~ is a deliberately empty cell), and a blank or
+text cell in a totalled column.
+
+A Vega-Lite chart reads the same records with "data": {"name": "maquinas"},
+numbers parsed as the tables parse them. A field it plots that mixes numbers
+and text stops the build, since Vega-Lite would drop the text without a word.
 
   mdbrand data propuesta.md
   mdbrand data propuesta.md 'data.maquinas[m5.large]'`,

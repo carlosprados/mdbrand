@@ -113,8 +113,13 @@ Do not relax one without understanding what it cost.
     number only where `lang` writes one (else an English 1,234 is 1.234),
     collated sorting, and a column never narrower than its longest word — a
     table sized to the letter overflowed by 3pt, under the warning threshold.
-    → `internal/data/*_test.go`, `testdata/data.md`, and
-    `testdata/traps/unknown-data-key.md`, `table-typo.md`.
+    Totals are exact and refuse a blank cell. A chart's `"data": {"name": …}`
+    reads the records through the same parser, and a field it plots that
+    mixes numbers and text fails: Vega-Lite drew Ávila alone, exit 0, when
+    an English document read a Spanish CSV.
+    → `internal/data/*_test.go`, `internal/fig/vega_test.go`,
+    `testdata/data.md`, and `testdata/traps/unknown-data-key.md`,
+    `table-typo.md`, `chart-mixed-data.md`.
 
 14. **No page break leaves fewer than `tex.TableKeep` rows of a table on
     either side.** pandoc writes every table as a longtable, which may break
