@@ -173,8 +173,10 @@ before a `{{-` trim swallows the rest of the line, closing brace and all.
 ## Releasing
 
 A `v*` tag is the whole procedure. `.github/workflows/release.yml` runs the
-tests, cross-compiles linux/darwin/windows × amd64/arm64 with no cgo, archives
-each with LICENSE and README, writes checksums and publishes the release.
+tests, cross-compiles linux and darwin × amd64/arm64 plus windows/amd64 with no
+cgo, archives each with LICENSE and README, writes checksums and publishes the
+release. windows/arm64 is left out on purpose: add it to the target list only
+when someone asks for it.
 
 ```sh
 just check && just torture && just example
