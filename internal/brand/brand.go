@@ -196,9 +196,19 @@ func (b *Brand) applyDefaults() {
 }
 
 // Load reads <dir>/<name>/brand.yaml. Name "none" yields the built-in default.
+// ErrNoBrandsDir is what a named bundle meets when no brands directory is set,
+// which happens when there is no home directory to put the default one in. An
+// empty directory joined to a name is a path relative to wherever mdbrand runs,
+// and a folder there that happened to share the brand's name was read as the
+// bundle.
+var ErrNoBrandsDir = errors.New("no brands directory is set, and there is no home directory to hold the default one: pass --brands-dir, or set MDBRAND_BRANDS_DIR or HOME")
+
 func Load(brandsDir, name string) (*Brand, error) {
 	if name == "" || name == "none" {
 		return Default(), nil
+	}
+	if brandsDir == "" {
+		return nil, fmt.Errorf("brand %q: %w", name, ErrNoBrandsDir)
 	}
 	dir := filepath.Join(brandsDir, name)
 	f := filepath.Join(dir, "brand.yaml")
@@ -531,6 +541,9 @@ func (b *Brand) Check() (problems, warnings []string) {
 
 // Scaffold writes a starter bundle at <brandsDir>/<name>.
 func Scaffold(brandsDir, name string) (string, error) {
+	if brandsDir == "" {
+		return "", ErrNoBrandsDir
+	}
 	dir := filepath.Join(brandsDir, name)
 	if _, err := os.Stat(filepath.Join(dir, "brand.yaml")); err == nil {
 		return dir, fmt.Errorf("%s already has a brand.yaml", dir)
