@@ -30,7 +30,9 @@ internal/data/           data/ files and the {{data…}} placeholders
 internal/mdtext/         where Markdown prose ends and code or math begins
 internal/fig/            diagram source -> SVG -> PDF, and the print sizing maths
 internal/tex/            templates/*.tmpl + escaping + page arithmetic
-internal/build/          the pipeline; owns the xelatex run and its log
+internal/build/          the pipeline: prepare.go is what every output format
+                         shares (brand, data, words, sized figures); pdf.go is
+                         the PDF's own, and owns the xelatex run and its log
 internal/run/            external commands, with their output on failure
 scripts/torture.sh       builds the fixtures and reads the PDFs and logs
 testdata/                torture.md, which must come out clean, and
