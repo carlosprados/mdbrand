@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/paths"
@@ -151,6 +152,11 @@ func configCmd() *cobra.Command {
 			fmt.Fprintf(out, "brand       : %s\n", orNone(viper.GetString("brand")))
 			fmt.Fprintf(out, "style       : %s\n", viper.GetString("style"))
 			fmt.Fprintf(out, "wordcount   : %s\n", viper.GetString("wordcount"))
+			formats := strings.Join(viper.GetStringSlice("formats"), ",")
+			if formats == "" {
+				formats = "pdf (default)"
+			}
+			fmt.Fprintf(out, "formats     : %s\n", formats)
 			return nil
 		},
 	}

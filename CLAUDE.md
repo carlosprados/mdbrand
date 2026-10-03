@@ -18,6 +18,12 @@ a knob that lets a defect through is the wrong direction.
 Non-goals: a general pandoc wrapper, HTML or slide output, a template language
 for users. It renders documents that look like the ones in `examples/`.
 
+The PDF is the product. `--to docx` writes the same document for readers who
+need Word or Google Docs, and it is strictly additive: nothing on the PDF's path
+may change for it. A change near `internal/build` proves that by building every
+fixture before and after and diffing the generated `.tex`, Markdown and the
+PDFs' text — byte for byte.
+
 ## Layout
 
 ```
@@ -30,9 +36,12 @@ internal/data/           data/ files and the {{data…}} placeholders
 internal/mdtext/         where Markdown prose ends and code or math begins
 internal/fig/            diagram source -> SVG -> PDF, and the print sizing maths
 internal/tex/            templates/*.tmpl + escaping + page arithmetic
+internal/docx/           reference.docx from the brand, cover and letterhead
+                         as OOXML, repairs over pandoc's .docx; a pure leaf
 internal/build/          the pipeline: prepare.go is what every output format
                          shares (brand, data, words, sized figures); pdf.go is
-                         the PDF's own, and owns the xelatex run and its log
+                         the PDF's own, and owns the xelatex run and its log;
+                         docx.go is the .docx's
 internal/run/            external commands, with their output on failure
 scripts/torture.sh       builds the fixtures and reads the PDFs and logs
 testdata/                torture.md, which must come out clean, and
@@ -150,6 +159,20 @@ Do not relax one without understanding what it cost.
     *Tabla*: babel's default *Cuadro* is appended over in the preamble,
     because pandoc loads babel before it and `es-tabla` cannot be passed.
     → `internal/tex/tables_test.go`, and the page checks on `testdata/data.md`.
+
+15. **A .docx asks only for the faces the bundle declares, and uses only what
+    Google Docs keeps.** A .docx carries no fonts, so `fonts.office` is
+    required of a named bundle, and Repair refuses a package naming any other
+    face: pandoc's reference names Aptos and Consolas, which Word and Docs
+    substitute in silence. Cover and letterhead are inline paragraphs, table
+    rules sit on cells, sizes are direct formatting: Google's importer drops
+    anchored frames and table styles. Columns are never narrower than their
+    longest word, code measured in the mono face — `report` broke in Docs when
+    it was measured as prose. Every `pPr`/`rPr` is normalised to schema order
+    and checked, because Word alone refuses a file out of order and nothing
+    here runs Word: pandoc 3.1 writes `<w:bCs/>` before `<w:b/>`.
+    → `internal/docx/docx_test.go`, the docx section of `scripts/torture.sh`
+    (read back through LibreOffice), `traps/pdf-picture.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

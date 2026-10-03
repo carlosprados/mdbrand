@@ -21,6 +21,10 @@ The identity lives in a *brand bundle* outside the tool — a directory with a
 `brand.yaml`, a logo and colours — so the same document publishes under another
 identity by changing one word.
 
+The same document also builds as a Word file, `--to docx`, for the readers who
+need one — Google Docs included. The PDF stays the reference; the `.docx` keeps
+as much of it as Word can hold.
+
 While you write, `mdbrand build informe.md --watch` rebuilds on every save, and
 `{{words}}` anywhere in the document prints its word count, by the
 International Baccalaureate's rules unless you choose others. The pages above
@@ -496,6 +500,62 @@ mdbrand:
     Amplía Soluciones S.L.
 ```
 
+### Word and Google Docs
+
+```sh
+mdbrand build informe.md --to docx        # informe.docx
+mdbrand build informe.md --to pdf,docx    # both, from one preparation
+```
+
+or in the front matter, `mdbrand: {formats: [pdf, docx]}`. With neither, the
+build writes a PDF, as it always has.
+
+The `.docx` is made for the reader's Word, LibreOffice or Google Docs, and only
+uses what all three keep: the cover is plain paragraphs, table rules are set on
+cells, every size is direct formatting. What carries over from the PDF:
+
+- the brand: colours, running header with the logo, page numbers, A4 and its
+  margins, a cover (`report`), a title block (`note`), a letterhead and
+  signature (`letter`);
+- figures, rasterised at 300 dpi **at the size the PDF places them**, so their
+  labels stay inside the legibility band;
+- data, `{{words}}`, citations, numbered captions (*Figura 1*, *Tabla 1*);
+- tables no narrower than their longest word, never split across rows, never
+  leaving fewer than three rows on one side of a page break;
+- a table of contents already filled in, which Word updates with page numbers
+  when it opens the file;
+- bare code blocks stepped down until they fit, as in the PDF.
+
+What does not: XeLaTeX's hyphenation and justification, and the guarantee that
+the reader sees the faces you chose. **A `.docx` carries no fonts.** So a named
+bundle must say which faces the Word file asks for, chosen for the readers'
+machines rather than this one:
+
+```yaml
+fonts:
+  office:
+    body: Inter          # Google Docs offers only Google Fonts
+    display: Montserrat  # never a licensed display face: the reader lacks it
+    mono: Roboto Mono
+```
+
+A bundle without them stops a `--to docx` build and says so; the built-in
+bundle uses Arial and Courier New, which every reader has. The build also
+refuses a `.docx` that asks for any face besides those three — pandoc's own
+template names Aptos and Consolas — and a picture linked as PDF, which Word
+cannot show.
+
+To open it in **Google Docs**, upload it converted, for instance with
+[gog](https://github.com/openclaw/gogcli):
+
+```sh
+gog drive upload informe.docx --convert-to doc
+```
+
+The Markdown stays the source. A `.docx` edited by someone else does not come
+back: carry the changes into the `.md` by hand, or have an assistant do it from
+`pandoc informe.docx -t markdown`.
+
 ### Diagrams and charts
 
 Write them inline, or link a side file. Both are rendered, placed and sized:
@@ -625,6 +685,10 @@ fonts:
     path:                      # candidates; first existing wins, ~ and $VARS expand
       - $MDBRAND_FONT_DIR
       - ~/.local/share/fonts/gotham
+  office:                      # the faces a .docx asks for; needed by --to docx
+    body: Inter
+    display: Montserrat
+    mono: Roboto Mono
 
 page:
   papersize: a4
@@ -689,6 +753,7 @@ brands_dir: /home/you/Dropbox/3-Resources/brands
 brand: amplia
 style: report
 wordcount: ib   # the {{words}} criterion when a document sets none
+formats: [pdf]  # what to write when neither --to nor the document says
 ```
 
 Resolution order, later wins: built-in default → config file → `MDBRAND_*`
