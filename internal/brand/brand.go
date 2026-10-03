@@ -195,7 +195,6 @@ func (b *Brand) applyDefaults() {
 	}
 }
 
-// Load reads <dir>/<name>/brand.yaml. Name "none" yields the built-in default.
 // ErrNoBrandsDir is what a named bundle meets when no brands directory is set,
 // which happens when there is no home directory to put the default one in. An
 // empty directory joined to a name is a path relative to wherever mdbrand runs,
@@ -203,6 +202,7 @@ func (b *Brand) applyDefaults() {
 // bundle.
 var ErrNoBrandsDir = errors.New("no brands directory is set, and there is no home directory to hold the default one: pass --brands-dir, or set MDBRAND_BRANDS_DIR or HOME")
 
+// Load reads <dir>/<name>/brand.yaml. Name "none" yields the built-in default.
 func Load(brandsDir, name string) (*Brand, error) {
 	if name == "" || name == "none" {
 		return Default(), nil

@@ -37,7 +37,19 @@ testdata/                torture.md, which must come out clean, and
                          traps/, which must each fail naming the fix
 ```
 
-The one-way dependency is `cmd -> build -> {brand, doc, data, fig, tex} -> run`.
+Imports run one way, and `.golangci.yml` enforces it with depguard rather than
+trusting this paragraph — which, unenforced, had drifted from the code:
+
+- `cmd` is the composition root and may import any package.
+- `internal/build` is the only orchestrator. No other internal package imports
+  it, and none imports `cmd`, so a second output format can sit beside the
+  first without either knowing about the other.
+- `os/exec` is imported only by `internal/run`, which is what puts a failed
+  tool's own output into the error.
+
+Existing exceptions and complexity debt are listed by name under `exclusions`
+in `.golangci.yml`. Remove an entry when its function is next touched; add one
+only with the reason written beside it.
 
 ## Invariants. Each of these was a real defect; each has a test
 
@@ -145,7 +157,8 @@ fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.
 
 ```sh
 just build          # or: go build -o mdbrand .
-just check          # gofmt -w . && go vet ./... && go test ./...
+just check          # gofmt -w . && go vet && golangci-lint && go test
+just lint           # golangci-lint alone, pinned in CI to the same version
 just torture        # builds testdata/ and reads what came out — needs the toolchain
 just example        # builds examples/demo.md with the built-in default bundle
 just install        # into ~/.local/bin, version from git describe
@@ -195,7 +208,7 @@ git tag -a vX.Y.Z -m "…" && git push origin vX.Y.Z
 gh run watch --exit-status "$(gh run list --workflow=release --limit 1 --json databaseId --jq '.[0].databaseId')"
 ```
 
-`ci.yml` runs gofmt/vet/test on every push to main, and deliberately uses the
+`ci.yml` runs gofmt/vet/lint/test on every push to main, and deliberately uses the
 same action versions as the release workflow so a bad bump surfaces there first.
 Both also build the fixtures, through the composite action in
 `.github/actions/document-toolchain`, which pins the d2 version because the
