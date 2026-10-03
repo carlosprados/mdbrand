@@ -1,0 +1,121 @@
+# golangci-lint v2. `just lint` runs it; CI runs it on every push.
+#
+# Two kinds of rule live here. depguard holds the architecture: the direction
+# of the imports, which CLAUDE.md used to state and nothing used to check —
+# it had already drifted when the rules were written. The rest catches the
+# shapes that grow into defects: an error dropped on the floor, a function no
+# one can hold in their head.
+#
+# Existing offenders are listed by name under exclusions, not hidden behind a
+# looser threshold. Shrinking that list is the work; growing it needs a reason
+# written next to the entry.
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - depguard
+    - errcheck
+    - gocognit
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+  settings:
+    depguard:
+      rules:
+        # cmd is the composition root and may reach any package. Below it,
+        # build is the only orchestrator: the packages it drives know nothing
+        # of the pipeline, so a second output format can be added beside the
+        # first without either learning about the other.
+        no-upward:
+          files:
+            - "**/internal/**"
+          deny:
+            - pkg: github.com/carlosprados/mdbrand/cmd
+              desc: internal packages never depend on the CLI
+        leaves-below-build:
+          files:
+            - "**/internal/**"
+            - "!**/internal/build/**"
+          deny:
+            - pkg: github.com/carlosprados/mdbrand/internal/build
+              desc: only cmd drives the pipeline; move the shared piece down instead
+        # Every external command goes through internal/run, which is what puts
+        # the tool's own output into the error when it fails.
+        exec-through-run:
+          files:
+            - $all
+            - "!**/internal/run/**"
+          deny:
+            - pkg: os/exec
+              desc: run external commands through internal/run
+
+    errcheck:
+      exclude-functions:
+        # Printing to the terminal: a failed write there has nowhere to go.
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        # Best-effort cleanup of temporary files and directories.
+        - os.Remove
+        - os.RemoveAll
+
+    gocognit:
+      min-complexity: 40
+
+    staticcheck:
+      checks:
+        - all
+        # Error messages here are paragraphs that name the fix, punctuation
+        # included, on purpose.
+        - -ST1005
+        # Package comments and naming conventions the codebase does not follow.
+        - -ST1000
+        - -ST1003
+        # Rewrites offered as suggestions, not defects.
+        - -QF*
+
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [errcheck]
+
+      # Debt, by name. Each one goes when its function is next touched.
+      - path: internal/build/build.go
+        text: "func `pipeline`"
+        linters: [gocognit] # splits into Prepare + RenderPDF for the docx backend
+      - path: internal/data/table.go
+        text: "func `render`"
+        linters: [gocognit]
+      - path: cmd/diagrams.go
+        text: "func `diagramsCmd`"
+        linters: [gocognit]
+      - path: cmd/doctor.go
+        text: "func `doctorCmd`"
+        linters: [gocognit]
+      - path: internal/mdtext/mdtext.go
+        text: "func `Protected`"
+        linters: [gocognit]
+      - path: cmd/doctor.go
+        text: os/exec
+        linters: [depguard] # exec.LookPath; internal/run needs a Path helper
+      - path: internal/data/list.go
+        text: filepath.WalkDir
+        linters: [errcheck] # an unreadable data dir lists as empty
+      - path: internal/build/build.go
+        text: tmp.Close
+        linters: [errcheck] # error paths that already return the write error
+      # Close is not excluded wholesale: after a write, its error is the only
+      # report of a file that never reached the disk. These two only read.
+      - path: internal/imgsize/imgsize.go
+        text: f.Close
+        linters: [errcheck]
+      - path: internal/watch/watch.go
+        text: w.Close
+        linters: [errcheck]
+
+formatters:
+  enable:
+    - gofmt

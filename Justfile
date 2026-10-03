@@ -39,8 +39,12 @@ fmt:
 vet:
     go vet ./...
 
-# gofmt, vet and the unit tests
-check: fmt vet test
+# golangci-lint: import direction, dropped errors, complexity (.golangci.yml)
+lint:
+    golangci-lint run ./...
+
+# gofmt, vet, lint and the unit tests
+check: fmt vet lint test
 
 # Uses the unbranded default bundle, so it proves the tool works on a clean
 # machine with no brand set up.

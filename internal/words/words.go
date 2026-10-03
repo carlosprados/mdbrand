@@ -25,7 +25,7 @@ import (
 // Parts a criterion may add to a profile.
 var Parts = []string{"captions", "tables", "footnotes", "citations", "references", "code", "math"}
 
-// Profiles, each a set of Parts. ib adds nothing; all adds everything, which is
+// Profiles lists the base criteria, each a set of Parts. ib adds nothing; all adds everything, which is
 // the "count every word printed" convention some journals use.
 var Profiles = []string{"ib", "all"}
 
