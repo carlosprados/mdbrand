@@ -42,6 +42,21 @@ linters:
           deny:
             - pkg: github.com/carlosprados/mdbrand/internal/build
               desc: only cmd drives the pipeline; move the shared piece down instead
+        # The two output formats know nothing of each other. docx is a pure
+        # leaf — bytes and numbers in, bytes out — and build is what tells it
+        # what the brand means, as it does for tex.
+        docx-is-a-leaf:
+          files:
+            - "**/internal/docx/**"
+          deny:
+            - pkg: github.com/carlosprados/mdbrand/internal
+              desc: internal/docx takes plain values from build; it imports no other package of mdbrand
+        tex-knows-no-docx:
+          files:
+            - "**/internal/tex/**"
+          deny:
+            - pkg: github.com/carlosprados/mdbrand/internal/docx
+              desc: the PDF's LaTeX and the .docx are separate formats
         # Every external command goes through internal/run, which is what puts
         # the tool's own output into the error when it fails.
         exec-through-run:

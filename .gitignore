@@ -3,6 +3,9 @@
 
 # build outputs and kept work directories
 *.pdf
+# ...except a fixture's input: the trap that a .docx refuses a PDF picture
+# needs one to refuse.
+!/testdata/traps/pictures/*.pdf
 *.aux
 *.log
 *.out

@@ -21,8 +21,8 @@ func buildCmd() *cobra.Command {
 
 	c := &cobra.Command{
 		Use:   "build <document.md>",
-		Short: "Build a branded A4 PDF from a Markdown document",
-		Long: `Build a branded A4 PDF from Markdown.
+		Short: "Build a branded A4 PDF, and a .docx if asked, from a Markdown document",
+		Long: `Build a branded A4 PDF from Markdown — and, with --to docx, a Word file.
 
 Everything can come from the document's front matter, so the usual invocation
 carries no flags at all:
@@ -115,6 +115,17 @@ replaces the front matter's criterion, parts included. Word processors disagree
 with each other by a percent or two over dashes, numbers and URLs, and so does
 this: near a hard limit, leave a margin.
 
+--to docx writes a branded .docx for Word, LibreOffice or Google Docs; --to
+pdf,docx writes both from one preparation, each beside the other under --out's
+name. The front matter can say it instead (mdbrand: {formats: [pdf, docx]}),
+and pdf is the default. The .docx has the cover, header, figures at the size
+the PDF gives them, numbered captions, tables that never break a word, and a
+filled table of contents Word updates on opening. A .docx carries no fonts, so
+a named bundle must declare fonts.office (body, display, mono), faces the
+readers have; the build stops without them, and refuses a .docx asking for any
+other face, or holding a picture linked as PDF. For Google Docs, upload it
+converted: gog drive upload informe.docx --convert-to doc
+
 --watch keeps mdbrand running and rebuilds whenever a file the build read
 changes: the document, its linked figures and pictures, the bibliography and
 CSL, the bundle's brand.yaml and logos. The set is taken from each build, so a
@@ -131,6 +142,7 @@ file. Ctrl-C stops it.
 			o.DefaultBrand = viper.GetString("brand")
 			o.DefaultStyle = viper.GetString("style")
 			o.DefaultWordCount = viper.GetString("wordcount")
+			o.DefaultFormats = viper.GetStringSlice("formats")
 			if !quiet {
 				o.Log = func(f string, a ...any) { fmt.Fprintf(cmd.ErrOrStderr(), f+"\n", a...) }
 			}
@@ -162,7 +174,8 @@ file. Ctrl-C stops it.
 			}, logf)
 		},
 	}
-	c.Flags().StringVarP(&o.Output, "out", "o", "", "output PDF (default: alongside the input)")
+	c.Flags().StringVarP(&o.Output, "out", "o", "", "output file (default: alongside the input); with several formats, each takes its own extension")
+	c.Flags().StringSliceVar(&o.Formats, "to", nil, "pdf | docx | pdf,docx; overrides the front matter's formats (default pdf)")
 	c.Flags().StringVar(&o.BrandName, "brand", "", "brand bundle to use; overrides the front matter")
 	c.Flags().StringVar(&o.Style, "style", "", "report | note | letter; overrides the front matter")
 	c.Flags().StringVar(&o.WordCount, "wordcount", "", "ib | all: the {{words}} criterion; replaces the front matter's entirely")
@@ -174,8 +187,16 @@ file. Ctrl-C stops it.
 }
 
 func printReport(out, errOut io.Writer, rep *build.Report) {
-	fmt.Fprintf(out, "%s  (%d pages, %d words by %s, brand %s, style %s)\n",
-		rep.Output, rep.Pages, rep.Words, rep.WordRule, rep.Brand, rep.Style)
+	for _, o := range rep.Outputs {
+		if o.Format == "pdf" {
+			fmt.Fprintf(out, "%s  (%d pages, %d words by %s, brand %s, style %s)\n",
+				o.Path, o.Pages, rep.Words, rep.WordRule, rep.Brand, rep.Style)
+			continue
+		}
+		// A .docx has no page count of its own: whatever opens it paginates it.
+		fmt.Fprintf(out, "%s  (%d words by %s, brand %s, style %s)\n",
+			o.Path, rep.Words, rep.WordRule, rep.Brand, rep.Style)
+	}
 	for _, f := range rep.Figures {
 		fmt.Fprintf(out, "  fig %-22s %.0f×%.0f mm   text %.1fpt\n",
 			filepath.Base(f.Fig.SrcPath), f.WidthMM, f.HeightMM, f.TextPt)

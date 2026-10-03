@@ -18,7 +18,10 @@ runs:
         # — without it every build dies before reaching mdbrand's preamble.
         # poppler-utils is how the fixtures read the PDF back, and just is what
         # runs them, so a workflow calls the same recipe a person does.
+        # LibreOffice is no part of a build: it is how the fixtures read a
+        # .docx back, the way poppler reads the PDF.
         sudo apt-get install -y --no-install-recommends \
+          libreoffice-writer-nogui \
           pandoc \
           texlive-xetex \
           texlive-latex-base \

@@ -20,17 +20,17 @@ import (
 // renderPDF typesets a prepared document: LaTeX fragments from the brand,
 // pandoc to LaTeX, xelatex, and a reading of its log that refuses a PDF with
 // holes in it.
-func renderPDF(p *prepared, inputs *[]string) (*Report, error) {
+func renderPDF(p *prepared, out string, inputs *[]string) error {
 	o, d, b, work, rep := p.o, p.d, p.b, p.work, p.rep
 
 	// The logo goes into the work directory in a form xelatex can embed.
 	logoSecondFile, err := prepareLogoSecondary(b, work)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	logoFile, err := prepareLogo(b, work)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	body := p.body
@@ -40,7 +40,7 @@ func renderPDF(p *prepared, inputs *[]string) (*Report, error) {
 
 	fallbackFont, fallbackChars, err := fallback(b, body, d.Meta)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// LaTeX fragments.
@@ -84,10 +84,10 @@ func renderPDF(p *prepared, inputs *[]string) (*Report, error) {
 	for _, frag := range []string{"preamble", "before", "after"} {
 		s, err := tex.Render(frag, data)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if err := os.WriteFile(filepath.Join(work, frag+".tex"), []byte(s), 0o644); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -100,20 +100,20 @@ func renderPDF(p *prepared, inputs *[]string) (*Report, error) {
 	}
 	md.WriteString(body)
 	if err := os.WriteFile(filepath.Join(work, mdName), []byte(md.String()), 0o644); err != nil {
-		return nil, err
+		return err
 	}
 
 	args, err := pandocArgs(p, stem, inputs)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	o.logf("  pandoc %s", stem+".md")
 	pandocOut, err := run.Cmd(work, "pandoc", args...)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if keys := missingCitations(pandocOut); len(keys) > 0 {
-		return nil, fmt.Errorf(`the bibliography has no entry for %d citation key(s):
+		return fmt.Errorf(`the bibliography has no entry for %d citation key(s):
   %s
 citeproc prints those as "(key?)" in the finished PDF and exits 0, so nothing
 else would have told you. Fix the key or add the entry.`,
@@ -123,10 +123,10 @@ else would have told you. Fix the key or add the entry.`,
 	texPath := filepath.Join(work, stem+".tex")
 	texSrc, err := os.ReadFile(texPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if err := os.WriteFile(texPath, []byte(tex.KeepTableRows(string(texSrc))), 0o644); err != nil {
-		return nil, err
+		return err
 	}
 
 	// xelatex, run here so the log is ours to read.
@@ -137,24 +137,20 @@ else would have told you. Fix the key or add the entry.`,
 	for i := 0; i < passes; i++ {
 		o.logf("  xelatex pass %d/%d", i+1, passes)
 		if _, err := run.Cmd(work, "xelatex", "-interaction=nonstopmode", "-halt-on-error", stem+".tex"); err != nil {
-			return nil, fmt.Errorf("xelatex failed: %w", err)
+			return fmt.Errorf("xelatex failed: %w", err)
 		}
 	}
 
 	logRaw, _ := os.ReadFile(filepath.Join(work, stem+".log"))
-	if err := judgeLog(scanLog(string(logRaw)), o, rep); err != nil {
-		return nil, err
-	}
-
-	out := o.Output
-	if out == "" {
-		out = filepath.Join(filepath.Dir(o.Input), stem+".pdf")
+	sc := scanLog(string(logRaw))
+	if err := judgeLog(sc, o, rep); err != nil {
+		return err
 	}
 	if err := copyFile(filepath.Join(work, stem+".pdf"), out); err != nil {
-		return nil, err
+		return err
 	}
-	rep.Output = out
-	return rep, nil
+	rep.Outputs = append(rep.Outputs, Output{Format: "pdf", Path: out, Pages: sc.Pages})
+	return nil
 }
 
 // pandocArgs is the command line that turns the rewritten Markdown into LaTeX:
@@ -225,7 +221,6 @@ or change fonts.body in the bundle to one this machine has.`, b.Name, b.Fonts.Bo
 // judgeLog turns what the xelatex log says into the build's verdict: holes and
 // a header taller than its box stop it, code and lines past the measure warn.
 func judgeLog(sc scan, o Options, rep *Report) error {
-	rep.Pages = sc.Pages
 	if len(sc.Holes) > 0 && !o.AllowHoles {
 		return fmt.Errorf(`the font has no glyph for %d character(s) the document uses, so they
 would print as nothing at all and only this log would know:

@@ -261,3 +261,17 @@ func TestLoadRefusesEmptyBrandsDir(t *testing.T) {
 		t.Error("Scaffold created a bundle in the working directory")
 	}
 }
+
+// The built-in bundle names faces every reader has; a named bundle must name
+// its own, because Word would otherwise substitute them in silence.
+func TestOfficeFonts(t *testing.T) {
+	o, err := Default().OfficeFonts()
+	if err != nil || o.Body != "Arial" || o.Mono != "Courier New" {
+		t.Errorf("default bundle: %+v, %v", o, err)
+	}
+	named := &Brand{Name: "acme", Dir: "/brands/acme"}
+	named.Fonts.Office.Body = "Inter" // display and mono missing
+	if _, err := named.OfficeFonts(); err == nil || !strings.Contains(err.Error(), "fonts:\n    office:") {
+		t.Errorf("incomplete fonts.office accepted, or the error does not show the fix: %v", err)
+	}
+}
