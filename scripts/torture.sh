@@ -78,9 +78,9 @@ fi
 if command -v pdftotext >/dev/null; then
 	text="$(pdftotext "$work/torture.pdf" - 2>/dev/null)"
 	missing=""
-	# No colon in the pattern: the caption separator comes back through the
-	# font's ToUnicode map as something else entirely.
-	for caption in "Figure 1" "Figure 2" "Figure 3" "Figure 4"; do
+	# The colon is in the pattern on purpose: it used to come back as U+EE47,
+	# Inter's case form, which was the text-layer defect showing.
+	for caption in "Figure 1:" "Figure 2:" "Figure 3:" "Figure 4:"; do
 		printf '%s' "$text" | grep -qF "$caption" || missing="$missing $caption"
 	done
 	[ -z "$missing" ] && ok "all four figures placed in the PDF" \
@@ -99,6 +99,13 @@ if command -v pdftotext >/dev/null; then
 	printf '%s' "$text" | grep -qE '\([A-Za-z0-9]+\?\)' \
 		&& bad "an unresolved citation key printed as (key?)" \
 		|| ok "no unresolved citation"
+
+	# Inter's case forms printed right and copied as U+EE4E/U+EE4F. The build
+	# refuses that itself now; this is the witness that the text survives.
+	flat="$(printf '%s' "$text" | tr -s '[:space:]' ' ')"
+	printf '%s' "$flat" | grep -qF "(SD1) and (Fox Business, 2026) and [ABC]" \
+		&& ok "brackets beside capitals copy as themselves" \
+		|| bad "brackets beside capitals do not survive text extraction"
 else
 	echo "  --    pdftotext absent, PDF contents not checked"
 fi
@@ -128,8 +135,9 @@ fi
 # ------------------------------------------------------------------------ data
 # Values from testdata/data/, printed where the document asked for them: in the
 # title, the prose and a caption, merged keys included, and every Markdown
-# character of the data printed as itself. pdftotext drops < > and the colon,
-# so the phrases checked avoid them; the page itself shows them.
+# character of the data printed as itself. The phrases avoid < > and the
+# colon, which beside capitals once copied as Inter's private-use case forms;
+# the build refuses that now, so the avoidance is history, not a limitation.
 echo
 echo "testdata/data.md — data values and tables, as printed"
 out="$("$bin" build "$root/testdata/data.md" --work "$work/data" -o "$work/data.pdf" 2>&1)"
@@ -228,6 +236,13 @@ for f in torture data letter; do
 	warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'code block(s) stay past the measure' \
 		| grep -v 'were not checked against it')"
 	[ -z "$warnings" ] && ok "$f.docx: no unexpected warning" || bad "$f.docx warns: $warnings"
+	# pandoc writes a picture's path into pic:cNvPr, and mdbrand makes it
+	# absolute: a handed-in document carried the author's home directory.
+	if command -v unzip >/dev/null && [ $status -eq 0 ]; then
+		unzip -p "$work/$f.docx" word/document.xml | grep -qE 'descr="(/|[A-Za-z]:\\)' \
+			&& bad "$f.docx carries a local path in a picture's descr" \
+			|| ok "$f.docx: no local path inside"
+	fi
 done
 
 if command -v soffice >/dev/null && command -v pdffonts >/dev/null && command -v fc-match >/dev/null; then
@@ -299,6 +314,8 @@ traps=(
 	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"
 	"absent-body-font.md|fail|names no fonts.office|--to docx --brand ghost --brands-dir $root/testdata/brands"
 	"pdf-picture.md|fail|a .docx cannot hold one|--to docx --brand none"
+	"span-colour.md|fail|[words]{.accent}"
+	"span-colour.md|fail|[words]{.accent}|--to docx --brand none"
 )
 
 echo

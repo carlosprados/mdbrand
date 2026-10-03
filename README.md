@@ -132,6 +132,11 @@ Required only if a document contains diagrams:
 | **[d2](https://d2lang.com)** | Renders `.d2` diagrams ([install guide](https://d2lang.com/tour/install), [language tour](https://d2lang.com/tour/intro)) | `curl -fsSL https://d2lang.com/install.sh \| sh -s --` (or `brew install d2`) |
 | **[vl2svg](https://vega.github.io/vega-lite/)** | Renders Vega-Lite charts ([CLI source](https://github.com/vega/vega/tree/main/packages/vega-cli), [chart docs](https://vega.github.io/vega-lite/docs/)) | `npm i -g vega-cli vega-lite` |
 
+Recommended: **[pdftotext](https://poppler.freedesktop.org/)** from poppler
+(`apt install poppler-utils`, `dnf install poppler-utils`, `pacman -S poppler`).
+Each PDF is read back through it, and a text layer that would copy as garbage
+stops the build; without it the build warns that the check did not run.
+
 Fonts: the body font named in the bundle must be installed and must cover the
 glyphs you type. [Inter](https://rsms.me/inter/) is a good default
 (`apt install fonts-inter`). A bundle whose body face is missing stops the build
@@ -479,6 +484,20 @@ Paths resolve **against the document**, not against the working directory, and a
 entry: pandoc reports those as warnings and exits 0 anyway, which is how `(fml?)`
 ends up printed in the middle of a sentence.
 
+### Coloured words
+
+```markdown
+The deadline is [non-negotiable]{.accent}, and the rest is detail.
+```
+
+`.accent` sets the words in the bundle's `colors.primary`, in the PDF and the
+`.docx` alike — in the `.docx` as an *Accent* character style, with the colour
+also on each run, because Google Docs drops character styles when it imports.
+The palette is the brand's, not the author's: there is no hex colour. A span
+with `color=`, `colour=` or `style=` stops the build, and so does a
+`::: {.accent}` block, because pandoc drops those attributes on both outputs
+and the words would print black without a word of warning.
+
 ### Styles
 
 | Style | Shape |
@@ -776,6 +795,17 @@ covers it, or name a `fonts.fallback` that does: mdbrand compares the two faces'
 coverage with the text and sets in the fallback only what the body lacks, so a
 character neither face has still stops the build. `--allow-missing-glyphs`
 proceeds anyway.
+
+**`its text layer holds private-use characters`** — the page prints right, but
+what copy-paste, search or a plagiarism checker reads is garbage at the places
+quoted. The face swaps in alternate glyphs it maps to private-use code points.
+mdbrand already turns contextual alternates off, which is what fixed Inter's
+`(SD1)`; a face that still does it needs replacing in the bundle, and an issue
+with the document.
+
+**`colour(s) asked for in a way that neither the PDF nor the .docx can print`**
+— a `color=` or `style=` attribute, which pandoc drops in silence. Write
+`[words]{.accent}`.
 
 **`would print its smallest label at 6.2pt`** — the figure cannot be placed
 legibly. Raise the font size in the source and lower the scale by the same

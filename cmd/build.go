@@ -64,6 +64,16 @@ characters print as nothing and only the XeLaTeX log would ever know. A bundle
 may name fonts.fallback (Noto Sans Symbols2, say): the characters the body face
 lacks and that face has are set in it, and anything neither covers still stops.
 
+The finished PDF is read back with pdftotext (poppler), and a private-use
+character in its text layer that the source does not hold stops the build: the
+page prints right, but copy-paste, search and plagiarism checkers read garbage.
+Contextual alternates are off for that reason — Inter's turned "(SD1)" into
+U+EE4E SD1 U+EE4F. Without pdftotext the build warns that it was not checked.
+
+[words]{.accent} sets words in the brand's primary colour, in the PDF and the
+.docx alike. A span or div with color=, colour= or style= stops the build:
+pandoc drops those attributes in silence, so the words would print black.
+
 A picture linked as .svg is treated as a figure — checked for <foreignObject>,
 sized for legible labels and converted by rsvg-convert. PNG, JPEG and PDF
 pictures keep their markup; every relative path resolves against the document,

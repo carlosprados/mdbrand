@@ -115,19 +115,21 @@ func styles(s string, l Look) string {
 		"Subtitle":       {font: l.Display, color: l.Text, sizePt: 14, bold: &no, italic: &no, jc: "left", before: 0, after: 120},
 		"Author":         {font: l.Display, color: l.Text, sizePt: SmallPt, jc: "left", before: 0, after: 0},
 		"Date":           {font: l.Display, color: l.Text, sizePt: SmallPt, jc: "left", before: 0, after: 0},
-		"Heading1":       {font: l.Display, color: l.Primary, sizePt: 14, bold: &yes, before: 360, after: 120, keep: true},
-		"Heading2":       {font: l.Display, color: l.Primary, sizePt: 12, bold: &yes, before: 240, after: 100, keep: true},
-		"Heading3":       {font: l.Display, color: l.Text, sizePt: 10, bold: &yes, before: 200, after: 80, keep: true},
-		"Heading4":       {font: l.Display, color: l.Text, sizePt: 10, bold: &yes, italic: &no, before: 160, after: 60, keep: true},
-		"TOCHeading":     {font: l.Display, color: l.Text, sizePt: 14, bold: &yes, before: 0, after: 200},
-		"Caption":        {sizePt: CaptionPt, color: l.Text, italic: &no, jc: "center", before: 60, after: 200},
-		"ImageCaption":   {sizePt: CaptionPt, color: l.Text, italic: &no, jc: "center", before: 60, after: 200},
-		"TableCaption":   {sizePt: CaptionPt, color: l.Text, italic: &no, jc: "center", before: 200, after: 80, keep: true},
-		"FootnoteText":   {sizePt: TinyPt, before: 0, after: 40},
-		"BlockText":      {sizePt: SmallPt, color: l.Text, before: 100, after: 100},
-		"Bibliography":   {sizePt: SmallPt, before: 0, after: 80},
-		"VerbatimChar":   {font: l.Mono, sizePt: SmallPt, before: -1, after: -1},
-		"Hyperlink":      {color: l.Primary, before: -1, after: -1},
+		// The PDF never colours a heading, so neither does the .docx: primary
+		// headings made every Word copy of a brand-none document look blue.
+		"Heading1":     {font: l.Display, color: l.Text, sizePt: 14, bold: &yes, before: 360, after: 120, keep: true},
+		"Heading2":     {font: l.Display, color: l.Text, sizePt: 12, bold: &yes, before: 240, after: 100, keep: true},
+		"Heading3":     {font: l.Display, color: l.Text, sizePt: 10, bold: &yes, before: 200, after: 80, keep: true},
+		"Heading4":     {font: l.Display, color: l.Text, sizePt: 10, bold: &yes, italic: &no, before: 160, after: 60, keep: true},
+		"TOCHeading":   {font: l.Display, color: l.Text, sizePt: 14, bold: &yes, before: 0, after: 200},
+		"Caption":      {sizePt: CaptionPt, color: l.Text, italic: &no, jc: "center", before: 60, after: 200},
+		"ImageCaption": {sizePt: CaptionPt, color: l.Text, italic: &no, jc: "center", before: 60, after: 200},
+		"TableCaption": {sizePt: CaptionPt, color: l.Text, italic: &no, jc: "center", before: 200, after: 80, keep: true},
+		"FootnoteText": {sizePt: TinyPt, before: 0, after: 40},
+		"BlockText":    {sizePt: SmallPt, color: l.Text, before: 100, after: 100},
+		"Bibliography": {sizePt: SmallPt, before: 0, after: 80},
+		"VerbatimChar": {font: l.Mono, sizePt: SmallPt, before: -1, after: -1},
+		"Hyperlink":    {color: l.Primary, before: -1, after: -1},
 	}
 	// Every entry sets before and after: zero is a real spacing, so -1 is
 	// what leaves one alone.
@@ -144,7 +146,21 @@ func styles(s string, l Look) string {
 	if !strings.Contains(s, `w:styleId="SourceCode"`) {
 		s = strings.Replace(s, "</w:styles>", sourceCodeStyle(l.Mono)+"</w:styles>", 1)
 	}
+	if !strings.Contains(s, `w:styleId="`+AccentStyle+`"`) {
+		s = strings.Replace(s, "</w:styles>", accentStyle(l.Primary)+"</w:styles>", 1)
+	}
 	return s
+}
+
+// AccentStyle is the character style an [accented]{.accent} span is written
+// with. Repair also colours its runs directly, because Google Docs drops
+// character styles on import; the style is what a Word user sees named.
+const AccentStyle = "Accent"
+
+func accentStyle(color string) string {
+	return fmt.Sprintf(`<w:style w:type="character" w:customStyle="1" w:styleId="%s">`+
+		`<w:name w:val="%s"/><w:basedOn w:val="DefaultParagraphFont"/>`+
+		`<w:rPr><w:color w:val="%s"/></w:rPr></w:style>`, AccentStyle, AccentStyle, color)
 }
 
 // tocStyle is one level of the table of contents, indented like the PDF's,

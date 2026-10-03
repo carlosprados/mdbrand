@@ -171,8 +171,29 @@ Do not relax one without understanding what it cost.
     it was measured as prose. Every `pPr`/`rPr` is normalised to schema order
     and checked, because Word alone refuses a file out of order and nothing
     here runs Word: pandoc 3.1 writes `<w:bCs/>` before `<w:b/>`.
+    pandoc's bullets are private-use characters in Symbol and Wingdings, so
+    Repair redraws every bulleted level in the body face; until it did, no
+    document with a list built as a .docx, and no fixture had one.
     → `internal/docx/docx_test.go`, the docx section of `scripts/torture.sh`
     (read back through LibreOffice), `traps/pdf-picture.md`.
+
+16. **The PDF's text layer reads as its text.** Inter's contextual
+    alternates swap `( ) [ ] { } : < >` beside capitals for case forms its
+    cmap puts at private-use code points, and xdvipdfmx builds ToUnicode
+    from that cmap: "(SD1)" printed right and reached Turnitin as U+EE4E SD1
+    U+EE4F, in every Inter document. calt is off through pandoc's
+    `mainfontoptions` — pandoc loads the face a second time through
+    `\babelfont`, so a `\setmainfont` of our own is undone — and on the
+    display faces. The PDF is read back with pdftotext, and a private-use
+    character the source does not hold stops the build.
+    → `internal/build/build_test.go`, the brackets check in `testdata/torture.md`.
+
+17. **A colour pandoc would drop is refused.** `color=`, `colour=` and
+    `style=` vanish on both writers, so the words printed black and the build
+    exited 0. `[words]{.accent}` is the one colour, the brand's primary,
+    through `internal/build/spans.lua` for both outputs; the filter reports
+    everything else on stderr and the build stops naming `.accent`.
+    → `internal/build/build_test.go`, `traps/span-colour.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

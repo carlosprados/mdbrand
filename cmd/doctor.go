@@ -24,7 +24,9 @@ func doctorCmd() *cobra.Command {
 		Short: "Check the toolchain and print exactly how to fix what is missing",
 		Long: `Verify every external piece a build needs and print the install command for
 what is absent. Required for any build: pandoc, xelatex, rsvg-convert and a few
-LaTeX packages. Required only if the document has diagrams: d2, vl2svg.`,
+LaTeX packages. Required only if the document has diagrams: d2, vl2svg.
+Recommended: pdftotext, which reads each PDF back so a text layer that copies
+as garbage stops the build; without it a build warns that it was not checked.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
 			var checks []check
@@ -41,6 +43,7 @@ LaTeX packages. Required only if the document has diagrams: d2, vl2svg.`,
 			bin("rsvg-convert", "apt install librsvg2-bin  ·  https://gitlab.gnome.org/GNOME/librsvg", true)
 			bin("d2", "curl -fsSL https://d2lang.com/install.sh | sh -s --  ·  https://d2lang.com/tour/install", false)
 			bin("vl2svg", "npm i -g vega-cli vega-lite  ·  https://vega.github.io/vega-lite/", false)
+			bin("pdftotext", "apt install poppler-utils (brew install poppler)  ·  https://poppler.freedesktop.org/", false)
 
 			// LaTeX packages: a missing .sty is a build failure whose message
 			// names the file and not the package that carries it.

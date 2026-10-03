@@ -115,10 +115,25 @@ converted by rsvg-convert like the rest.
 
 ![A pre-rendered SVG](diagrams/prerendered.svg)
 
+A raster picture goes to pandoc as written, and pandoc copied its path, which
+mdbrand makes absolute, into the .docx: a handed-in file named a home directory.
+
+![A raster picture](diagrams/picture.png){width=60mm}
+
 # Typography the default font has to cover
 
 Accents and punctuation the body font must carry: añadir, más, según, «citas»,
 un guion largo — así, puntos suspensivos… y comillas "rectas" frente a “curvas”.
+
+Brackets beside capitals and digits, which Inter swaps for case forms: the PDF
+printed them and copied them as private-use code points, so a plagiarism checker
+read (SD1) and (Fox Business, 2026) and [ABC] as garbage.
+
+One phrase in the [brand's accent]{.accent}, which both outputs colour.
+
+- A bulleted list, which the .docx refused over pandoc's Symbol and Wingdings
+    - nested once
+        - and twice
 
 # Citations
 

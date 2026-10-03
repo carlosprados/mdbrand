@@ -102,8 +102,12 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		return err
 	}
 
+	filter, err := writeSpanFilter(work)
+	if err != nil {
+		return err
+	}
 	args := []string{
-		mdName, "-o", stem + ".pandoc.docx",
+		mdName, "-o", stem + ".pandoc.docx", filter,
 		"--reference-doc=reference.docx",
 		"--resource-path=" + work + ":" + filepath.Dir(mustAbs(o.Input)),
 		// The table of contents is the cover's to place, after the cover.
@@ -125,6 +129,9 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 citeproc prints those as "(key?)" in the finished document and exits 0, so
 nothing else would have told you. Fix the key or add the entry.`,
 			len(keys), strings.Join(keys, ", "))
+	}
+	if err := spanProblems(pandocOut); err != nil {
+		return err
 	}
 
 	raw, err := os.ReadFile(filepath.Join(work, stem+".pandoc.docx"))
