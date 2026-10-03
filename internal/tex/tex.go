@@ -31,7 +31,6 @@ func ValidStyle(s string) bool {
 	return false
 }
 
-// Data is what the templates see.
 // FallbackChar is one character set in the fallback face: the character, and
 // its code point in hex for \char, because a definition that names the
 // character itself would call itself once the character is active.
@@ -49,6 +48,7 @@ func FallbackChars(rs []rune) []FallbackChar {
 	return out
 }
 
+// Data is what the templates see.
 type Data struct {
 	Brand *brand.Brand
 	Style string
