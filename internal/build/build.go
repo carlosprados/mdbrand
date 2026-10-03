@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -42,15 +43,18 @@ type Options struct {
 	// criterion, parts included; DefaultWordCount is configuration's.
 	WordCount        string
 	DefaultWordCount string
-	WorkDir          string // when set, the work directory is kept for inspection
-	AllowHoles       bool   // proceed even if the font lacks glyphs the text uses
-	Log              func(string, ...any)
+	// Formats is --to: pdf, docx or both. Empty means the front matter's
+	// `formats:`, then configuration's, then pdf.
+	Formats        []string
+	DefaultFormats []string
+	WorkDir        string // when set, the work directory is kept for inspection
+	AllowHoles     bool   // proceed even if the font lacks glyphs the text uses
+	Log            func(string, ...any)
 }
 
 // Report is what the build produced.
 type Report struct {
-	Output   string
-	Pages    int
+	Outputs  []Output // one per format, in the order asked for
 	Brand    string
 	Style    string
 	Figures  []*fig.Result
@@ -65,8 +69,24 @@ type Report struct {
 	Inputs []string
 }
 
-// Tools are the external programs a build needs, whatever the document holds.
-var Tools = []string{"pandoc", "xelatex", "rsvg-convert"}
+// Output is one file the build wrote.
+type Output struct {
+	Format string
+	Path   string
+	// Pages is known for a PDF only: a .docx is paginated by whatever opens it.
+	Pages int
+}
+
+// Formats are the outputs a build can write.
+var Formats = []string{"pdf", "docx"}
+
+// tools are the external programs each format needs, whatever the document
+// holds. PDF's come first and in this order, which is the order the missing
+// ones are named in.
+var tools = map[string][]string{
+	"pdf":  {"pandoc", "xelatex", "rsvg-convert"},
+	"docx": {"pandoc", "rsvg-convert"},
+}
 
 func (o *Options) logf(f string, a ...any) {
 	if o.Log != nil {
@@ -105,23 +125,111 @@ func Run(o Options) (*Report, error) {
 	return rep, err
 }
 
-// pipeline is one PDF build: the steps every format shares, then the PDF's own.
+// pipeline prepares the document once, then writes each format asked for.
 func pipeline(o Options, inputs *[]string) (*Report, error) {
 	*inputs = append(*inputs, mustAbs(o.Input))
-	if missing := run.Missing(Tools...); len(missing) > 0 {
+	d, err := doc.Read(o.Input)
+	if err != nil {
+		return nil, err
+	}
+	formats, err := pickFormats(o.Formats, d.Meta.Options.Formats, o.DefaultFormats)
+	if err != nil {
+		return nil, err
+	}
+	if missing := run.Missing(toolsFor(formats)...); len(missing) > 0 {
 		return nil, fmt.Errorf("missing tools: %s\n  run: mdbrand doctor", strings.Join(missing, ", "))
 	}
-	p, err := prepare(o, inputs)
-	if p == nil {
+	p, err := prepare(o, d, inputs)
+	if err != nil {
 		return nil, err
 	}
 	defer p.close()
 	// Deferred, so that it also holds what a chart read through a name.
 	defer func() { *inputs = append(*inputs, p.refs()...) }()
-	if err != nil {
+	if slices.Contains(formats, "docx") {
+		if _, err := p.b.OfficeFonts(); err != nil {
+			return nil, err
+		}
+	}
+	if err := p.fill(inputs); err != nil {
 		return nil, err
 	}
-	return renderPDF(p, inputs)
+	for _, f := range formats {
+		out, err := outputPath(o, f, len(formats))
+		if err != nil {
+			return nil, err
+		}
+		switch f {
+		case "pdf":
+			err = renderPDF(p, out, inputs)
+		case "docx":
+			err = renderDOCX(p, out, inputs)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return p.rep, nil
+}
+
+// pickFormats settles which outputs to write, by the same precedence as every
+// other setting, and refuses a name it does not know rather than writing
+// nothing for it.
+func pickFormats(flag, frontMatter, config []string) ([]string, error) {
+	asked := flag
+	for _, next := range [][]string{frontMatter, config, {"pdf"}} {
+		if len(asked) > 0 {
+			break
+		}
+		asked = next
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, f := range asked {
+		f = strings.ToLower(strings.TrimSpace(f))
+		if !slices.Contains(Formats, f) {
+			return nil, fmt.Errorf("unknown format %q: pick from %s", f, strings.Join(Formats, ", "))
+		}
+		if !seen[f] {
+			seen[f] = true
+			out = append(out, f)
+		}
+	}
+	return out, nil
+}
+
+func toolsFor(formats []string) []string {
+	var out []string
+	for _, f := range formats {
+		for _, t := range tools[f] {
+			if !slices.Contains(out, t) {
+				out = append(out, t)
+			}
+		}
+	}
+	return out
+}
+
+// outputPath is where one format goes: beside the input by default; at --out
+// when one format is written; at --out with each format's extension when
+// several are.
+func outputPath(o Options, format string, formats int) (string, error) {
+	ext := "." + format
+	if o.Output == "" {
+		stem := strings.TrimSuffix(filepath.Base(o.Input), filepath.Ext(o.Input))
+		return filepath.Join(filepath.Dir(o.Input), stem+ext), nil
+	}
+	if formats > 1 {
+		return strings.TrimSuffix(o.Output, filepath.Ext(o.Output)) + ext, nil
+	}
+	// Only another format's extension is refused: `-o informe.docx` for a PDF
+	// would hand Word a PDF. Any other name is the caller's business.
+	oext := filepath.Ext(o.Output)
+	if got := strings.ToLower(strings.TrimPrefix(oext, ".")); got != format && slices.Contains(Formats, got) {
+		return "", fmt.Errorf("--out %s is named for %s, and the format is %s: name it %s, or pass --to %s",
+			o.Output, got, format, strings.TrimSuffix(o.Output, oext)+ext, got)
+	}
+	return o.Output, nil
 }
 
 func figTools(figs []*doc.Fig) []string {

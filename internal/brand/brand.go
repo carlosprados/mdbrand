@@ -55,6 +55,53 @@ type Fonts struct {
 	// body lacks AND the fallback has are redirected to it; anything else
 	// missing still stops the build, so this cannot hide a missing glyph.
 	Fallback string `yaml:"fallback"`
+	// Office names the faces a .docx asks for. A .docx carries no fonts: the
+	// reader's Word or Google Docs sets it in what it has, and substitutes for
+	// what it lacks without saying so. So these are chosen for the reader's
+	// machine, not this one — a licensed display face has no place here.
+	Office Office `yaml:"office"`
+}
+
+// Office is the .docx's type: body, headings and code.
+type Office struct {
+	Body    string `yaml:"body"`
+	Display string `yaml:"display"`
+	Mono    string `yaml:"mono"`
+}
+
+// Complete reports whether all three faces are named.
+func (o Office) Complete() bool { return o.Body != "" && o.Display != "" && o.Mono != "" }
+
+// OfficeFonts are the faces a .docx asks for. The built-in bundle names the
+// ones every Word, LibreOffice and Google Docs has, because it must work on
+// any machine; a named bundle must declare its own, or the build stops.
+func (b *Brand) OfficeFonts() (Office, error) {
+	if b.IsDefault() && !b.Fonts.Office.Complete() {
+		o := b.Fonts.Office
+		if o.Body == "" {
+			o.Body = "Arial"
+		}
+		if o.Display == "" {
+			o.Display = "Arial"
+		}
+		if o.Mono == "" {
+			o.Mono = "Courier New"
+		}
+		return o, nil
+	}
+	if !b.Fonts.Office.Complete() {
+		return Office{}, fmt.Errorf(`the %s bundle names no fonts.office, and a .docx needs them.
+A .docx carries no fonts: Word and Google Docs set it in what the reader has
+and substitute the rest in silence. Declare faces the readers have — Google
+Docs offers only Google Fonts — in %s:
+
+  fonts:
+    office:
+      body: Inter          # body text
+      display: Montserrat  # headings, cover, header
+      mono: Roboto Mono    # code`, b.Name, filepath.Join(b.Dir, "brand.yaml"))
+	}
+	return b.Fonts.Office, nil
 }
 
 // Display is referenced by path and never copied into the bundle, so a
@@ -533,6 +580,9 @@ func (b *Brand) Check() (problems, warnings []string) {
 				"the line and let the missing-glyph check name the characters", f)
 		}
 	}
+	if !b.Fonts.Office.Complete() {
+		add(&warnings, "fonts.office: body, display and mono are not all named — --to docx will refuse this bundle")
+	}
 	if b.Diagrams.MinTextPt < 6 {
 		add(&warnings, "diagrams.min_text_pt: %.1f is below the readable floor on paper (~7pt)", b.Diagrams.MinTextPt)
 	}
@@ -579,6 +629,10 @@ fonts:
   #     - ~/.local/share/fonts/gotham
   #   # If the font is installed the normal way, drop path entirely: mdbrand
   #   # asks fontconfig where it is. Never copy the file into the bundle.
+  office:             # the faces a .docx asks for (--to docx): ones the readers
+    body: Inter       # have, since a .docx carries no fonts; Google Docs offers
+    display: Inter    # only Google Fonts. Never a licensed display face here.
+    mono: Roboto Mono
 
 page:
   papersize: a4

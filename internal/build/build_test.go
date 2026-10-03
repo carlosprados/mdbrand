@@ -201,3 +201,51 @@ Missing character: There is no ☐ (U+2610) in font Inter Regular/OT:script=latn
 		t.Errorf("holes = %q, want only the ballot box", holes)
 	}
 }
+
+// Formats follow the precedence every setting does, default to pdf, and an
+// unknown name stops the build instead of writing nothing for it.
+func TestPickFormats(t *testing.T) {
+	for _, c := range []struct {
+		flag, fm, cfg []string
+		want          string
+	}{
+		{nil, nil, nil, "pdf"},
+		{nil, nil, []string{"docx"}, "docx"},
+		{nil, []string{"pdf", "docx"}, []string{"docx"}, "pdf,docx"},
+		{[]string{"docx"}, []string{"pdf"}, nil, "docx"},
+		{[]string{"DOCX", "docx"}, nil, nil, "docx"},
+	} {
+		got, err := pickFormats(c.flag, c.fm, c.cfg)
+		if err != nil || strings.Join(got, ",") != c.want {
+			t.Errorf("pickFormats(%v, %v, %v) = %v, %v; want %s", c.flag, c.fm, c.cfg, got, err, c.want)
+		}
+	}
+	if _, err := pickFormats([]string{"odt"}, nil, nil); err == nil {
+		t.Error("odt accepted")
+	}
+}
+
+// The PDF's path must not move: `./x.md` built to `x.pdf` before formats
+// existed, and the result line prints it.
+func TestOutputPath(t *testing.T) {
+	for _, c := range []struct {
+		in, out, format string
+		n               int
+		want            string
+	}{
+		{"./x.md", "", "pdf", 1, "x.pdf"},
+		{"docs/x.md", "", "docx", 2, "docs/x.docx"},
+		{"x.md", "out/informe.pdf", "docx", 2, "out/informe.docx"},
+		{"x.md", "informe.txt", "pdf", 1, "informe.txt"},
+	} {
+		got, err := outputPath(Options{Input: c.in, Output: c.out}, c.format, c.n)
+		if err != nil || got != c.want {
+			t.Errorf("outputPath(%s, %s, %s) = %q, %v; want %q", c.in, c.out, c.format, got, err, c.want)
+		}
+	}
+	// A .docx named .pdf would hand Word a file it cannot read, and the other
+	// way round.
+	if _, err := outputPath(Options{Input: "x.md", Output: "x.pdf"}, "docx", 1); err == nil {
+		t.Error("--to docx -o x.pdf accepted")
+	}
+}

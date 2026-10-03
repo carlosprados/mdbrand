@@ -23,6 +23,7 @@ type Meta struct {
 	Author   any    `yaml:"author"` // string or list, as pandoc allows
 	Date     string `yaml:"date"`
 	TOC      *bool  `yaml:"toc"`
+	TOCDepth int    `yaml:"toc-depth"`
 	Lang     string `yaml:"lang"`
 
 	// Citations. These are pandoc's own metadata names and stay at the top
@@ -106,6 +107,9 @@ type Options struct {
 	// Data replaces the default data/ beside the document with these
 	// directories or files, resolved against the document.
 	Data StringList `yaml:"data"`
+	// Formats are the outputs to write: pdf, docx, or both. `to:` would have
+	// been pandoc's word for it, and it is the letter's recipient here.
+	Formats StringList `yaml:"formats"`
 
 	// letter style
 	To        []string `yaml:"to"`

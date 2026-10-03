@@ -190,6 +190,96 @@ elif [ $status -eq 0 ]; then
 	echo "  --    pdftotext absent, PDF contents not checked"
 fi
 
+# ------------------------------------------------------------------ the letter
+# The letter style had no fixture until the .docx needed one: letterhead,
+# recipient, place and date, greeting, a table, signature — on one page.
+echo
+echo "testdata/letter.md — the letter style"
+out="$("$bin" build "$root/testdata/letter.md" -o "$work/letter.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
+	pages="$(pdfinfo "$work/letter.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
+	[ "${pages:-0}" -eq 1 ] && ok "one page" || bad "the letter takes ${pages:-no} pages, want 1"
+	text="$(pdftotext "$work/letter.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	for phrase in "ACME Industrial S.A." "Madrid, 3 de octubre de 2026" "Estimados señores:" "Ana Ruiz Sánchez"; do
+		printf '%s' "$text" | grep -qF -- "$phrase" && ok "prints \"$phrase\"" || bad "the letter lacks \"$phrase\""
+	done
+fi
+
+# -------------------------------------------------------------------- the docx
+# The same fixtures as .docx files. A .docx has no log: it is laid out by
+# whatever opens it. LibreOffice, rendering it to PDF, is the witness — not
+# Word, not Google Docs, but it reads the same OOXML, and the defects that
+# found this format (a word broken across a narrow column, a face nobody
+# declared) show in what it draws.
+echo
+echo "docx — the fixtures as Word documents"
+for f in torture data letter; do
+	out="$("$bin" build "$root/testdata/$f.md" --brand none --to docx -o "$work/$f.docx" 2>&1)"
+	status=$?
+	if [ $status -eq 0 ]; then ok "$f.docx builds"; else
+		bad "$f.docx: build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+	fi
+	# torture's 101-column block fits LaTeX's mono at 8pt and no 0.6em face:
+	# the .docx says so, which is the point of saying so.
+	warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'code block(s) stay past the measure' \
+		| grep -v 'were not checked against it')"
+	[ -z "$warnings" ] && ok "$f.docx: no unexpected warning" || bad "$f.docx warns: $warnings"
+done
+
+if command -v soffice >/dev/null && command -v pdffonts >/dev/null && command -v fc-match >/dev/null; then
+	(cd "$work" && timeout 300 soffice --headless --convert-to pdf --outdir "$work/lo" \
+		torture.docx data.docx letter.docx >/dev/null 2>&1)
+	# Every face LibreOffice embedded must be what fontconfig gives for one of
+	# the three the bundle declares. pandoc's reference names Aptos and
+	# Consolas; either one sneaking back shows up here as a face of its own.
+	allowed=""
+	for face in "Arial" "Courier New"; do
+		allowed="$allowed $(fc-match -f '%{family[0]}' "$face" | tr -d ' ')"
+	done
+	for f in torture data letter; do
+		[ -f "$work/lo/$f.pdf" ] || { bad "LibreOffice did not render $f.docx"; continue; }
+		stray=""
+		# pdffonts prints PostScript names — ArialMT, CourierNewPS-BoldMT,
+		# LiberationSans — which begin with the family, spaces dropped.
+		for font in $(pdffonts "$work/lo/$f.pdf" | awk 'NR>2{print $1}' | sed 's/^[A-Z]*+//; s/-.*//' | sort -u); do
+			known=""
+			for a in $allowed; do case "$font" in "$a"*) known=yes ;; esac; done
+			# Math is set in Word's own equation face, wherever the document has any.
+			[ -z "$known" ] && [ "$font" != "OpenSymbol" ] && stray="$stray $font"
+		done
+		[ -z "$stray" ] && ok "$f.docx: only the declared faces ($allowed )" \
+			|| bad "$f.docx: faces nobody declared:$stray"
+	done
+
+	text="$(pdftotext "$work/lo/data.pdf" - 2>/dev/null | sed 's/\xc2\xa0/ /g' | tr -s '[:space:]' ' ')"
+	for phrase in "m5.xlarge" "m5.large" "Uso recomendado" "Tabla 1:" "Figura 1:" "Ávila 5 2100"; do
+		printf '%s' "$text" | grep -qF -- "$phrase" && ok "data.docx prints \"$phrase\" whole" \
+			|| bad "data.docx lacks \"$phrase\" — a word broken across a column?"
+	done
+	pages="$(pdfinfo "$work/lo/data.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
+	whole=""
+	for p in $(seq 1 "${pages:-1}"); do
+		pt="$(pdftotext -f "$p" -l "$p" "$work/lo/data.pdf" - 2>/dev/null)"
+		if printf '%s' "$pt" | grep -qF Zamora; then
+			printf '%s' "$pt" | grep -qF Burgos && printf '%s' "$pt" | grep -qF "Tabla 3" && whole=yes
+		fi
+	done
+	[ -n "$whole" ] && ok "data.docx: a short table is never split across pages" \
+		|| bad "data.docx: the Sedes table is split across a page break"
+	pages="$(pdfinfo "$work/lo/letter.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
+	[ "${pages:-0}" -eq 1 ] && ok "letter.docx: one page" || bad "letter.docx takes ${pages:-no} pages, want 1"
+	text="$(pdftotext "$work/lo/torture.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	printf '%s' "$text" | grep -qF "Contents What this is Code blocks" \
+		&& ok "torture.docx: the contents are filled before Word updates them" \
+		|| bad "torture.docx: the table of contents is empty"
+else
+	echo "  --    soffice, pdffonts or fc-match absent: the .docx files were built, not read"
+fi
+
 # ------------------------------------------------------------------- the traps
 # file · expected exit (ok|fail) · a phrase the message must carry · extra args
 traps=(
@@ -207,6 +297,8 @@ traps=(
 	"unknown-placeholder.md|fail|the ones that exist are {{words}}"
 	"wordcount-typo.md|fail|the keys are base and include"
 	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"
+	"absent-body-font.md|fail|names no fonts.office|--to docx --brand ghost --brands-dir $root/testdata/brands"
+	"pdf-picture.md|fail|a .docx cannot hold one|--to docx --brand none"
 )
 
 echo
@@ -214,8 +306,10 @@ echo "testdata/traps — each must fail, naming the fix"
 for t in "${traps[@]}"; do
 	IFS='|' read -r file want phrase extra <<<"$t"
 	# shellcheck disable=SC2086 — the extra arguments are meant to split.
+	ext=pdf
+	case "$extra" in *"--to docx"*) ext=docx ;; esac
 	out="$("$bin" build "$root/testdata/traps/$file" ${extra:---brand none} \
-		-o "$work/${file%.md}.pdf" 2>&1)"
+		-o "$work/${file%.md}.$ext" 2>&1)"
 	status=$?
 	case "$want" in
 		ok)   [ $status -eq 0 ] || bad "$file: exit $status, want a build that warns and succeeds" ;;
