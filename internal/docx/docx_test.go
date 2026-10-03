@@ -210,3 +210,56 @@ func TestNormalizeFixesPandocsOrder(t *testing.T) {
 		t.Errorf("a block with a w14 element was rewritten: %s", got)
 	}
 }
+
+// pandoc's bullets are U+F0B7 in Symbol and U+F0A7 in Wingdings: private-use
+// code points that are a bullet only in those faces, and faces strayFonts
+// refuses. Every bulleted list stopped the build.
+func TestBulletsAreSetInTheBodyFace(t *testing.T) {
+	lvl := func(i int, text, face string) string {
+		return fmt.Sprintf(`<w:lvl w:ilvl="%d"><w:numFmt w:val="bullet" /><w:lvlText w:val="%s" />`+
+			`<w:rPr><w:rFonts w:ascii="%s" w:hAnsi="%s" w:cs="%s" w:hint="default" /></w:rPr></w:lvl>`, i, text, face, face, face)
+	}
+	n := `<w:numbering>` + lvl(0, "", "Symbol") + lvl(1, "o", "Courier New") + lvl(2, "", "Wingdings") +
+		lvl(3, "", "Symbol") + `<w:lvl w:ilvl="0"><w:numFmt w:val="decimal" /><w:lvlText w:val="%1." /></w:lvl></w:numbering>`
+	got := bullets(n, "Inter")
+	for _, bad := range []string{"Symbol", "Wingdings", "Courier New", "", ""} {
+		if strings.Contains(got, bad) {
+			t.Errorf("%q survived: %s", bad, got)
+		}
+	}
+	marks := regexp.MustCompile(`lvlText w:val="([^"]*)"`).FindAllStringSubmatch(got, -1)
+	var seq []string
+	for _, m := range marks {
+		seq = append(seq, m[1])
+	}
+	if s := strings.Join(seq, " "); s != "• – ▪ • %1." {
+		t.Errorf("marks = %q, want the PDF's by level and the numbered list untouched", s)
+	}
+}
+
+// pandoc copies the picture's path, made absolute by mdbrand, into
+// pic:cNvPr's descr; the alt text on wp:docPr must stay.
+func TestPictureDescrLosesThePath(t *testing.T) {
+	doc := `<wp:docPr descr="A caption" title="" id="10" name="Picture" />` +
+		`<pic:cNvPr descr="/home/someone/report/chart.png" id="11" name="Picture" />`
+	got := dropPictureDescr(doc)
+	if strings.Contains(got, "/home/") || !strings.Contains(got, `<pic:cNvPr id="11" name="Picture" />`) {
+		t.Errorf("pic:cNvPr kept the path: %s", got)
+	}
+	if !strings.Contains(got, `descr="A caption"`) {
+		t.Errorf("the alt text went too: %s", got)
+	}
+}
+
+// Google Docs drops a character style on import and keeps a run's colour, so
+// an accented run carries both, in schema order once normalised.
+func TestAccentRunsAreColouredDirectly(t *testing.T) {
+	doc := `<w:r><w:rPr><w:rStyle w:val="Accent" /><w:b /></w:rPr><w:t>x</w:t></w:r>`
+	got := normalize(accentRuns(doc, "C2410C"))
+	if want := `<w:rPr><w:rStyle w:val="Accent"/><w:b /><w:color w:val="C2410C"/></w:rPr>`; !strings.Contains(got, want) {
+		t.Errorf("got %s\nwant %s", got, want)
+	}
+	if bad := misordered(got); bad != "" {
+		t.Errorf("out of schema order: %s", bad)
+	}
+}

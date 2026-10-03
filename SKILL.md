@@ -125,6 +125,14 @@ the document puts a `# Referencias` heading. `csl:` picks the style.
 those as warnings and still exits 0, which is how `(fml?)` ends up printed in
 the middle of a sentence in a PDF nobody re-read.
 
+## Coloured words
+
+`[words]{.accent}` sets them in the bundle's `colors.primary`, in the PDF and
+the `.docx` (Word and Google Docs both keep it). That is the only colour:
+`[x]{color=#c2410c}`, `colour=`, `style=` and a `::: {.accent}` block stop the
+build, because pandoc drops them in silence on both outputs. Use it sparingly —
+a phrase, not a paragraph.
+
 ## Diagrams
 
 D2 for architecture, sequence, state and flow; Vega-Lite for data. Inline fence
@@ -214,6 +222,10 @@ Only for documents with figures: **[d2](https://d2lang.com)**
 **[vl2svg](https://vega.github.io/vega-lite/)** from
 [vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) for charts.
 
+Recommended: **[pdftotext](https://poppler.freedesktop.org/)** from poppler,
+which reads each PDF back so a text layer that copies as garbage stops the
+build. Without it the build warns that the check did not run.
+
 Fonts: the bundle's body font must be installed — [Inter](https://rsms.me/inter/)
 is the usual one — and is found through
 [fontconfig](https://www.freedesktop.org/wiki/Software/fontconfig/). If it is
@@ -248,6 +260,10 @@ when someone needs to edit or comment, not instead of the PDF.
   `fonts.fallback` that covers it — only the characters the body lacks and the
   fallback has are redirected, so one neither covers still stops the build.
   Override only deliberately with `--allow-missing-glyphs`.
+- **The PDF's text layer must read as its text.** Private-use characters in
+  what pdftotext extracts fail the build — a PDF that prints "(SD1)" and
+  copies as U+EE4E SD1 U+EE4F is garbage to Turnitin. Contextual alternates are
+  off for that reason; there is no override.
 - **`header-includes` is refused, not applied.** So are `include-before` and
   `include-after`. mdbrand injects its preamble and cover through pandoc's
   `--include-in-header` and its two siblings, and a variable set on pandoc's

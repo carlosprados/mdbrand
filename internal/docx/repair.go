@@ -39,7 +39,12 @@ func Repair(b []byte, f Fix) ([]byte, []string, error) {
 	if f.TOC {
 		doc = fillTOC(doc)
 	}
+	doc = dropPictureDescr(doc)
+	doc = accentRuns(doc, f.Look.Primary)
 	p.set("word/document.xml", doc)
+	if n := p.get("word/numbering.xml"); n != "" {
+		p.set("word/numbering.xml", bullets(n, f.Look.Body))
+	}
 
 	if f.TOC {
 		p.set("word/settings.xml", updateFields(p.get("word/settings.xml")))
@@ -550,6 +555,50 @@ func codeBlocks(doc string, l Look) (string, []string) {
 	return out, []string{fmt.Sprintf("%d code block(s) stay past the measure at the smallest legible size:\n%s\n"+
 		"  The size was already stepped down as far as it goes. Shorten the lines\n"+
 		"  or split the block; an ASCII diagram is not wrapped, by design.", len(wide), strings.Join(wide, "\n"))}
+}
+
+var picDescrRe = regexp.MustCompile(`(<pic:cNvPr\b[^>]*?)\s+descr="[^"]*"`)
+
+// dropPictureDescr empties what pandoc puts in a picture's pic:cNvPr: the
+// image's path, which mdbrand has made absolute, so a handed-in document
+// carried /home/<user>/… inside it. The alt text readers see is wp:docPr's.
+func dropPictureDescr(doc string) string {
+	return picDescrRe.ReplaceAllString(doc, "$1")
+}
+
+var accentRunRe = regexp.MustCompile(`<w:rStyle w:val="` + AccentStyle + `"\s*/>`)
+
+// accentRuns colours an accented run directly as well as by style: Google
+// Docs keeps a run's colour and drops the character style that carried it.
+// normalize puts <w:color> where the schema wants it afterwards.
+func accentRuns(doc, color string) string {
+	return accentRunRe.ReplaceAllLiteralString(doc,
+		fmt.Sprintf(`<w:rStyle w:val="%s"/><w:color w:val="%s"/>`, AccentStyle, color))
+}
+
+var (
+	lvlRe     = regexp.MustCompile(`(?s)<w:lvl w:ilvl="(\d)".*?</w:lvl>`)
+	lvlTextRe = regexp.MustCompile(`<w:lvlText w:val="[^"]*"\s*/>`)
+	rFontsRe  = regexp.MustCompile(`<w:rFonts\b[^>]*/>`)
+)
+
+// bulletMarks are the PDF's itemize marks as far as every text face carries
+// them: LaTeX's third level is ∗, which few faces have, so ▪ stands in.
+var bulletMarks = []string{"•", "–", "▪"}
+
+// bullets sets every bulleted list level in the body face. pandoc's levels
+// draw U+F0B7 in Symbol and U+F0A7 in Wingdings — private-use code points
+// that mean a bullet only in those two faces — and strayFonts refused the
+// package, so no document with a bulleted list built at all.
+func bullets(numbering, body string) string {
+	return lvlRe.ReplaceAllStringFunc(numbering, func(lvl string) string {
+		if !strings.Contains(lvl, `<w:numFmt w:val="bullet"`) || !rFontsRe.MatchString(lvl) {
+			return lvl
+		}
+		n := int(lvl[len(`<w:lvl w:ilvl="`)] - '0')
+		lvl = lvlTextRe.ReplaceAllLiteralString(lvl, fmt.Sprintf(`<w:lvlText w:val="%s"/>`, bulletMarks[n%len(bulletMarks)]))
+		return rFontsRe.ReplaceAllLiteralString(lvl, fontsXML(body))
+	})
 }
 
 var settingsAfter = regexp.MustCompile(`<w:(hdrShapeDefaults|footnotePr|endnotePr|compat|docVars|rsids|attachedSchema|themeFontLang|clrSchemeMapping|doNotIncludeSubdocsInStats|doNotAutoCompressPictures|forceUpgrade|captions|readModeInkLockDown|smartTagType|schemaLibrary|shapeDefaults|doNotEmbedSmartTags|decimalSymbol|listSeparator)\b|<m:mathPr\b`)

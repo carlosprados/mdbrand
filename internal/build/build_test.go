@@ -249,3 +249,34 @@ func TestOutputPath(t *testing.T) {
 		t.Error("--to docx -o x.pdf accepted")
 	}
 }
+
+// Inter's case forms copied as U+EE4E/U+EE4F. A private-use character the
+// source holds itself — an icon font, on purpose — is not the defect.
+func TestPrivateUseNotInTheSourceIsFound(t *testing.T) {
+	text := "A switch in entity \uee4eSD1\uee4f and an icon \uf0e0 here."
+	got := privateUse(text, "an icon \uf0e0 here")
+	if len(got) != 1 || !strings.Contains(got[0], "<U+EE4E>SD1<U+EE4F>") {
+		t.Errorf("privateUse = %q", got)
+	}
+	if got := privateUse("plain (SD1)", ""); got != nil {
+		t.Errorf("clean text reported: %q", got)
+	}
+}
+
+// The Lua filter reports on stderr, mixed with pandoc's own warnings.
+func TestSpanProblemsReadTheFilterReport(t *testing.T) {
+	out := "[WARNING] Could not fetch resource\nMDBRAND-SPAN color=\"#c2410c\"\torange words\n" +
+		"MDBRAND-SPAN a ::: {.accent} block\tA block.\n"
+	err := spanProblems(out)
+	if err == nil {
+		t.Fatal("no error for two refused colours")
+	}
+	for _, want := range []string{`color="#c2410c" on "orange words"`, `a ::: {.accent} block on "A block."`, "[words]{.accent}"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("message lacks %q:\n%s", want, err)
+		}
+	}
+	if err := spanProblems("[WARNING] nothing of ours\n"); err != nil {
+		t.Errorf("unrelated output refused: %v", err)
+	}
+}

@@ -119,6 +119,9 @@ citeproc prints those as "(key?)" in the finished PDF and exits 0, so nothing
 else would have told you. Fix the key or add the entry.`,
 			len(keys), strings.Join(keys, ", "))
 	}
+	if err := spanProblems(pandocOut); err != nil {
+		return err
+	}
 
 	texPath := filepath.Join(work, stem+".tex")
 	texSrc, err := os.ReadFile(texPath)
@@ -144,6 +147,9 @@ else would have told you. Fix the key or add the entry.`,
 	logRaw, _ := os.ReadFile(filepath.Join(work, stem+".log"))
 	sc := scanLog(string(logRaw))
 	if err := judgeLog(sc, o, rep); err != nil {
+		return err
+	}
+	if err := checkTextLayer(work, stem+".pdf", md.String(), rep); err != nil {
 		return err
 	}
 	if err := copyFile(filepath.Join(work, stem+".pdf"), out); err != nil {
@@ -179,8 +185,12 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		return nil, err
 	}
 	geometry := fmt.Sprintf("margin=%s,headheight=%s,headsep=%s", b.Page.Margin, headHeight, b.Page.HeadSep)
+	filter, err := writeSpanFilter(p.work)
+	if err != nil {
+		return nil, err
+	}
 	args := []string{
-		stem + ".md", "-s", "-o", stem + ".tex",
+		stem + ".md", "-s", "-o", stem + ".tex", filter,
 		"--include-in-header=preamble.tex",
 		"--include-before-body=before.tex",
 		"--include-after-body=after.tex",
@@ -195,7 +205,10 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 	// not the bundle, so it is settled here instead.
 	switch {
 	case b.BodyFontInstalled():
-		args = append(args, "-V", "mainfont="+b.Fonts.Body)
+		// mainfontoptions, not a \setmainfont of our own: pandoc's template
+		// loads the face twice, the second time through \babelfont, and that
+		// one would load it again without the option.
+		args = append(args, "-V", "mainfont="+b.Fonts.Body, "-V", "mainfontoptions="+noContextualAlternates)
 	case b.IsDefault():
 		// No mainfont at all: pandoc's template loads lmodern, so the document
 		// sets in Latin Modern, which every TeX Live has. The built-in bundle
@@ -217,6 +230,14 @@ or change fonts.body in the bundle to one this machine has.`, b.Name, b.Fonts.Bo
 	}
 	return append(args, cites...), nil
 }
+
+// noContextualAlternates turns off a face's calt. Inter's swaps ( ) [ ] { }
+// beside capitals and digits for case forms that its cmap gives private-use
+// code points; xdvipdfmx builds the PDF's ToUnicode from that cmap, so
+// "(SD1)" printed right and copied — and reached Turnitin — as U+EE4E SD1
+// U+EE4F. RawFeature, because fontspec warns about a named feature a face
+// lacks and stays quiet about a raw one.
+const noContextualAlternates = "RawFeature=-calt"
 
 // judgeLog turns what the xelatex log says into the build's verdict: holes and
 // a header taller than its box stop it, code and lines past the measure warn.

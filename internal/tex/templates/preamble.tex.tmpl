@@ -21,8 +21,10 @@
 % into a bundle, so a machine without it falls back instead of failing.
 % One Path per face: the two weights need not live in the same directory, and
 % assuming they do is a build that dies inside fontspec after validate said ok.
-\newfontfamily\brandDisplay{ {{- .DisplayRegular -}} }[Path={{.DisplayRegularDir}}]
-\newfontfamily\brandDisplayBold{ {{- .DisplayBold -}} }[Path={{.DisplayBoldDir}}]
+% RawFeature=-calt for the reason the body face has it: contextual alternates
+% can be glyphs the PDF's text layer maps to private-use code points.
+\newfontfamily\brandDisplay{ {{- .DisplayRegular -}} }[Path={{.DisplayRegularDir}},RawFeature=-calt]
+\newfontfamily\brandDisplayBold{ {{- .DisplayBold -}} }[Path={{.DisplayBoldDir}},RawFeature=-calt]
 {{- else -}}
 \newcommand{\brandDisplay}{\mdseries}
 \newcommand{\brandDisplayBold}{\bfseries}
