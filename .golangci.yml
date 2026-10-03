@@ -83,9 +83,6 @@ linters:
         linters: [errcheck]
 
       # Debt, by name. Each one goes when its function is next touched.
-      - path: internal/build/build.go
-        text: "func `pipeline`"
-        linters: [gocognit] # splits into Prepare + RenderPDF for the docx backend
       - path: internal/data/table.go
         text: "func `render`"
         linters: [gocognit]
