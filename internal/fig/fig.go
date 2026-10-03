@@ -43,6 +43,7 @@ const (
 type Result struct {
 	Fig      *doc.Fig
 	PDF      string  // absolute path
+	SVG      string  // absolute path; the source of every other format
 	WidthMM  float64 // as it will be placed
 	HeightMM float64
 	TextPt   float64 // smallest label on the page, in points
@@ -102,7 +103,7 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64, ds 
 	// Label size at natural size. unit converts inner user units to outer
 	// pixels: with `d2 --scale 0.5` the outer <svg> is half the viewBox, so an
 	// inline font-size:32 is really 16px on the page.
-	res := &Result{Fig: f, PDF: pdf}
+	res := &Result{Fig: f, PDF: pdf, SVG: svg}
 	minFont, found := minFontSize(src)
 	naturalPt := minFont * unit * pxToPt
 

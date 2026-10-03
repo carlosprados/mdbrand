@@ -1,6 +1,6 @@
 ---
 name: mdbrand
-description: Generate branded A4 PDFs from Markdown with one command — cover and running header with the client's logo, D2 diagrams and Vega-Lite charts rendered and sized legibly for paper, missing-glyph detection. Use INSTEAD of hand-rolling pandoc/XeLaTeX invocations, brand preambles or diagram renders. Load when asked for a PDF, report, propuesta, informe, nota interna, memo or carta from Markdown; when a document needs a cover, letterhead or logo header; when a diagram must go into a PDF; or when a pandoc PDF build misbehaves (missing characters, illegible or page-eating figures, blank logo).
+description: Generate branded A4 PDFs from Markdown with one command — cover and running header with the client's logo, D2 diagrams and Vega-Lite charts rendered and sized legibly for paper, missing-glyph detection; the same document also as a branded .docx for Word or Google Docs. Use INSTEAD of hand-rolling pandoc/XeLaTeX invocations, brand preambles, reference.docx files or diagram renders. Load when asked for a PDF, a Word/.docx or Google Docs version, report, propuesta, informe, nota interna, memo or carta from Markdown; when a document needs a cover, letterhead or logo header; when a diagram must go into a PDF; or when a pandoc PDF build misbehaves (missing characters, illegible or page-eating figures, blank logo).
 ---
 
 # mdbrand — Markdown to a branded A4 PDF
@@ -49,6 +49,7 @@ mdbrand:
   style: report                   # report | note | letter
   reference: "Oferta AS-2164-26"  # report, optional
   confidential: "Confidencial"    # report, optional
+  formats: [pdf, docx]            # optional; default pdf. --to overrides
 ---
 ```
 
@@ -221,6 +222,22 @@ Latin Modern, so it works on a machine with nothing installed.
 
 Built with [Go](https://go.dev/dl/) 1.26+; prebuilt binaries are attached to
 every [release](https://github.com/carlosprados/mdbrand/releases).
+
+## Word and Google Docs
+
+`--to docx` (or `formats: [docx]`, or `--to pdf,docx` for both) writes a
+branded `.docx` from the same document: cover, header, numbered captions,
+figures at their PDF size, tables that never break a word or split a row, a
+filled table of contents. The PDF is still the reference; offer the `.docx`
+when someone needs to edit or comment, not instead of the PDF.
+
+- A named bundle needs `fonts.office: {body, display, mono}` — faces the
+  readers have (Google Docs: Google Fonts only). Without it the build stops
+  and prints the block to add. Never put a licensed display face there.
+- A picture linked as PDF stops a `.docx` build: export it as SVG or PNG.
+- For Google Docs, upload it converted: `gog drive upload x.docx --convert-to doc`.
+- It is one-way. Edits made in Word or Docs do not flow back; carry them into
+  the `.md` (`pandoc x.docx -t markdown` helps to see them).
 
 ## Hard rules
 

@@ -49,14 +49,11 @@ func (p *prepared) refs() []string {
 	return p.store.Refs()
 }
 
-// prepare does every step no output format can skip. Like Run's Report, the
-// result outlives an error: it is non-nil once it holds a work directory, so
-// the caller can always close it and collect its refs.
-func prepare(o Options, inputs *[]string) (*prepared, error) {
-	d, err := doc.Read(o.Input)
-	if err != nil {
-		return nil, err
-	}
+// prepare settles brand, style and work directory; fill does the rest. The
+// two are apart so that each format can refuse a bundle it cannot use before
+// a single figure is rendered. Like Run's Report, a prepared outlives an
+// error from fill, so the caller can always close it and collect its refs.
+func prepare(o Options, d *doc.File, inputs *[]string) (*prepared, error) {
 	if keys := d.Meta.ReservedKeys(); len(keys) > 0 {
 		return nil, fmt.Errorf(`the front matter sets %s, and the build would discard it in silence.
 mdbrand injects its preamble, its cover and its closing matter through pandoc's
@@ -96,11 +93,10 @@ it, or open an issue for the knob you need:
 	if err != nil {
 		return nil, err
 	}
-	p := &prepared{
+	return &prepared{
 		o: o, d: d, b: b, style: style, work: work, keep: keep,
 		rep: &Report{Brand: b.Name, Style: style, WorkDir: work, Kept: keep},
-	}
-	return p, p.fill(inputs)
+	}, nil
 }
 
 // workDir is the directory every external tool runs in: a temporary one, or

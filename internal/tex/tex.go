@@ -154,6 +154,20 @@ func PaperWidthMM(paper string) float64 {
 	}
 }
 
+// PaperHeightMM returns the paper height, for the same sizes.
+func PaperHeightMM(paper string) float64 {
+	switch strings.ToLower(paper) {
+	case "a5", "a5paper":
+		return 210
+	case "letter", "letterpaper":
+		return 279.4
+	case "legal", "legalpaper":
+		return 355.6
+	default:
+		return 297
+	}
+}
+
 // TextWidthMM is the measure a figure has to fit into.
 func TextWidthMM(b *brand.Brand) (float64, error) {
 	m, err := ParseLenMM(b.Page.Margin)
