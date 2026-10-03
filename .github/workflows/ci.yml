@@ -24,6 +24,11 @@ jobs:
             echo "gofmt needed on:"; echo "$unformatted"; exit 1
           fi
       - run: go vet ./...
+      # Pinned to the version `just lint` is run with, so a new release's new
+      # checks arrive as a deliberate bump and not as a red build on main.
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
       - run: go test ./...
       - name: Build
         run: go build ./...
