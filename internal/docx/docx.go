@@ -25,6 +25,7 @@ import (
 type Look struct {
 	Body, Display, Mono string // font families the reader's machine is asked for
 	Primary, Text, Rule string // hex colours, no '#'
+	Link                string
 
 	PaperWMM, PaperHMM float64
 	MarginMM           float64

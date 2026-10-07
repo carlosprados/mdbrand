@@ -54,6 +54,10 @@ if [ -f "$log" ]; then
 	[ "$n" -eq 0 ] && ok "no overfull line" || bad "$n overfull line(s) in the log"
 	n="$(grep -c 'Missing character' "$log")"
 	[ "$n" -eq 0 ] && ok "no missing glyph" || bad "$n missing glyph(s) in the log"
+	# Links printed as body text: they worked, and nothing on the page said so.
+	grep -qF 'urlcolor={brandLink}' "$work/torture/torture.tex" \
+		&& ok "links are coloured, not hidden" \
+		|| bad "the .tex does not colour links — pandoc's hidelinks is back"
 else
 	bad "no XeLaTeX log at $log"
 fi

@@ -171,7 +171,8 @@ func brandNewCmd() *cobra.Command {
 
 Next:
   1. put the logo in %s as logo.svg — vector, not an SVG wrapping a PNG
-  2. set colors.primary / text / rule to the brand's hex values
+  2. set colors.primary / text / rule to the brand's hex values, and colors.link
+     if links should not print in the primary
   3. optional: point fonts.display at the licensed brand font (by path, never copied)
   4. mdbrand brand validate %s
 `, filepath.Join(dir, "brand.yaml"), dir, args[0])

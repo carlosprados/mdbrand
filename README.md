@@ -498,6 +498,11 @@ with `color=`, `colour=` or `style=` stops the build, and so does a
 `::: {.accent}` block, because pandoc drops those attributes on both outputs
 and the words would print black without a word of warning.
 
+Links are set in the bundle's `colors.link`, in both outputs, so a reader can
+see what is clickable; the contents and citations keep the text colour. A
+bundle without `colors.link` prints links in its primary, where they read as
+accents — and a light primary, an orange say, is also too pale for text.
+
 ### Styles
 
 | Style | Shape |
@@ -693,6 +698,7 @@ colors:
   primary: "F68E1B"            # rules and accents — 6-digit hex, no '#'
   text: "5D6266"               # cover and header type
   rule: "C8CCCE"               # hairlines
+  link: "1565C0"               # optional; links — the primary when unset
 
 fonts:
   body: Inter                  # fontconfig family

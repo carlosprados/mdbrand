@@ -129,7 +129,7 @@ func styles(s string, l Look) string {
 		"BlockText":    {sizePt: SmallPt, color: l.Text, before: 100, after: 100},
 		"Bibliography": {sizePt: SmallPt, before: 0, after: 80},
 		"VerbatimChar": {font: l.Mono, sizePt: SmallPt, before: -1, after: -1},
-		"Hyperlink":    {color: l.Primary, before: -1, after: -1},
+		"Hyperlink":    {color: l.Link, before: -1, after: -1},
 	}
 	// Every entry sets before and after: zero is a real spacing, so -1 is
 	// what leaves one alone.

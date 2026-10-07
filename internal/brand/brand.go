@@ -45,6 +45,7 @@ type Colors struct {
 	Primary string `yaml:"primary"` // rules and accents
 	Text    string `yaml:"text"`    // cover and header type
 	Rule    string `yaml:"rule"`    // hairlines
+	Link    string `yaml:"link"`    // links; the primary when unset
 }
 
 type Fonts struct {
@@ -193,6 +194,11 @@ func (b *Brand) applyDefaults() {
 	}
 	if b.Colors.Rule == "" {
 		b.Colors.Rule = "C8CCCE"
+	}
+	// After the primary's own default, so a bundle that names neither gets
+	// the built-in blue for both.
+	if b.Colors.Link == "" {
+		b.Colors.Link = b.Colors.Primary
 	}
 	if b.Fonts.Body == "" {
 		b.Fonts.Body = "Inter"
@@ -506,6 +512,7 @@ func (b *Brand) Check() (problems, warnings []string) {
 	}
 	for label, v := range map[string]string{
 		"colors.primary": b.Colors.Primary, "colors.text": b.Colors.Text, "colors.rule": b.Colors.Rule,
+		"colors.link": b.Colors.Link,
 	} {
 		if !hexRe.MatchString(v) {
 			add(&problems, "%s: %q is not a 6-digit hex without '#'", label, v)
@@ -616,6 +623,7 @@ colors:
   primary: "1F6FEB"   # rules and accents, 6-digit hex, no '#'
   text: "3A3A3A"      # cover and header type
   rule: "C8CCCE"      # hairlines
+  # link: "1565C0"    # optional; links, the primary when unset
 
 fonts:
   body: Inter         # fontconfig family; must cover the glyphs you type

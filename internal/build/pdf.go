@@ -198,6 +198,14 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		"-V", "papersize=" + b.Page.PaperSize,
 		"-V", "geometry=" + geometry,
 		"-V", "linestretch=" + strconv.FormatFloat(b.Page.LineStretch, 'f', -1, 64),
+		// Without colorlinks pandoc's template sets hidelinks: a link worked and
+		// printed as body text, so no reader knew it was there. Variables and not
+		// a \hypersetup of our own, because the template's comes after the
+		// preamble and would undo it. The contents and citations stay in the
+		// text colour; links in the brand's link colour, as the .docx has them.
+		"-V", "colorlinks",
+		"-V", "urlcolor=brandLink", "-V", "linkcolor=brandLink", "-V", "filecolor=brandLink",
+		"-V", "citecolor=brandText", "-V", "toccolor=brandText",
 	}
 
 	// The body font, if the machine can actually supply it. An absent family
