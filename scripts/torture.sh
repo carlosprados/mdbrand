@@ -58,6 +58,9 @@ if [ -f "$log" ]; then
 	grep -qF 'urlcolor={brandLink}' "$work/torture/torture.tex" \
 		&& ok "links are coloured, not hidden" \
 		|| bad "the .tex does not colour links — pandoc's hidelinks is back"
+	grep -qF 'hyperfootnotes=false' "$work/torture/torture.tex" \
+		&& ok "footnote marks keep the text colour" \
+		|| bad "footnote marks are painted as links"
 else
 	bad "no XeLaTeX log at $log"
 fi

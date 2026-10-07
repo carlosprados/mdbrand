@@ -143,6 +143,10 @@ back to [the code blocks](#code-blocks). Both worked and printed as body text,
 because pandoc's template hides links unless told otherwise: nobody reading the
 page could tell they were there.
 
+A footnote mark beside them must not look like one.[^mark]
+
+[^mark]: colorlinks painted this mark in the link colour.
+
 # Citations
 
 A key that resolves, so the citeproc path is exercised and the bibliography

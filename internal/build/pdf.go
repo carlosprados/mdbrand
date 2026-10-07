@@ -202,7 +202,8 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		// printed as body text, so no reader knew it was there. Variables and not
 		// a \hypersetup of our own, because the template's comes after the
 		// preamble and would undo it. The contents and citations stay in the
-		// text colour; links in the brand's link colour, as the .docx has them.
+		// text colour, footnote marks too (hyperfootnotes=false, in the
+		// preamble); links in the brand's link colour, as the .docx has them.
 		"-V", "colorlinks",
 		"-V", "urlcolor=brandLink", "-V", "linkcolor=brandLink", "-V", "filecolor=brandLink",
 		"-V", "citecolor=brandText", "-V", "toccolor=brandText",

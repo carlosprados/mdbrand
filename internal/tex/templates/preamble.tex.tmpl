@@ -11,6 +11,11 @@
 \definecolor{brandText}{HTML}{ {{- .Brand.Colors.Text -}} }
 \definecolor{brandRule}{HTML}{ {{- .Brand.Colors.Rule -}} }
 \definecolor{brandLink}{HTML}{ {{- .Brand.Colors.Link -}} }
+% With colorlinks on, hyperref paints a footnote mark in the link colour too,
+% and a bare coloured "1" reads as an accent. The note is at the foot of the
+% same page, so the jump is worth less than the mark looking like text.
+% Passed here because pandoc loads hyperref after this preamble.
+\PassOptionsToPackage{hyperfootnotes=false}{hyperref}
 
 % Tables: a full-size table in a 10pt document overflows the measure, and the
 % overflow is silent. footnotesize plus a little air is the shape that works.
