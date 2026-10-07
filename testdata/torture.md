@@ -10,6 +10,7 @@ bibliography: refs.bib
 mdbrand:
   brand: none
   style: report
+  confidential: "Confidential & internal"
 ---
 
 # What this is
@@ -134,6 +135,13 @@ One phrase in the [brand's accent]{.accent}, which both outputs colour.
 - A bulleted list, which the .docx refused over pandoc's Symbol and Wingdings
     - nested once
         - and twice
+
+# Links
+
+A link to [the repository](https://github.com/carlosprados/mdbrand) and one
+back to [the code blocks](#code-blocks). Both worked and printed as body text,
+because pandoc's template hides links unless told otherwise: nobody reading the
+page could tell they were there.
 
 # Citations
 

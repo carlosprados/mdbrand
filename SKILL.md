@@ -48,7 +48,7 @@ mdbrand:
   brand: amplia                   # bundle name; `none` for unbranded
   style: report                   # report | note | letter
   reference: "Oferta AS-2164-26"  # report, optional
-  confidential: "Confidencial"    # report, optional
+  confidential: "Confidencial"    # report, optional; cover and every page footer
   formats: [pdf, docx]            # optional; default pdf. --to overrides
 ---
 ```
@@ -131,7 +131,8 @@ the middle of a sentence in a PDF nobody re-read.
 the `.docx` (Word and Google Docs both keep it). That is the only colour:
 `[x]{color=#c2410c}`, `colour=`, `style=` and a `::: {.accent}` block stop the
 build, because pandoc drops them in silence on both outputs. Use it sparingly —
-a phrase, not a paragraph.
+a phrase, not a paragraph. Links print in the bundle's `colors.link`, which
+is the primary when the bundle sets none — and then an accent reads as a link.
 
 ## Diagrams
 

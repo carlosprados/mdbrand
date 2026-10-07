@@ -275,3 +275,26 @@ func TestOfficeFonts(t *testing.T) {
 		t.Errorf("incomplete fonts.office accepted, or the error does not show the fix: %v", err)
 	}
 }
+
+// A bundle that names no link colour prints links in its primary; one that
+// names it keeps it. The default is resolved after the primary's own, so a
+// bundle naming neither does not end up with an empty \definecolor.
+func TestLinkColourFallsBackToThePrimary(t *testing.T) {
+	b := &Brand{Name: "x", Colors: Colors{Primary: "F68E1B"}}
+	b.applyDefaults()
+	if b.Colors.Link != "F68E1B" {
+		t.Errorf("link = %q, want the primary F68E1B", b.Colors.Link)
+	}
+	b = &Brand{Name: "x", Colors: Colors{Primary: "F68E1B", Link: "1565C0"}}
+	b.applyDefaults()
+	if b.Colors.Link != "1565C0" {
+		t.Errorf("link = %q, want the declared 1565C0", b.Colors.Link)
+	}
+	if d := Default(); d.Colors.Link != d.Colors.Primary || d.Colors.Link == "" {
+		t.Errorf("default bundle link = %q, primary = %q", d.Colors.Link, d.Colors.Primary)
+	}
+	b.Colors.Link = "#1565C0"
+	if problems, _ := b.Check(); !strings.Contains(strings.Join(problems, "\n"), "colors.link") {
+		t.Errorf("a '#' in colors.link passed validation: %v", problems)
+	}
+}

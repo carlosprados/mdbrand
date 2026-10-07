@@ -25,6 +25,7 @@ import (
 type Look struct {
 	Body, Display, Mono string // font families the reader's machine is asked for
 	Primary, Text, Rule string // hex colours, no '#'
+	Link                string
 
 	PaperWMM, PaperHMM float64
 	MarginMM           float64
@@ -35,6 +36,7 @@ type Look struct {
 	LogoAspect      float64
 	LogoHeaderWMM   float64
 	RunningTitle    string
+	Confidential    string // repeated left of the page number in every footer
 	Layout          string // report | note | letter
 	NumberFromCover bool   // report: the cover is page 0, so the first text page is 1
 }

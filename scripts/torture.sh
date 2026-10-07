@@ -54,6 +54,10 @@ if [ -f "$log" ]; then
 	[ "$n" -eq 0 ] && ok "no overfull line" || bad "$n overfull line(s) in the log"
 	n="$(grep -c 'Missing character' "$log")"
 	[ "$n" -eq 0 ] && ok "no missing glyph" || bad "$n missing glyph(s) in the log"
+	# Links printed as body text: they worked, and nothing on the page said so.
+	grep -qF 'urlcolor={brandLink}' "$work/torture/torture.tex" \
+		&& ok "links are coloured, not hidden" \
+		|| bad "the .tex does not colour links — pandoc's hidelinks is back"
 else
 	bad "no XeLaTeX log at $log"
 fi
@@ -106,6 +110,13 @@ if command -v pdftotext >/dev/null; then
 	printf '%s' "$flat" | grep -qF "(SD1) and (Fox Business, 2026) and [ABC]" \
 		&& ok "brackets beside capitals copy as themselves" \
 		|| bad "brackets beside capitals do not survive text extraction"
+
+	# The cover's confidentiality label repeats in every footer: the last page
+	# is the one furthest from the cover, so it is the witness.
+	last="$(pdftotext -f "$pages" -l "$pages" "$work/torture.pdf" - 2>/dev/null)"
+	printf '%s' "$last" | grep -qF "Confidential & internal" \
+		&& ok "the confidentiality label prints in the footer of the last page" \
+		|| bad "the last page has no confidentiality label in its footer"
 else
 	echo "  --    pdftotext absent, PDF contents not checked"
 fi
@@ -288,6 +299,10 @@ if command -v soffice >/dev/null && command -v pdffonts >/dev/null && command -v
 	pages="$(pdfinfo "$work/lo/letter.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
 	[ "${pages:-0}" -eq 1 ] && ok "letter.docx: one page" || bad "letter.docx takes ${pages:-no} pages, want 1"
 	text="$(pdftotext "$work/lo/torture.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	pages="$(pdfinfo "$work/lo/torture.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
+	pdftotext -f "$pages" -l "$pages" "$work/lo/torture.pdf" - 2>/dev/null | grep -qF "Confidential & internal" \
+		&& ok "torture.docx: the confidentiality label prints in the last page's footer" \
+		|| bad "torture.docx: the last page has no confidentiality label in its footer"
 	printf '%s' "$text" | grep -qF "Contents What this is Code blocks" \
 		&& ok "torture.docx: the contents are filled before Word updates them" \
 		|| bad "torture.docx: the table of contents is empty"
@@ -316,6 +331,7 @@ traps=(
 	"pdf-picture.md|fail|a .docx cannot hold one|--to docx --brand none"
 	"span-colour.md|fail|[words]{.accent}"
 	"span-colour.md|fail|[words]{.accent}|--to docx --brand none"
+	"confidential-too-long.md|fail|too wide for the footer"
 )
 
 echo

@@ -73,6 +73,25 @@ func TestRenderReportCoverUsesEscapedStrings(t *testing.T) {
 	}
 }
 
+func TestConfidentialRepeatsInFooter(t *testing.T) {
+	b := brand.Default()
+	out, err := Render("preamble", &Data{Brand: b, Style: "report", Title: "T", Confidential: "Confidencial & interno"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Once for the default page style and once for plain (chapter openings).
+	if n := strings.Count(out, `\fancyfoot[L]`); n != 2 || !strings.Contains(out, `Confidencial \& interno`) {
+		t.Errorf("want the escaped label in both footers, got %d:\n%s", n, out)
+	}
+	out, err = Render("preamble", &Data{Brand: b, Style: "report", Title: "T"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out, `\fancyfoot[L]`) {
+		t.Error("footer label printed without a confidential option")
+	}
+}
+
 func TestEveryStyleRenders(t *testing.T) {
 	b := brand.Default()
 	for _, s := range Styles {
