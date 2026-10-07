@@ -500,9 +500,9 @@ and the words would print black without a word of warning.
 
 Links are set in the bundle's `colors.link`, in both outputs, so a reader can
 see what is clickable; the contents, citations and footnote marks keep the
-text colour. A
-bundle without `colors.link` prints links in its primary, where they read as
-accents — and a light primary, an orange say, is also too pale for text.
+text colour. A bundle without `colors.link` prints links in its primary, where
+they read as accents — and a light primary, an orange say, is also too pale
+for text.
 
 ### Styles
 
