@@ -40,7 +40,8 @@ func Repair(b []byte, f Fix) ([]byte, []string, error) {
 		doc = fillTOC(doc)
 	}
 	doc = dropPictureDescr(doc)
-	doc = accentRuns(doc, f.Look.Primary)
+	doc = styledRuns(doc, AccentStyle, f.Look.Primary)
+	doc = styledRuns(doc, "Hyperlink", f.Look.Link)
 	p.set("word/document.xml", doc)
 	if n := p.get("word/numbering.xml"); n != "" {
 		p.set("word/numbering.xml", bullets(n, f.Look.Body))
@@ -566,14 +567,14 @@ func dropPictureDescr(doc string) string {
 	return picDescrRe.ReplaceAllString(doc, "$1")
 }
 
-var accentRunRe = regexp.MustCompile(`<w:rStyle w:val="` + AccentStyle + `"\s*/>`)
-
-// accentRuns colours an accented run directly as well as by style: Google
-// Docs keeps a run's colour and drops the character style that carried it.
-// normalize puts <w:color> where the schema wants it afterwards.
-func accentRuns(doc, color string) string {
-	return accentRunRe.ReplaceAllLiteralString(doc,
-		fmt.Sprintf(`<w:rStyle w:val="%s"/><w:color w:val="%s"/>`, AccentStyle, color))
+// styledRuns colours every run of a character style directly as well as by
+// style: Google Docs keeps a run's colour and drops the character style that
+// carried it, so accents and links would import black. normalize puts
+// <w:color> where the schema wants it afterwards.
+func styledRuns(doc, style, color string) string {
+	re := regexp.MustCompile(`<w:rStyle w:val="` + regexp.QuoteMeta(style) + `"\s*/>`)
+	return re.ReplaceAllLiteralString(doc,
+		fmt.Sprintf(`<w:rStyle w:val="%s"/><w:color w:val="%s"/>`, style, color))
 }
 
 var (

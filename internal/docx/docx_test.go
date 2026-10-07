@@ -252,10 +252,18 @@ func TestPictureDescrLosesThePath(t *testing.T) {
 }
 
 // Google Docs drops a character style on import and keeps a run's colour, so
-// an accented run carries both, in schema order once normalised.
-func TestAccentRunsAreColouredDirectly(t *testing.T) {
+// an accented run carries both, in schema order once normalised. Links are
+// coloured the same way, and only the style asked for is touched.
+func TestStyledRunsAreColouredDirectly(t *testing.T) {
+	link := `<w:r><w:rPr><w:rStyle w:val="Hyperlink" /></w:rPr><w:t>y</w:t></w:r>`
+	if got := styledRuns(link, "Accent", "C2410C"); got != link {
+		t.Errorf("a link run was coloured as an accent: %s", got)
+	}
+	if got := normalize(styledRuns(link, "Hyperlink", "1565C0")); !strings.Contains(got, `<w:color w:val="1565C0"/>`) {
+		t.Errorf("link run not coloured: %s", got)
+	}
 	doc := `<w:r><w:rPr><w:rStyle w:val="Accent" /><w:b /></w:rPr><w:t>x</w:t></w:r>`
-	got := normalize(accentRuns(doc, "C2410C"))
+	got := normalize(styledRuns(doc, "Accent", "C2410C"))
 	if want := `<w:rPr><w:rStyle w:val="Accent"/><w:b /><w:color w:val="C2410C"/></w:rPr>`; !strings.Contains(got, want) {
 		t.Errorf("got %s\nwant %s", got, want)
 	}

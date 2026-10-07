@@ -49,7 +49,7 @@
 \vspace{2mm}
 {\brandDisplay\fontsize{9}{12}\selectfont\color{brandText}
 {{- if .Author}}{{texEscape .Author}}{{end}}{{if and .Author .Date}} \textperiodcentered{} {{end}}{{if .Date}}{{texEscape .Date}}{{end}}
-{{- if .Confidential}} \textperiodcentered{} {\color{brandPrimary}{{texEscape .Confidential}}}{{end}}\par}
+{{- if .Confidential}}{{if or .Author .Date}} \textperiodcentered{} {{end}}{\color{brandPrimary}{{texEscape .Confidential}}}{{end}}\par}
 \endgroup
 \vspace{7mm}
 {{- else if eq .Style "letter" -}}

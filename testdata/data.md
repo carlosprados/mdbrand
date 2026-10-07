@@ -1,7 +1,7 @@
 ---
 title: "Oferta para {{data.cliente.nombre}}"
 lang: es
-mdbrand: {brand: none, style: note}
+mdbrand: {brand: none, style: note, confidential: "Uso interno"}
 ---
 
 La instancia m5.xlarge ofrece {{data.maquinas[m5.xlarge].cpu}} vCPU,
