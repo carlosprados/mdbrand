@@ -205,6 +205,14 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	printf '%s' "$text" | grep -qE 'Cuadro [0-9]' \
 		&& bad "a table is labelled Cuadro" \
 		|| ok "tables are labelled Tabla in Spanish"
+
+	# A note with neither author nor date opened its line with a middle dot:
+	# "· Uso interno". The footer prints the label alone too, so the
+	# witness is the dot, not the label.
+	first="$(pdftotext -f 1 -l 1 "$work/data.pdf" - 2>/dev/null)"
+	printf '%s' "$first" | grep -qF '· Uso interno' \
+		&& bad "a note's label line opens with a middle dot" \
+		|| ok "a note's label stands alone when there is no author or date"
 elif [ $status -eq 0 ]; then
 	echo "  --    pdftotext absent, PDF contents not checked"
 fi
@@ -282,6 +290,12 @@ if command -v soffice >/dev/null && command -v pdffonts >/dev/null && command -v
 	done
 
 	text="$(pdftotext "$work/lo/data.pdf" - 2>/dev/null | sed 's/\xc2\xa0/ /g' | tr -s '[:space:]' ' ')"
+	# The note's title block carried no author, date or label in the .docx:
+	# only the PDF printed them.
+	# Twice on the first page: under the title and in the footer.
+	n="$(pdftotext -f 1 -l 1 "$work/lo/data.pdf" - 2>/dev/null | grep -c 'Uso interno')"
+	[ "$n" -eq 2 ] && ok "data.docx: the note's label line, as the PDF has it" \
+		|| bad "data.docx: \"Uso interno\" $n time(s) on page 1, want 2 (title block and footer)"
 	for phrase in "m5.xlarge" "m5.large" "Uso recomendado" "Tabla 1:" "Figura 1:" "Ávila 5 2100"; do
 		printf '%s' "$text" | grep -qF -- "$phrase" && ok "data.docx prints \"$phrase\" whole" \
 			|| bad "data.docx lacks \"$phrase\" — a word broken across a column?"

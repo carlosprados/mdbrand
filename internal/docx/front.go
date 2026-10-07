@@ -114,10 +114,36 @@ func noteTitle(m Meta, l Look) string {
 		x.WriteString(para(pPr(0, 60, 0, "", "", "", false), run(l.Display, l.Text, 11, false, m.Subtitle)))
 	}
 	x.WriteString(para(pPr(0, 240, 0, "", l.Rule, "bottom", false), ""))
+	if r := noteMeta(m, l); r != "" {
+		x.WriteString(para(pPr(0, 240, 0, "", "", "", false), r))
+	}
 	if m.TOC {
 		x.WriteString(tocField(m, l))
 	}
 	return raw(x.String())
+}
+
+// noteMeta is the line under a note's rule, as the PDF sets it: author and
+// date in the text colour, the confidentiality label in the primary, joined
+// by middle dots that only ever stand between two of them.
+func noteMeta(m Meta, l Look) string {
+	var b strings.Builder
+	sep := func() {
+		if b.Len() > 0 {
+			b.WriteString(run(l.Display, l.Text, SmallPt, false, " · "))
+		}
+	}
+	for _, s := range []string{m.Author, m.Date} {
+		if s != "" {
+			sep()
+			b.WriteString(run(l.Display, l.Text, SmallPt, false, s))
+		}
+	}
+	if m.Confidential != "" {
+		sep()
+		b.WriteString(run(l.Display, l.Primary, SmallPt, false, m.Confidential))
+	}
+	return b.String()
 }
 
 func letterhead(m Meta, l Look) string {
