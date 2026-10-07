@@ -246,7 +246,7 @@ mdbrand:
   brand: amplia
   style: report          # report | note | letter
   reference: "Oferta AS-2164-26"
-  confidential: "Confidencial"
+  confidential: "Confidencial"   # cover and the footer of every page
 ---
 ```
 

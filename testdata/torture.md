@@ -10,6 +10,7 @@ bibliography: refs.bib
 mdbrand:
   brand: none
   style: report
+  confidential: "Confidential & internal"
 ---
 
 # What this is

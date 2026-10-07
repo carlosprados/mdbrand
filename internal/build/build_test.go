@@ -107,6 +107,17 @@ Output written on doc.pdf (2 pages, 12345 bytes).`
 	}
 }
 
+// The footer's confidentiality label and the page number are set by fancyhdr
+// without regard for each other; the preamble's measurement is the only notice.
+func TestScanLogFindsConfidentialTooWide(t *testing.T) {
+	if over := scanLog("MDBRAND-CONFIDENTIAL-TOOWIDE over=37.81277pt\n").ConfOverPt; over != 37.81277 {
+		t.Errorf("confOverPt = %v, want 37.81277", over)
+	}
+	if over := scanLog("Output written on doc.pdf (1 page, 10 bytes).").ConfOverPt; over != 0 {
+		t.Errorf("a clean log reported the label %v pt too wide", over)
+	}
+}
+
 // The count alone sent the reader to the log with a grep and a map from .tex
 // line numbers back to the Markdown. The quote is the diagnosis. What has to be
 // right is the reassembly: the log hard-wraps at 79 columns with nothing

@@ -40,7 +40,7 @@ func Reference(base []byte, l Look) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		ftr := footer(p)
+		ftr := footer(p, l)
 		fmt.Fprintf(&refs, `<w:headerReference w:type="default" r:id="%s"/><w:footerReference w:type="default" r:id="%s"/>`, hdr, ftr)
 	}
 	sect := fmt.Sprintf(`<w:sectPr>%s<w:pgSz w:w="%d" w:h="%d"/>`+
@@ -318,16 +318,23 @@ func header(p *pkg, l Look) (string, error) {
 	return addPart(p, "word/header1.xml", xml, relHeader, ctHeader, "rIdMdbrandHeader"), nil
 }
 
-// footer centres the page number, as the PDF does.
-func footer(p *pkg) string {
+// footer centres the page number, as the PDF does, with the confidentiality
+// label, when there is one, on the left.
+func footer(p *pkg, l Look) string {
+	align, label := `<w:jc w:val="center"/>`, ""
+	if l.Confidential != "" {
+		align = fmt.Sprintf(`<w:tabs><w:tab w:val="center" w:pos="%d"/></w:tabs>`, twips(l.TextWidthMM()/2))
+		label = fmt.Sprintf(`<w:r><w:rPr>%s<w:color w:val="%s"/><w:sz w:val="%d"/></w:rPr><w:t xml:space="preserve">%s</w:t></w:r><w:r><w:tab/></w:r>`,
+			fontsXML(l.Display), l.Primary, halfPt(TinyPt), esc(l.Confidential))
+	}
 	xml := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`+
-		`<w:ftr %s %s><w:p><w:pPr><w:spacing w:before="0" w:after="0"/><w:jc w:val="center"/></w:pPr>`+
+		`<w:ftr %s %s><w:p><w:pPr><w:spacing w:before="0" w:after="0"/>%s</w:pPr>%s`+
 		`<w:r><w:rPr><w:sz w:val="%d"/></w:rPr><w:fldChar w:fldCharType="begin"/></w:r>`+
 		`<w:r><w:rPr><w:sz w:val="%d"/></w:rPr><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>`+
 		`<w:r><w:rPr><w:sz w:val="%d"/></w:rPr><w:fldChar w:fldCharType="separate"/></w:r>`+
 		`<w:r><w:rPr><w:sz w:val="%d"/></w:rPr><w:t>1</w:t></w:r>`+
 		`<w:r><w:rPr><w:sz w:val="%d"/></w:rPr><w:fldChar w:fldCharType="end"/></w:r></w:p></w:ftr>`,
-		nsW, nsR, halfPt(TinyPt), halfPt(TinyPt), halfPt(TinyPt), halfPt(TinyPt), halfPt(TinyPt))
+		nsW, nsR, align, label, halfPt(TinyPt), halfPt(TinyPt), halfPt(TinyPt), halfPt(TinyPt), halfPt(TinyPt))
 	return addPart(p, "word/footer1.xml", xml, relFooter, ctFooter, "rIdMdbrandFooter")
 }
 

@@ -67,6 +67,24 @@
 \fancyhead[L]{\brandDisplay\fontsize{8.5}{10}\selectfont\color{brandText}\brandRunningTitle}
 \fancyhead[R]{\brandLogo{ {{- .HeaderLogoWidth -}} }}
 \fancyfoot[C]{\brandDisplay\fontsize{8.5}{10}\selectfont\color{brandText}\thepage}
+{{- if .Confidential}}
+% The cover's confidentiality label, repeated on every page left of the number.
+% fancyhdr sets the two boxes independently and lets them overprint in silence,
+% so the label is measured once the fonts are loaded, against the left half of
+% the measure less a three-digit page number and a gap; mdbrand stops the build
+% on the marker.
+\newcommand{\brandConfidential}{\brandDisplay\fontsize{8.5}{10}\selectfont\color{brandPrimary}{{texEscape .Confidential}}}
+\fancyfoot[L]{\brandConfidential}
+\newsavebox\mdbrandConfBox
+\newsavebox\mdbrandPageBox
+\AtBeginDocument{%
+  \sbox\mdbrandConfBox{\brandConfidential}%
+  \sbox\mdbrandPageBox{\brandDisplay\fontsize{8.5}{10}\selectfont 999}%
+  \ifdim\dimexpr\wd\mdbrandConfBox+0.5\wd\mdbrandPageBox+4mm\relax>0.5\textwidth
+    \typeout{MDBRAND-CONFIDENTIAL-TOOWIDE over=\the\dimexpr\wd\mdbrandConfBox+0.5\wd\mdbrandPageBox+4mm-0.5\textwidth\relax}%
+  \fi
+}
+{{- end}}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0pt}
 % \begingroup instead of a nested brace group on purpose: a doubled opening
@@ -77,6 +95,9 @@
   \fancyhead[L]{\brandDisplay\fontsize{8.5}{10}\selectfont\color{brandText}\brandRunningTitle}%
   \fancyhead[R]{\brandLogo{ {{- .HeaderLogoWidth -}} }}%
   \fancyfoot[C]{\brandDisplay\fontsize{8.5}{10}\selectfont\color{brandText}\thepage}%
+{{- if .Confidential}}
+  \fancyfoot[L]{\brandConfidential}%
+{{- end}}
   \renewcommand{\headrulewidth}{0.4pt}%
 }
 

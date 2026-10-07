@@ -48,7 +48,7 @@ mdbrand:
   brand: amplia                   # bundle name; `none` for unbranded
   style: report                   # report | note | letter
   reference: "Oferta AS-2164-26"  # report, optional
-  confidential: "Confidencial"    # report, optional
+  confidential: "Confidencial"    # report, optional; cover and every page footer
   formats: [pdf, docx]            # optional; default pdf. --to overrides
 ---
 ```

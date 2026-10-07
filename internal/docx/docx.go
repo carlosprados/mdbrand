@@ -35,6 +35,7 @@ type Look struct {
 	LogoAspect      float64
 	LogoHeaderWMM   float64
 	RunningTitle    string
+	Confidential    string // repeated left of the page number in every footer
 	Layout          string // report | note | letter
 	NumberFromCover bool   // report: the cover is page 0, so the first text page is 1
 }
