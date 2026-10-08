@@ -20,6 +20,8 @@ import (
 // crashes; vega-cli's own -f and -t were a stub that read nothing until
 // 6.4.0. What works is compiling with vl2vg and rendering with vg2svg -f -t
 // from vega-cli 6.4.0 on, and probe checks that before a chart relies on it.
+// Reported upstream as vega/vega#4361 and vega/vega-lite#9955: once both are
+// fixed, a spec's config.locale through vl2svg would do, and this can go.
 
 // numberLocale is the d3-format locale for lang, or nil where Vega's own
 // English is right. The separators are the ones the document's tables use.
