@@ -292,3 +292,9 @@ func (r *Result) Markdown() string {
 	caption := r.Fig.Caption
 	return fmt.Sprintf("![%s](%s){width=%.1fmm}", caption, filepath.Base(r.PDF), r.WidthMM)
 }
+
+// MarkdownBox is Markdown with the height written out as well, for a writer
+// that would otherwise fit the figure to a box of its own.
+func (r *Result) MarkdownBox() string {
+	return fmt.Sprintf("![%s](%s){width=%.1fmm height=%.1fmm}", r.Fig.Caption, filepath.Base(r.PDF), r.WidthMM, r.HeightMM)
+}

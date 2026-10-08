@@ -1,0 +1,111 @@
+{{/* Fragments more than one preamble carries. Each define starts and ends
+     exactly where its text does: a newline outside one is not output, a
+     newline inside one is. */ -}}
+{{define "colors"}}\definecolor{brandPrimary}{HTML}{ {{- .Brand.Colors.Primary -}} }
+\definecolor{brandText}{HTML}{ {{- .Brand.Colors.Text -}} }
+\definecolor{brandRule}{HTML}{ {{- .Brand.Colors.Rule -}} }
+\definecolor{brandLink}{HTML}{ {{- .Brand.Colors.Link -}} }{{end}}
+
+{{define "fallback"}}{{if .FallbackChars -}}
+% fonts.fallback: the characters this document uses that the body face lacks
+% and the fallback face has, found by comparing the two faces' coverage with
+% the text. Each is made active and set in the fallback face. Anything neither
+% face covers is not listed here, so the missing-glyph check still stops it.
+\usepackage{newunicodechar}
+\newfontfamily\brandFallback{ {{- .FallbackFont -}} }
+{{range .FallbackChars -}}
+\newunicodechar{ {{- .Char -}} }{\begingroup\brandFallback\char"{{.Code}}\relax\endgroup}
+{{end}}
+{{end -}}{{end}}
+
+{{define "code"}}% ------------------------------------------------------------- inline code ---
+% Inline code never breaks, and the reason is not the one everybody reaches for.
+% LaTeX gives the mono family \hyphenchar = -1, and that suppresses not only
+% pattern hyphenation but the discretionary TeX inserts after an explicit
+% hyphen: in prose `trainingplan-catalog-api` breaks after the hyphen, inside
+% \texttt it does not break at all. So a paragraph ending in a repo name
+% overflows the measure by the width of the whole token and no amount of
+% \emergencystretch can help. Neither can hyphenat's [htt]: measured, still
+% overfull.
+%
+% Allow a break after the characters code is actually made of, and only there.
+% Restoring \hyphenchar instead would invent hyphens inside identifiers, which
+% a reader would go on to copy. \allowbreak adds no character: what shows at
+% the end of the line is the separator the code already had. Prose is untouched
+% — this rewrites \texttt and nothing else.
+\ExplSyntaxOn
+\tl_new:N \l_mdbrand_code_tl
+\NewDocumentCommand \mdbrandCodeBreaks { m }
+  {
+    \tl_set:Nn \l_mdbrand_code_tl {#1}
+    \tl_replace_all:Nnn \l_mdbrand_code_tl {-} {-\allowbreak}
+    \tl_replace_all:Nnn \l_mdbrand_code_tl {/} {/\allowbreak}
+    \tl_replace_all:Nnn \l_mdbrand_code_tl {.} {.\allowbreak}
+    \tl_replace_all:Nnn \l_mdbrand_code_tl {\_} {\_\allowbreak}
+    \tl_use:N \l_mdbrand_code_tl
+  }
+\ExplSyntaxOff
+\let\mdbrandOrigTexttt\texttt
+\renewcommand{\texttt}[1]{\mdbrandOrigTexttt{\mdbrandCodeBreaks{#1}}}
+
+% --------------------------------------------------------------- code blocks ---
+% A verbatim line is one long unbreakable box: TeX cannot hyphenate it, cannot
+% stretch it and cannot break it, so a block one column too wide prints into the
+% margin and the only complaint is an Overfull \hbox. Nothing in the toolchain
+% used to try to make it fit.
+%
+% A code block is fitted the way a figure is: the widest size whose longest line
+% stays inside the measure. The block is written out and read back, because a
+% size cannot be chosen until the content has been measured and verbatim can
+% only be measured by typesetting it — VerbatimOut/BVerbatimInput is what makes
+% reading it a second time possible at all.
+%
+% The ladder stops at \footnotesize (8pt in a 10pt document, the floor where
+% code is still code and not a texture). Below that the block is emitted anyway,
+% overfull, and \typeout hands mdbrand the two numbers that make the warning
+% actionable: the columns the block has and the columns that fit.
+\usepackage{fvextra}
+% breaklines is for the Highlighting environment pandoc wraps a fence that
+% declares a language in — there, the author has said "this is code", and code
+% survives being wrapped. A bare fence gets no wrapping: it is as likely to hold
+% an ASCII diagram, and wrapping one silently destroys its alignment while the
+% build still exits 0. Shrink-to-fit is the mitigation that cannot lie.
+%
+% A wrap that happens shows fvextra's continuation arrow, so the reader can see
+% the line was folded and is not reading two statements.
+%
+% One case stays out of reach and is worth knowing before chasing it: pandoc
+% puts every highlighted token inside a macro argument (\StringTok{…}), and
+% fvextra cannot break inside one. A URL or an import path with no space in it
+% is unbreakable no matter which break option is set — measured with
+% breakanywhere and breakbytokenanywhere, 143pt past the measure either way.
+% That line is reported by the overfull warning, quoted, and it is the author's
+% to shorten.
+\fvset{breaklines=true,breakanywhere=true}
+
+\newsavebox\mdbrandCodeBox
+\newsavebox\mdbrandCharBox
+% Measures the block and one character of the same face, since the character is
+% what turns widths into the column counts a reader can act on.
+\newcommand{\mdbrandTryCode}[1]{%
+  \sbox\mdbrandCodeBox{#1\BVerbatimInput[breaklines=false]{\jobname.mdbrandcode}}%
+  \sbox\mdbrandCharBox{#1\ttfamily M}%
+}
+\newcommand{\mdbrandFitCode}{%
+  \mdbrandTryCode{\normalsize}%
+  \ifdim\wd\mdbrandCodeBox>\linewidth \mdbrandTryCode{\small}\fi
+  \ifdim\wd\mdbrandCodeBox>\linewidth \mdbrandTryCode{\footnotesize}\fi
+  \ifdim\wd\mdbrandCodeBox>\linewidth
+    \typeout{MDBRAND-CODE-TOOWIDE cols=\the\numexpr\wd\mdbrandCodeBox/\wd\mdbrandCharBox\relax\space fits=\the\numexpr\linewidth/\wd\mdbrandCharBox\relax}%
+  \fi
+  \par\addvspace{\medskipamount}\noindent\usebox\mdbrandCodeBox\par\addvspace{\medskipamount}%
+}
+\newenvironment{mdbrandcode}
+  {\VerbatimEnvironment\begin{VerbatimOut}{\jobname.mdbrandcode}}
+  {\end{VerbatimOut}\mdbrandFitCode}
+% pandoc writes \begin{verbatim} for a fence with no language. \let rather than
+% \renewenvironment: fancyvrb finds the terminator by the name the environment
+% was entered under, which is still verbatim.
+\let\verbatim\mdbrandcode
+\let\endverbatim\endmdbrandcode
+{{end}}

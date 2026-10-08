@@ -214,3 +214,63 @@ func TestHeaderHeightSpecKeepsDeclaredString(t *testing.T) {
 		t.Errorf("spec = %q, want a derived length in mm", got)
 	}
 }
+
+// A slide measures the frame, not the page, and sizes figures to the slide's
+// band. FigureBox hands back a copy: a build writing the PDF and the .docx
+// from one bundle must not find the slide's band on the page.
+func TestFigureBoxForSlides(t *testing.T) {
+	b := brand.Default()
+	fb, w, err := FigureBox(b, Slides)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w != SlideWidthMM-2*SlideMarginMM {
+		t.Errorf("slide measure = %.1f mm", w)
+	}
+	if fb.Diagrams.MinTextPt != b.Slides.Diagrams.MinTextPt || fb.Diagrams.MaxHeightMM != SlideFigureMaxHeightMM {
+		t.Errorf("slide band not applied: %+v", fb.Diagrams)
+	}
+	if b.Diagrams.MinTextPt != 8 || b.Diagrams.MaxHeightMM != 150 {
+		t.Errorf("FigureBox changed the bundle itself: %+v", b.Diagrams)
+	}
+
+	pb, pw, err := FigureBox(b, "report")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want, _ := TextWidthMM(b); pb != b || pw != want {
+		t.Errorf("a page style must get the bundle and its measure untouched")
+	}
+}
+
+// Every branch of the deck's preamble, rendered: a template error here
+// surfaces only when a bundle with that shape is first used.
+func TestSlidesPreambleRenders(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		for _, extras := range []bool{false, true} {
+			b := brand.Default()
+			if dark {
+				b.Slides.Background, b.Slides.Foreground = "222629", "F2EDF5"
+			}
+			d := &Data{Brand: b, Style: Slides, Title: "A & B", HeaderTitle: "A & B", SlideMarginMM: SlideMarginMM}
+			if extras {
+				d.Subtitle, d.Author, d.Date, d.Reference, d.Confidential = "S", "Au", "Da", "R-1", "Conf_1"
+				d.LogoFile, d.SlideLogoFile, d.SlideArtFile = "logo.pdf", "logo-slide.pdf", "slide-art.pdf"
+				d.DisplayFont, d.DisplayRegular, d.DisplayRegularDir, d.DisplayBold, d.DisplayBoldDir = true, "R.otf", "/f/", "B.otf", "/f/"
+			}
+			got, err := Render("slides", d)
+			if err != nil {
+				t.Fatalf("dark=%v extras=%v: %v", dark, extras, err)
+			}
+			if !strings.Contains(got, `A \& B`) {
+				t.Errorf("dark=%v extras=%v: the title is not escaped", dark, extras)
+			}
+			if dark != strings.Contains(got, "brandGround") {
+				t.Errorf("dark=%v: ground colour presence wrong", dark)
+			}
+			if extras && !strings.Contains(got, "Ligatures=TeX") {
+				t.Error("display faces need Ligatures=TeX: pandoc writes an em dash as ---")
+			}
+		}
+	}
+}

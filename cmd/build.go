@@ -187,7 +187,7 @@ file. Ctrl-C stops it.
 	c.Flags().StringVarP(&o.Output, "out", "o", "", "output file (default: alongside the input); with several formats, each takes its own extension")
 	c.Flags().StringSliceVar(&o.Formats, "to", nil, "pdf | docx | pdf,docx; overrides the front matter's formats (default pdf)")
 	c.Flags().StringVar(&o.BrandName, "brand", "", "brand bundle to use; overrides the front matter")
-	c.Flags().StringVar(&o.Style, "style", "", "report | note | letter; overrides the front matter")
+	c.Flags().StringVar(&o.Style, "style", "", "report | note | letter | slides; overrides the front matter")
 	c.Flags().StringVar(&o.WordCount, "wordcount", "", "ib | all: the {{words}} criterion; replaces the front matter's entirely")
 	c.Flags().StringVar(&o.WorkDir, "work", "", "keep intermediates here (LaTeX, figures, log) for debugging")
 	c.Flags().BoolVar(&o.AllowHoles, "allow-missing-glyphs", false, "build even if the font lacks glyphs the text uses")

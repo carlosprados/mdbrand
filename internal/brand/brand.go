@@ -35,6 +35,7 @@ type Brand struct {
 	Fonts    Fonts    `yaml:"fonts"`
 	Page     Page     `yaml:"page"`
 	Diagrams Diagrams `yaml:"diagrams"`
+	Slides   Slides   `yaml:"slides"`
 	Footer   string   `yaml:"footer"`
 
 	Dir string `yaml:"-"` // resolved bundle directory
@@ -246,6 +247,7 @@ func (b *Brand) applyDefaults() {
 	if b.Diagrams.MaxHeightMM == 0 {
 		b.Diagrams.MaxHeightMM = 150
 	}
+	b.Slides.applyDefaults()
 }
 
 // ErrNoBrandsDir is what a named bundle meets when no brands directory is set,
@@ -500,6 +502,45 @@ func (b *Brand) DisplayFontHint() string {
 
 var hexRe = regexp.MustCompile(`^[0-9A-Fa-f]{6}$`)
 
+// checkArtwork is what every mark a bundle names goes through: the traps below
+// (a bitmap in an SVG coat, the data:img/ MIME type, <foreignObject>) cost
+// exactly as much on the second mark, or a slide's, as on the first.
+func checkArtwork(label, logo string, problems, warnings *[]string) {
+	add := func(dst *[]string, f string, a ...any) { *dst = append(*dst, fmt.Sprintf(f, a...)) }
+	st, err := os.Stat(logo)
+	if err != nil {
+		add(problems, "%s: %s: %v", label, logo, err)
+		return
+	}
+	switch strings.ToLower(filepath.Ext(logo)) {
+	case ".pdf", ".png":
+		// Directly embeddable by xelatex.
+	case ".svg":
+		raw, err := os.ReadFile(logo)
+		if err != nil {
+			add(problems, "%s: %v", label, err)
+			return
+		}
+		s := string(raw)
+		if strings.Contains(s, "<image") {
+			add(warnings, "%s: %s embeds a raster <image> — it is a bitmap in an SVG coat, "+
+				"so it will look soft on a cover. Get the vector original.", label, filepath.Base(logo))
+		}
+		if strings.Contains(s, "data:img/") {
+			add(problems, "%s: %s uses the invalid MIME type data:img/... (it must be data:image/...); "+
+				"rsvg-convert renders nothing and fails silently", label, filepath.Base(logo))
+		}
+		if strings.Contains(s, "<foreignObject") {
+			add(problems, "%s: %s contains <foreignObject>; rsvg-convert drops it without a word", label, filepath.Base(logo))
+		}
+	default:
+		add(problems, "%s: %s: unsupported extension (use .svg, .pdf or .png)", label, filepath.Base(logo))
+	}
+	if st.Size() < 300 {
+		add(warnings, "%s: %s is only %d bytes — suspiciously small for artwork", label, filepath.Base(logo), st.Size())
+	}
+}
+
 // Check validates a bundle and returns human-readable problems and warnings.
 // It knows the two traps that cost real time: an SVG that is only a wrapper
 // around a small bitmap, and text kept as <foreignObject>, which rsvg-convert
@@ -519,43 +560,7 @@ func (b *Brand) Check() (problems, warnings []string) {
 		}
 	}
 
-	// Both logos go through the same checks: the traps below (a bitmap in an
-	// SVG coat, the data:img/ MIME type, <foreignObject>) cost exactly as much
-	// on the second mark as on the first.
-	checkLogo := func(label, logo string) {
-		st, err := os.Stat(logo)
-		if err != nil {
-			add(&problems, "%s: %s: %v", label, logo, err)
-			return
-		}
-		switch strings.ToLower(filepath.Ext(logo)) {
-		case ".pdf", ".png":
-			// Directly embeddable by xelatex.
-		case ".svg":
-			raw, err := os.ReadFile(logo)
-			if err != nil {
-				add(&problems, "%s: %v", label, err)
-				return
-			}
-			s := string(raw)
-			if strings.Contains(s, "<image") {
-				add(&warnings, "%s: %s embeds a raster <image> — it is a bitmap in an SVG coat, "+
-					"so it will look soft on a cover. Get the vector original.", label, filepath.Base(logo))
-			}
-			if strings.Contains(s, "data:img/") {
-				add(&problems, "%s: %s uses the invalid MIME type data:img/... (it must be data:image/...); "+
-					"rsvg-convert renders nothing and fails silently", label, filepath.Base(logo))
-			}
-			if strings.Contains(s, "<foreignObject") {
-				add(&problems, "%s: %s contains <foreignObject>; rsvg-convert drops it without a word", label, filepath.Base(logo))
-			}
-		default:
-			add(&problems, "%s: %s: unsupported extension (use .svg, .pdf or .png)", label, filepath.Base(logo))
-		}
-		if st.Size() < 300 {
-			add(&warnings, "%s: %s is only %d bytes — suspiciously small for artwork", label, filepath.Base(logo), st.Size())
-		}
-	}
+	checkLogo := func(label, logo string) { checkArtwork(label, logo, &problems, &warnings) }
 
 	if logo := b.LogoPath(); logo == "" {
 		add(&warnings, "logo: none declared — cover and header will carry type only")

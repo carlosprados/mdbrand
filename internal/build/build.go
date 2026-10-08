@@ -25,6 +25,7 @@ import (
 	"github.com/carlosprados/mdbrand/internal/doc"
 	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/run"
+	"github.com/carlosprados/mdbrand/internal/tex"
 	"github.com/carlosprados/mdbrand/internal/words"
 )
 
@@ -150,6 +151,11 @@ func pipeline(o Options, inputs *[]string) (*Report, error) {
 	// Deferred, so that it also holds what a chart read through a name.
 	defer func() { *inputs = append(*inputs, p.refs()...) }()
 	if slices.Contains(formats, "docx") {
+		if p.style == tex.Slides {
+			return nil, fmt.Errorf(`style slides is a deck, and a .docx is a page: there is nothing in Word
+or Google Docs for a frame to become. Build the deck as a PDF (--to pdf), or
+the document as a .docx in another style (--style report)`)
+		}
 		if _, err := p.b.OfficeFonts(); err != nil {
 			return nil, err
 		}

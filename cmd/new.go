@@ -47,7 +47,7 @@ diagram and a Vega-Lite chart.`,
 			return nil
 		},
 	}
-	c.Flags().StringVar(&style, "style", "", "report | note | letter")
+	c.Flags().StringVar(&style, "style", "", "report | note | letter | slides")
 	c.Flags().StringVar(&brandName, "brand", "", "brand bundle name")
 	c.Flags().StringVar(&title, "title", "", "document title")
 	c.Flags().StringVar(&subtitle, "subtitle", "", "document subtitle")
@@ -55,6 +55,43 @@ diagram and a Vega-Lite chart.`,
 	c.Flags().BoolVar(&toc, "toc", false, "include a table of contents")
 	return c
 }
+
+// slidesBody shows the two levels a deck has: # opens a section, with a
+// cover slide of its own, and ## is one slide. A diagram for a slide is wide
+// and low, because a frame is 16:9.
+var slidesBody = `# Primer bloque
+
+## Una diapositiva
+
+- Un nivel dos (` + "`##`" + `) es una diapositiva; un nivel uno (` + "`#`" + `) abre una
+  sección con su propia portada
+- Lo que no cabe en la diapositiva para el build: pártela en dos
+
+## Un diagrama
+
+` + "```d2 caption=\"Flujo de datos\"" + `
+direction: right
+origen: Origen
+motor: Motor
+salida: Informe
+origen -> motor -> salida
+` + "```" + `
+
+## Dos columnas
+
+:::: columns
+::: column
+- A la izquierda, el argumento
+:::
+::: column
+- A la derecha, el ejemplo
+:::
+::::
+
+::: notes
+Notas del ponente: no salen en la diapositiva.
+:::
+`
 
 var months = []string{"enero", "febrero", "marzo", "abril", "mayo", "junio",
 	"julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"}
@@ -129,8 +166,11 @@ Una gráfica de datos:
 }
 ` + "```" + `
 `
-	if style == "letter" {
+	switch style {
+	case "letter":
 		body = "Cuerpo de la carta. El membrete, el destinatario y la firma salen del front\nmatter; aquí va solo el texto.\n"
+	case "slides":
+		body = slidesBody
 	}
 	return fm.String() + body
 }
