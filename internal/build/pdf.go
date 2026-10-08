@@ -152,10 +152,7 @@ else would have told you. Fix the key or add the entry.`,
 	if err := checkTextLayer(work, stem+".pdf", md.String(), rep); err != nil {
 		return err
 	}
-	if err := copyFile(filepath.Join(work, stem+".pdf"), out); err != nil {
-		return err
-	}
-	rep.Outputs = append(rep.Outputs, Output{Format: "pdf", Path: out, Pages: sc.Pages})
+	rep.Outputs = append(rep.Outputs, Output{Format: "pdf", Path: out, Pages: sc.Pages, built: filepath.Join(work, stem+".pdf")})
 	return nil
 }
 

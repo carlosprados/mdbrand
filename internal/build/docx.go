@@ -160,10 +160,7 @@ nothing else would have told you. Fix the key or add the entry.`,
 	if err := os.WriteFile(built, fixed, 0o644); err != nil {
 		return err
 	}
-	if err := copyFile(built, out); err != nil {
-		return err
-	}
-	rep.Outputs = append(rep.Outputs, Output{Format: "docx", Path: out})
+	rep.Outputs = append(rep.Outputs, Output{Format: "docx", Path: out, built: built})
 	return nil
 }
 

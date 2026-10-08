@@ -400,6 +400,18 @@ for t in "${traps[@]}"; do
 	fi
 done
 
+# A format that fails publishes nothing, not even the formats before it: a new
+# PDF beside the last build's .docx is a pair that no longer matches.
+mkdir -p "$work/atomic"
+cp -r "$root/testdata/traps/pdf-picture.md" "$root/testdata/traps/pictures" "$work/atomic/"
+if "$bin" build "$work/atomic/pdf-picture.md" --to pdf,docx --brand none >/dev/null 2>&1; then
+	bad "pdf-picture.md --to pdf,docx: exit 0, want the build to stop"
+elif [ -e "$work/atomic/pdf-picture.pdf" ]; then
+	bad "pdf-picture.md --to pdf,docx failed on the .docx but published the PDF"
+else
+	ok "pdf-picture.md --to pdf,docx publishes nothing when the .docx fails"
+fi
+
 echo
 if [ $failures -eq 0 ]; then
 	echo "all clear"

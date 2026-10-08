@@ -75,6 +75,9 @@ type Output struct {
 	Path   string
 	// Pages is known for a PDF only: a .docx is paginated by whatever opens it.
 	Pages int
+	// built is the file in the work directory, published to Path only once
+	// every format has succeeded.
+	built string
 }
 
 // Formats are the outputs a build can write.
@@ -167,6 +170,14 @@ func pipeline(o Options, inputs *[]string) (*Report, error) {
 			err = renderDOCX(p, out, inputs)
 		}
 		if err != nil {
+			return nil, err
+		}
+	}
+	// Nothing is published until every format has built: a .docx that failed
+	// after its PDF left a new PDF beside the last build's .docx, a pair that
+	// no longer matched, and the error said nothing of it.
+	for _, out := range p.rep.Outputs {
+		if err := copyFile(out.built, out.Path); err != nil {
 			return nil, err
 		}
 	}
