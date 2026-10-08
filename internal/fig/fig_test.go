@@ -142,12 +142,21 @@ func TestD2SourceLeavesASourceThatSizesItself(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := &doc.Fig{Kind: "d2", SrcPath: src}
-	got, generated, err := d2Source(f, brand.Default(), 0.5, dir)
+	got, _, err := d2Source(f, brand.Default(), 0.5, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if generated || got != src {
-		t.Errorf("d2Source = %q (generated=%v), want the original source untouched", got, generated)
+	// The copy still carries the brand's colours, but not one glob: the
+	// author's font size is the author's.
+	raw, err := os.ReadFile(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "added by mdbrand: label size") {
+		t.Errorf("d2Source added font-size globs to a source that sizes itself:\n%s", raw)
+	}
+	if !strings.Contains(string(raw), "**.style.font-size: 48") {
+		t.Errorf("the author's own font size is gone:\n%s", raw)
 	}
 }
 

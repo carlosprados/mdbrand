@@ -312,6 +312,12 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	# take a colour of their own.
 	grep -qF '\textcolor{brandAccent}{accented phrase}' "$work/slides/slides.tex" \
 		&& ok "accented words print in colors.accent" || bad "accented words are not in colors.accent"
+	# Figures take the bundle's colours: Vega's and d2's own blue used to sit
+	# on a page in the brand's.
+	grep -qi 'fill="#E8710A"' "$work/slides/fig01.svg" && ok "the chart's bars are in the primary" \
+		|| bad "the chart's bars are not in the bundle's primary"
+	grep -qi '#3A3F44' "$work/slides/fig00.svg" && ! grep -qi '#0D32B2' "$work/slides/fig00.svg" \
+		&& ok "the diagram is in the bundle's colours, not d2's blue" || bad "the diagram keeps d2's own colours"
 	# The label is orange; the title and number beside it must not be.
 	grep -qF '\begingroup\color{brandPrimary}Internal\endgroup' "$work/slides/slides.tex" \
 		&& ok "the confidential label keeps its colour to itself" || bad "the confidential label's colour is not grouped"

@@ -36,6 +36,7 @@ type Brand struct {
 	Page     Page     `yaml:"page"`
 	Diagrams Diagrams `yaml:"diagrams"`
 	Slides   Slides   `yaml:"slides"`
+	Figures  Figures  `yaml:"figures"`
 	Footer   string   `yaml:"footer"`
 
 	// Requires is the oldest mdbrand the bundle works with, e.g. "0.18".
@@ -183,6 +184,14 @@ type Diagrams struct {
 	MinTextPt   float64 `yaml:"min_text_pt"`
 	MaxTextPt   float64 `yaml:"max_text_pt"`
 	MaxHeightMM float64 `yaml:"max_height_mm"`
+}
+
+// Figures is how diagrams and charts take the brand. Their colours come from
+// colors: on their own; this only fixes what cannot be derived.
+type Figures struct {
+	// Palette is one colour per series in a chart, in order. Absent, it is
+	// the primary, the text, the link, the accent and the rule colours.
+	Palette []string `yaml:"palette"`
 }
 
 // Default is the fallback bundle: no logo, no display font, sober defaults that
@@ -586,6 +595,11 @@ func (b *Brand) Check() (problems, warnings []string) {
 			add(&problems, "%s: %q is not a 6-digit hex without '#'", label, v)
 		}
 	}
+	for i, v := range b.Figures.Palette {
+		if !hexRe.MatchString(v) {
+			add(&problems, "figures.palette[%d]: %q is not a 6-digit hex without '#'", i, v)
+		}
+	}
 
 	checkLogo := func(label, logo string) { checkArtwork(label, logo, &problems, &warnings) }
 
@@ -689,6 +703,9 @@ page:
   # the running header the height it really needs — logo_width_header is a
   # WIDTH, and a square mark is as tall as it is wide. Set headheight only to
   # make the header taller than the mark requires.
+
+# figures:           # optional: diagrams and charts take colors: by themselves
+#   palette: ["1F6FEB", "3A3A3A"]   # one colour per chart series, in order
 
 diagrams:
   d2_theme: 0         # light: paper has no prefers-color-scheme
