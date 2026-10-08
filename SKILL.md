@@ -54,6 +54,9 @@ mdbrand:
 ---
 ```
 
+A key under `mdbrand:` that no option reads stops the build with a "did you
+mean" — a misspelt option used to be dropped in silence.
+
 - `report` — cover with logo, header with logo from page 2, optional ToC.
 - `note` — no cover; title block plus header from page 1. Internal notes.
 - `letter` — letterhead; needs `to:` (list), `place:`, `greeting:`, `signature:`

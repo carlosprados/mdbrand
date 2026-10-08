@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -215,8 +217,90 @@ func (f *File) SetFrontMatter(raw string) error {
 	if err := yaml.Unmarshal([]byte(raw), &m); err != nil {
 		return fmt.Errorf("%s: front matter: %w", f.Path, err)
 	}
+	if err := checkOptionKeys(raw); err != nil {
+		return fmt.Errorf("%s: %w", f.Path, err)
+	}
 	f.FrontMatter, f.Meta = raw, m
 	return nil
+}
+
+// checkOptionKeys refuses a key under mdbrand: that no option reads. YAML
+// drops an unknown field in silence, so `confidencial:` built a document with
+// no label and exited 0. Only mdbrand's own block is held to this: the rest of
+// the front matter is pandoc's, and anything goes there.
+func checkOptionKeys(raw string) error {
+	var top struct {
+		Options yaml.Node `yaml:"mdbrand"`
+	}
+	if err := yaml.Unmarshal([]byte(raw), &top); err != nil || top.Options.Kind != yaml.MappingNode {
+		return nil
+	}
+	known := optionKeys()
+	for i := 0; i+1 < len(top.Options.Content); i += 2 {
+		k := top.Options.Content[i].Value
+		if slices.Contains(known, k) {
+			continue
+		}
+		hint := ""
+		if near := closest(k, known); near != "" {
+			hint = fmt.Sprintf(" — did you mean %s?", near)
+		}
+		return fmt.Errorf("mdbrand.%s is not an option mdbrand reads%s\nThe options are %s",
+			k, hint, strings.Join(known, ", "))
+	}
+	return nil
+}
+
+// optionKeys are the yaml names of Options' fields, so a new option is known
+// here the moment it is declared.
+func optionKeys() []string {
+	t := reflect.TypeOf(Options{})
+	keys := make([]string, 0, t.NumField())
+	for i := 0; i < t.NumField(); i++ {
+		if name, _, _ := strings.Cut(t.Field(i).Tag.Get("yaml"), ","); name != "" && name != "-" {
+			keys = append(keys, name)
+		}
+	}
+	return keys
+}
+
+// closest is the known key within two edits of k, if there is exactly one
+// nearest; a guess between two is no help.
+func closest(k string, known []string) string {
+	best, bestD, tie := "", 3, false
+	for _, c := range known {
+		switch d := editDistance(k, c); {
+		case d < bestD:
+			best, bestD, tie = c, d, false
+		case d == bestD:
+			tie = true
+		}
+	}
+	if tie {
+		return ""
+	}
+	return best
+}
+
+func editDistance(a, b string) int {
+	ra, rb := []rune(a), []rune(b)
+	prev := make([]int, len(rb)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(ra); i++ {
+		cur := make([]int, len(rb)+1)
+		cur[0] = i
+		for j := 1; j <= len(rb); j++ {
+			cost := 1
+			if ra[i-1] == rb[j-1] {
+				cost = 0
+			}
+			cur[j] = min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost)
+		}
+		prev = cur
+	}
+	return prev[len(rb)]
 }
 
 // Fig is one diagram to render, extracted from the body.

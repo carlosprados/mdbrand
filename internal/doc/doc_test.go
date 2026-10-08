@@ -390,3 +390,20 @@ func TestPrintedCoversEveryField(t *testing.T) {
 		}
 	}
 }
+
+// YAML drops an unknown field in silence, so a misspelt option built a
+// document without it and exited 0. Only mdbrand's block is held to this.
+func TestUnknownOptionIsRefusedWithTheNearestKey(t *testing.T) {
+	err := checkOptionKeys("title: T\nmdbrand: {style: note, confidencial: X}\n")
+	if err == nil || !strings.Contains(err.Error(), "mdbrand.confidencial") ||
+		!strings.Contains(err.Error(), "did you mean confidential?") {
+		t.Errorf("want the key and the nearest option named, got %v", err)
+	}
+	if err := checkOptionKeys("title: T\npandoc-thing: 1\nmdbrand: {style: note, short_title: S}\n"); err != nil {
+		t.Errorf("known options and pandoc's own keys refused: %v", err)
+	}
+	// Far from every option: no guess, only the list.
+	if err := checkOptionKeys("mdbrand: {colour: red}\n"); err == nil || strings.Contains(err.Error(), "did you mean") {
+		t.Errorf("want a refusal without a guess, got %v", err)
+	}
+}

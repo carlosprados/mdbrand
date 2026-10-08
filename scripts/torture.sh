@@ -374,6 +374,7 @@ traps=(
 	"display-glyph.md|fail|display face (fonts.office.display), has no glyph|--to docx --brands-dir $root/testdata/brands"
 	"confidential-too-long.md|fail|too wide for the footer"
 	"title-too-long.md|fail|Set mdbrand.short_title"
+	"unknown-option.md|fail|did you mean confidential?"
 )
 
 echo

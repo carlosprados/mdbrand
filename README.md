@@ -251,6 +251,10 @@ mdbrand:
 ---
 ```
 
+Everything under `mdbrand:` is checked: a key no option reads stops the build,
+naming the option it was probably meant to be. The rest of the front matter is
+pandoc's and passes through untouched.
+
 ```sh
 mdbrand new informe.md --title "…" --toc   # scaffold, front matter already right
 mdbrand build informe.md                   # build
