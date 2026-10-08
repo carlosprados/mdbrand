@@ -63,6 +63,16 @@ func TestJudgeFramesIgnoresRounding(t *testing.T) {
 	}
 }
 
+// beamer reports a slide with pauses once per overlay, all at its \end{frame}.
+func TestJudgeFramesCountsOverlaysOnce(t *testing.T) {
+	src := "\\begin{frame}{A}\n\\end{frame}"
+	err := judgeFrames([]frameOver{{Pt: 20, Line: 2}, {Pt: 28.45, Line: 2}, {Pt: 5, Line: 2}}, src)
+	if err == nil || !strings.HasPrefix(err.Error(), "1 slide(s)") ||
+		strings.Count(err.Error(), `"A"`) != 1 || !strings.Contains(err.Error(), "10.0 mm") {
+		t.Errorf("want one slide, as tall as its tallest overlay, got %v", err)
+	}
+}
+
 // The accent is measured only when a document prints words in it, stops a
 // deck and warns on a page — a pale accent has always printed on paper.
 func TestAccentContrast(t *testing.T) {

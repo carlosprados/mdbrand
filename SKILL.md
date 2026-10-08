@@ -263,6 +263,9 @@ one that builds.
   slide: text under a `#` alone becomes a slide titled by the section.
 - `:::: columns` / `::: column` for two columns; `::: notes` for speaker notes,
   which never print.
+- `. . .` on a line of its own pauses; `::: incremental` around a list reveals
+  it point by point. Each step is a page with the slide's number, and a slide is
+  judged by its fullest step.
 - Figures get 140 × 48 mm at most and a band of 8.5–14 pt. Draw them wide and
   low (`direction: right`) and keep edge labels few: one edge label can widen a
   d2 layout enough to push every label under the floor.
