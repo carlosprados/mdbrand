@@ -1,0 +1,7 @@
+# A catalogue keyed by id. Keys with dots are read with brackets:
+# {{data.maquinas[m5.large].ram}}. An entry whose name starts with _ is an
+# anchor only, never listed as data.
+_base: &base {familia: m5, disco: 50}
+m5.large:    {<<: *base, cpu: 2, ram: 8,  precio: 0.096, uso: "Desarrollo y pruebas con carga baja"}
+m5.xlarge:   {<<: *base, cpu: 4, ram: 16, precio: 0.192, disco: 100, uso: "Servicios con tráfico moderado"}
+c6i.2xlarge: {familia: c6i, cpu: 8, ram: 16, disco: 100, precio: 0.34, uso: "Cómputo intensivo y compilación"}

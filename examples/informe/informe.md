@@ -7,20 +7,23 @@ lang: en-GB
 toc: true
 toc-depth: 2
 mdbrand:
-  brand: none
+  brand: none                     # a bundle name, e.g. amplia; none = built-in defaults
   style: report
+  reference: "MDB-2026-001"       # on the cover
+  confidential: "Internal"        # on the cover and every footer
 ---
 
 # What this is
 
-This file is the example. Build it with:
+This file is the example of a `report`: a cover, a table of contents, a
+running header, figures, a table and code. Build it with:
 
 ```sh
-mdbrand build examples/demo.md --brand none
+mdbrand build informe.md
 ```
 
-`--brand none` uses the built-in defaults, so it works on a machine with no
-bundle set up. Point it at a real bundle and the cover, the header logo, the
+`brand: none` uses the built-in defaults, so it works on a machine with no
+bundle set up. Change it to a real bundle and the cover, the header logo, the
 colours and the type change; the Markdown does not.
 
 # Figures
@@ -62,7 +65,7 @@ A Vega-Lite chart, also inline. Its labels are set at 13px because the default
 
 Each figure is placed at the widest size that fits the text measure while
 keeping its labels inside the legibility band and its height under the page
-guide. `mdbrand diagrams examples/demo.md` reports those numbers without
+guide. `mdbrand diagrams informe.md` reports those numbers without
 building anything.
 
 # Tables and text
@@ -75,3 +78,9 @@ building anything.
 
 Ordinary Markdown works as expected: **emphasis**, `code`, footnotes, block
 quotes and nested lists all pass straight through pandoc.
+
+```go
+// Code is fitted to the measure: the size steps down until its longest line
+// fits, and a fence with a language wraps what still does not.
+func build(doc string) error { return mdbrand.Build(doc) }
+```

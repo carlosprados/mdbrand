@@ -89,7 +89,7 @@ Front matter drives everything, so a build needs no flags:
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return exit.AsUsage(err) })
 	cobra.OnInitialize(initConfig)
 
-	root.AddCommand(buildCmd(), newCmd(), doctorCmd(), brandCmd(), diagramsCmd(), dataCmd(), skillCmd(), configCmd(), versionCmd())
+	root.AddCommand(buildCmd(), newCmd(), exampleCmd(), doctorCmd(), brandCmd(), diagramsCmd(), dataCmd(), skillCmd(), configCmd(), versionCmd())
 	return root
 }
 

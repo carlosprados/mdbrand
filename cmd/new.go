@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/tex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,12 +21,16 @@ func newCmd() *cobra.Command {
 		Short: "Scaffold a Markdown document with the front matter already right",
 		Long: `Write a new Markdown document carrying front matter mdbrand understands, so
 "mdbrand build" on it needs no flags. Includes a commented example of a D2
-diagram and a Vega-Lite chart.`,
+diagram and a Vega-Lite chart.
+
+For a fuller start — a letter, a deck with speaker notes, a document quoting
+data files, an essay with citations — write out the nearest worked example
+instead: mdbrand example lists them.`,
 		Args: usageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := args[0]
 			if _, err := os.Stat(path); err == nil {
-				return fmt.Errorf("%s already exists", path)
+				return exit.AsUsage(fmt.Errorf("%s already exists", path))
 			}
 			if style == "" {
 				style = viper.GetString("style")

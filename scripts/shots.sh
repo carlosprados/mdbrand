@@ -2,7 +2,7 @@
 # Regenerates the pictures in README.md from the examples, so they show what the
 # tool prints today and not what it printed when someone last took a screenshot.
 #
-#   assets/readme/pages.png      the demo's cover and first page, the essay's cover
+#   assets/readme/pages.png      the report's cover and first page, the essay's cover
 #   assets/readme/slides.png     four slides of the example deck
 #   assets/readme/build.png      a build, as the terminal shows it
 #   assets/readme/trap.png       a build that stops, naming the fix
@@ -42,7 +42,9 @@ capped() {
 }
 
 mkdir -p "$out"
-cp "$root"/examples/*.md "$root/testdata/traps/missing-glyph.md" "$work/"
+# The examples come out of the binary, as anyone using it gets them.
+for name in informe ensayo charla; do "$root/mdbrand" example "$name" "$work" >/dev/null; done
+cp "$root/testdata/traps/missing-glyph.md" "$work/"
 cd "$work"
 
 # One look for every terminal picture, in a monospaced face so the result
@@ -78,9 +80,9 @@ shot() {
 
 echo "pictures in assets/readme"
 
-mdbrand build demo.md -q >/dev/null
+mdbrand build informe.md -q >/dev/null
 mdbrand build ensayo.md -q >/dev/null
-pdftoppm -r 70 -png -f 1 -l 2 demo.pdf demo
+pdftoppm -r 70 -png -f 1 -l 2 informe.pdf demo
 pdftoppm -r 70 -png -f 1 -l 1 ensayo.pdf ensayo
 convert demo-1.png demo-2.png ensayo-1.png \
 	-bordercolor '#b8bcc0' -border 1 \
@@ -88,8 +90,8 @@ convert demo-1.png demo-2.png ensayo-1.png \
 	"$out/pages.png"
 echo "  pages.png"
 
-mdbrand build deck.md -q >/dev/null
-pdftoppm -r 60 -png deck.pdf deck
+mdbrand build charla.md -q >/dev/null
+pdftoppm -r 60 -png charla.pdf deck
 # Each slide framed on its own, as the pages above are: a white slide on a
 # white README is otherwise a rectangle of nothing.
 for n in 1 3 4 6; do convert deck-$n.png -bordercolor '#b8bcc0' -border 1 -bordercolor none -border 6 frame-$n.png; done
@@ -97,7 +99,7 @@ convert \( frame-1.png frame-3.png +append \) \( frame-4.png frame-6.png +append
 	-bordercolor none -border 6 "$out/slides.png"
 echo "  slides.png"
 
-shot build.png "mdbrand build demo.md"
+shot build.png "mdbrand build informe.md"
 shot trap.png "mdbrand build missing-glyph.md"
 shot wordcount.png "mdbrand build ensayo.md -q" "mdbrand build ensayo.md -q --wordcount all"
 

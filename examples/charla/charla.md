@@ -6,7 +6,8 @@ date: "October 2026"
 lang: en-GB
 mdbrand:
   brand: none
-  style: slides
+  style: slides                   # a 16:9 deck; # opens a section, ## is a slide
+  formats: [pdf, notes]           # the deck, and charla-notes.pdf to speak from
 ---
 
 # How it works
@@ -26,6 +27,11 @@ mb.figs -> mb.tex
 mb.tex -> pdf
 ```
 
+::: notes
+One command, no flags: everything comes from the front matter. The diagram is
+drawn wide and low because a frame is 16:9.
+:::
+
 ## Figures sized for the frame
 
 ```vegalite caption="Smallest label, in points"
@@ -42,6 +48,10 @@ mb.tex -> pdf
   "config": {"axis": {"labelFontSize": 15, "titleFontSize": 15, "labelAngle": 0}}
 }
 ```
+
+::: notes
+A slide is read across a room, so its labels have a higher floor than a page's.
+:::
 
 # Writing one
 
@@ -62,7 +72,8 @@ mb.tex -> pdf
 ::::
 
 ::: notes
-Speaker notes go here.
+Speaker notes never print on a slide. They print beside it in
+charla-notes.pdf, two slides to an A4 sheet.
 :::
 
 ## When a slide does not fit
@@ -70,3 +81,28 @@ Speaker notes go here.
 - beamer sets the rest over the footer and exits 0
 - mdbrand reads its log and stops the build
 - naming the slide by its title, and by how much
+
+::: notes
+Show the error: the slide's title, and by how much it runs over.
+:::
+
+## Pauses
+
+A line on its own with three spaced dots pauses:
+
+. . .
+
+and the rest of the slide appears on the next click.
+
+## Point by point
+
+::: incremental
+- a list inside `::: incremental` reveals one point per click
+- every step keeps the slide's number in the footer
+- the notes show the slide whole
+:::
+
+::: notes
+This slide has no note of its own beyond this one; a slide without notes still
+gets its place in the notes, with room to write by hand.
+:::

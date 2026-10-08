@@ -6,6 +6,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/carlosprados/mdbrand/cmd"
@@ -21,9 +22,19 @@ import (
 //go:embed SKILL.md
 var docs embed.FS
 
+// The examples travel the same way, so an agent on any machine can start
+// from one that builds. Sources only: a PDF built beside them must not be
+// carried into the binary.
+//
+//go:embed examples/*/*.md examples/*/*.bib examples/*/data/*
+var examples embed.FS
+
 func main() {
 	if raw, err := docs.ReadFile("SKILL.md"); err == nil {
 		cmd.SkillDoc = string(raw)
+	}
+	if sub, err := fs.Sub(examples, "examples"); err == nil {
+		cmd.Examples = sub
 	}
 	if err := cmd.Root().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "mdbrand: "+err.Error())

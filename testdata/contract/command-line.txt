@@ -11,6 +11,7 @@ command mdbrand config init
 command mdbrand data
 command mdbrand diagrams
 command mdbrand doctor
+command mdbrand example
 command mdbrand new
 command mdbrand skill
 command mdbrand skill install
@@ -35,6 +36,7 @@ flag mdbrand build --work (string)
 flag mdbrand diagrams --brand (string)
 flag mdbrand diagrams --out (string)
 flag mdbrand diagrams --style (string)
+flag mdbrand example --show (bool)
 flag mdbrand new --author (string)
 flag mdbrand new --brand (string)
 flag mdbrand new --style (string)
