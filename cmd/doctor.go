@@ -55,7 +55,7 @@ func toolChecks() []check {
 	bin("xelatex", "apt install texlive-xetex  ·  https://tug.org/texlive/", true)
 	bin("rsvg-convert", "apt install librsvg2-bin  ·  https://gitlab.gnome.org/GNOME/librsvg", true)
 	bin("d2", "curl -fsSL https://d2lang.com/install.sh | sh -s --  ·  https://d2lang.com/tour/install", false)
-	bin("vl2svg", "npm i -g vega-cli vega-lite  ·  https://vega.github.io/vega-lite/", false)
+	bin("vl2svg", "npm i -g vega-cli@latest vega-lite  ·  https://vega.github.io/vega-lite/", false)
 	// A chart in a language with a decimal comma goes through these two:
 	// vl2svg cannot apply a locale (see internal/fig/locale.go).
 	bin("vl2vg", "npm i -g vega-lite  ·  https://vega.github.io/vega-lite/", false)

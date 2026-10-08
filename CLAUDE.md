@@ -247,7 +247,8 @@ Do not relax one without understanding what it cost.
     grouping, `-t` crashes); vega-cli's own were a stub before 6.4.0. So a
     decimal-comma `lang` compiles with vl2vg and renders with `vg2svg -f -t`,
     after a probe that renders `format(1000, ',')` and stops unless it reads
-    `1.000`. English keeps vl2svg, byte for byte.
+    `1.000`. English keeps vl2svg, byte for byte. Reported upstream as
+    vega/vega#4361 and vega/vega-lite#9955.
     → `internal/fig/locale_test.go`, `testdata/locale.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
