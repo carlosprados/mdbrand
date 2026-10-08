@@ -48,6 +48,7 @@ internal/build/          the pipeline: prepare.go is what every output format
                          docx.go is the .docx's
 internal/run/            external commands, with their output on failure
 internal/exit/           exit statuses: 1 defect, 2 usage, 3 environment
+internal/contract/       the golden check behind testdata/contract/
 scripts/torture.sh       builds the fixtures and reads the PDFs and logs
 testdata/                torture.md, which must come out clean, and
                          traps/, which must each fail naming the fix
@@ -345,6 +346,9 @@ common failure:
 - **README pictures** — `just shots` whenever the result line, an error message
   or the examples change; a screenshot of output the tool no longer prints is
   documentation that lies.
+- **`testdata/contract/`** — the keys, options, commands, flags and exit
+  statuses others depend on, each checked by a test. After a deliberate
+  change run `just contract`; a removal goes in the release notes.
 - **`mdbrand doctor`** — every dependency it names carries an install command
   *and* the project's own page. Check a URL with curl before writing it down;
   a dead link in an install guide is worse than none.

@@ -1073,6 +1073,26 @@ already said which; fix the path and save the document.
 `before.tex`, `after.tex`, the rewritten Markdown, every figure and the full
 XeLaTeX log.
 
+## Stability
+
+mdbrand is 0.x, but what other people's files and scripts depend on is held
+to a contract, and a test fails when the code drifts from it:
+
+| Held stable | Listed in |
+|---|---|
+| Every key a `brand.yaml` can carry | [`testdata/contract/brand-keys.txt`](testdata/contract/brand-keys.txt) |
+| Every option under `mdbrand:` in the front matter | [`testdata/contract/front-matter.txt`](testdata/contract/front-matter.txt) |
+| Commands, flags and their types; exit statuses; the values of `style` and `--to` | [`testdata/contract/command-line.txt`](testdata/contract/command-line.txt) |
+
+Something is added to those lists in a minor release. Something leaves them
+only with a line in the release notes saying what replaces it; a bundle states
+the version it needs with `requires:`, so a reader with an older binary is
+told to upgrade rather than shown an unknown key.
+
+Not held stable: the wording of messages — they get more precise every
+release, so match on the exit status, not the text — the PDF's bytes, and a
+figure's size by a millimetre when its sizing improves.
+
 ## For agents
 
 `mdbrand --help` and `mdbrand <command> --help` are written to be the whole
