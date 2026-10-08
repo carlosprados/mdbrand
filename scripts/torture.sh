@@ -423,6 +423,7 @@ traps=(
 	"slide-overflow.md|fail|a .docx is a page|--to docx --brand none"
 	"slide-contrast.md|fail|under the 4.5:1|--brands-dir $root/testdata/brands"
 	"slide-figure.md|fail|below the 8.5pt floor"
+	"slide-figure.md|fail|direction: right at the root"
 	"accent-pale.md|fail|Set colors.accent|--brands-dir $root/testdata/brands"
 	"accent-pale.md|ok|Set colors.accent|--style note --brands-dir $root/testdata/brands"
 )

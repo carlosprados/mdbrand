@@ -929,8 +929,12 @@ paragraph above it is the usual culprit.
 `[words]{.accent}`.
 
 **`would print its smallest label at 6.2pt`** — the figure cannot be placed
-legibly. Raise the font size in the source and lower the scale by the same
-factor, or split it.
+legibly. The message says what held it back and the fixes for that: a figure
+stopped by the height limit — the usual one on a slide — wants laying out wider
+than tall (`direction: right`); one stopped by the width wants a lower
+`scale=`, fewer edge labels, ELK, or splitting. A Vega-Lite chart wants larger
+label sizes in its spec. Do not declare a d2 `font-size` to force it: that
+takes the sizing away from mdbrand.
 
 **`renders a <foreignObject>`** — a d2 `|md|` block. Keep labels short and put
 the prose in the document.
