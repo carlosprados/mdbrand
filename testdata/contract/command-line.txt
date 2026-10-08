@@ -46,6 +46,7 @@ flag mdbrand skill install --force (bool)
 flag mdbrand skill install --project (bool)
 flag mdbrand skill path --project (bool)
 format docx
+format notes
 format pdf
 style letter
 style note

@@ -262,7 +262,10 @@ one that builds.
 - `#` opens a section with a cover slide; `##` is one slide. Use `##` for every
   slide: text under a `#` alone becomes a slide titled by the section.
 - `:::: columns` / `::: column` for two columns; `::: notes` for speaker notes,
-  which never print.
+  which never print on a slide. `--to pdf,notes` (or `formats: [pdf, notes]`)
+  also writes `talk-notes.pdf`: each slide at half size beside its note, two to
+  an A4 sheet, pauses collapsed. A note has room for 17 lines; a longer one
+  stops the build by the slide's title. `--to notes` on a page is refused.
 - `. . .` on a line of its own pauses; `::: incremental` around a list reveals
   it point by point. Each step is a page with the slide's number, and a slide is
   judged by its fullest step.

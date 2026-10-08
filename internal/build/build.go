@@ -83,7 +83,7 @@ type Output struct {
 }
 
 // Formats are the outputs a build can write.
-var Formats = []string{"pdf", "docx"}
+var Formats = []string{"pdf", "docx", "notes"}
 
 // tools are the external programs each format needs, whatever the document
 // holds. PDF's come first and in this order, which is the order the missing
@@ -91,6 +91,8 @@ var Formats = []string{"pdf", "docx"}
 var tools = map[string][]string{
 	"pdf":  {"pandoc", "xelatex", "rsvg-convert"},
 	"docx": {"pandoc", "rsvg-convert"},
+	// The notes are the deck typeset again, so they need what the PDF does.
+	"notes": {"pandoc", "xelatex", "rsvg-convert"},
 }
 
 func (o *Options) logf(f string, a ...any) {
@@ -161,10 +163,27 @@ the document as a .docx in another style (--style report)`)
 			return nil, err
 		}
 	}
+	if slices.Contains(formats, "notes") && p.style != tex.Slides {
+		return nil, fmt.Errorf(`speaker notes belong to a deck (style slides), and this is style %s:
+build it with --to pdf, or as a deck with --style slides`, p.style)
+	}
 	if err := p.fill(inputs); err != nil {
 		return nil, err
 	}
 	p.pdfToo = slices.Contains(formats, "pdf")
+	// The notes are made from the deck's .tex, so the deck is typeset first
+	// even when only the notes were asked for; then it is not published.
+	if slices.Contains(formats, "notes") && !p.pdfToo {
+		if err := renderPDF(p, "", inputs); err != nil {
+			return nil, err
+		}
+		p.rep.Outputs = p.rep.Outputs[:len(p.rep.Outputs)-1]
+	}
+	// The notes go last, after the deck they are made from; the others keep
+	// the order they were asked in.
+	if i := slices.Index(formats, "notes"); i >= 0 {
+		formats = append(slices.Delete(formats, i, i+1), "notes")
+	}
 	for _, f := range formats {
 		out, err := outputPath(o, f, len(formats))
 		if err != nil {
@@ -175,6 +194,8 @@ the document as a .docx in another style (--style report)`)
 			err = renderPDF(p, out, inputs)
 		case "docx":
 			err = renderDOCX(p, out, inputs)
+		case "notes":
+			err = renderNotes(p, out)
 		}
 		if err != nil {
 			return nil, err
@@ -234,6 +255,9 @@ func toolsFor(formats []string) []string {
 // several are.
 func outputPath(o Options, format string, formats int) (string, error) {
 	ext := "." + format
+	if format == "notes" {
+		ext = "-notes.pdf"
+	}
 	if o.Output == "" {
 		stem := strings.TrimSuffix(filepath.Base(o.Input), filepath.Ext(o.Input))
 		return filepath.Join(filepath.Dir(o.Input), stem+ext), nil
@@ -244,7 +268,8 @@ func outputPath(o Options, format string, formats int) (string, error) {
 	// Only another format's extension is refused: `-o informe.docx` for a PDF
 	// would hand Word a PDF. Any other name is the caller's business.
 	oext := filepath.Ext(o.Output)
-	if got := strings.ToLower(strings.TrimPrefix(oext, ".")); got != format && slices.Contains(Formats, got) {
+	own := strings.TrimPrefix(filepath.Ext(ext), ".")
+	if got := strings.ToLower(strings.TrimPrefix(oext, ".")); got != own && slices.Contains(Formats, got) {
 		return "", fmt.Errorf("--out %s is named for %s, and the format is %s: name it %s, or pass --to %s",
 			o.Output, got, format, strings.TrimSuffix(o.Output, oext)+ext, got)
 	}
