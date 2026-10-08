@@ -1,6 +1,7 @@
 # mdbrand
 
-Markdown in, branded A4 PDF out, in one command.
+Markdown in, branded A4 PDF out, in one command — or, with `style: slides`, a
+branded 16:9 deck for a technical talk.
 
 ![The demo's cover and first page, and the essay's cover with its word count](assets/readme/pages.png)
 
@@ -123,7 +124,8 @@ LaTeX packages, all on [CTAN](https://ctan.org):
 [microtype](https://ctan.org/pkg/microtype),
 [caption](https://ctan.org/pkg/caption),
 [xcolor](https://ctan.org/pkg/xcolor) and, for a bundle that declares
-`fonts.fallback`, [newunicodechar](https://ctan.org/pkg/newunicodechar).
+`fonts.fallback`, [newunicodechar](https://ctan.org/pkg/newunicodechar); for
+`style: slides`, the [beamer](https://ctan.org/pkg/beamer) class.
 On Debian/Ubuntu they arrive with:
 
 ```sh
@@ -135,7 +137,7 @@ Required only if a document contains diagrams:
 | Tool | What it does here | Install |
 |---|---|---|
 | **[d2](https://d2lang.com)** | Renders `.d2` diagrams ([install guide](https://d2lang.com/tour/install), [language tour](https://d2lang.com/tour/intro)) | `curl -fsSL https://d2lang.com/install.sh \| sh -s --` (or `brew install d2`) |
-| **[vl2svg](https://vega.github.io/vega-lite/)** | Renders Vega-Lite charts ([CLI source](https://github.com/vega/vega/tree/main/packages/vega-cli), [chart docs](https://vega.github.io/vega-lite/docs/)); in a document whose `lang` writes a decimal comma, `vl2vg` and `vg2svg` from vega-cli **6.4.0 or later** | `npm i -g vega-cli vega-lite` |
+| **[vl2svg](https://vega.github.io/vega-lite/)** | Renders Vega-Lite charts ([CLI source](https://github.com/vega/vega/tree/main/packages/vega-cli), [chart docs](https://vega.github.io/vega-lite/docs/)); in a document whose `lang` writes a decimal comma, `vl2vg` and `vg2svg` from vega-cli **6.4.0 or later** | `npm i -g vega-cli@latest vega-lite` |
 
 Recommended: **[pdftotext](https://poppler.freedesktop.org/)** from poppler
 (`apt install poppler-utils`, `dnf install poppler-utils`, `pacman -S poppler`).
@@ -162,7 +164,7 @@ and usually arrives through MSYS2. Expect to install:
 winget install JohnMacFarlane.Pandoc     # https://pandoc.org/installing.html
 winget install MiKTeX.MiKTeX             # https://miktex.org
 scoop install d2                         # https://d2lang.com/tour/install
-npm i -g vega-cli vega-lite              # https://vega.github.io/vega-lite/
+npm i -g vega-cli@latest vega-lite       # https://vega.github.io/vega-lite/ (vega-cli 6.4.0+)
 # rsvg-convert: MSYS2 -> pacman -S mingw-w64-x86_64-librsvg
 #   MSYS2: https://www.msys2.org  ·  librsvg: https://gitlab.gnome.org/GNOME/librsvg
 ```
@@ -185,8 +187,17 @@ mdbrand build informe.md
 ![mdbrand build: the pipeline's steps, then the PDF with its pages, words and the size of each figure](assets/readme/build.png)
 
 `new` writes a document that already builds: front matter filled in, plus a D2
-diagram and a Vega-Lite chart carrying the settings that keep them legible on
-paper. Replace the prose with yours and run `build` again.
+diagram and a Vega-Lite chart. Neither declares a font size: mdbrand sizes the
+labels itself, so they stay legible on paper. Replace the prose with yours and
+run `build` again.
+
+A deck starts the same way, and comes out as slides with a section of its own,
+two columns and speaker notes to copy:
+
+```sh
+mdbrand new charla.md --style slides --title "Arquitectura de WolfOps"
+mdbrand build charla.md
+```
 
 Then **look at the result** — an exit code says nothing about whether the cover
 is right:
@@ -198,13 +209,14 @@ pdftoppm -f 1 -l 1 -r 110 -png informe.pdf page   # page-1.png
 When you have an identity of your own, one word switches the document over:
 `brand: none` becomes `brand: amplia`. Nothing else in the document changes.
 
-Two worked examples live in [`examples/`](examples/), and both build on a bare
+Three worked examples live in [`examples/`](examples/), and all build on a bare
 machine:
 
 | File | What it shows |
 |---|---|
 | [`demo.md`](examples/demo.md) | A `report` with a table of contents, an inline D2 diagram and a Vega-Lite chart sized for paper, code blocks and a table |
 | [`ensayo.md`](examples/ensayo.md) | An essay with a word limit: `{{words}}` on the cover, an appendix left out of the count with `{.nocount}` |
+| [`deck.md`](examples/deck.md) | A `slides` deck: title and section slides, a diagram and a chart sized for the frame, two columns and speaker notes |
 
 ```sh
 mdbrand build examples/ensayo.md --watch    # and edit it: the cover keeps count
@@ -216,10 +228,10 @@ mdbrand build examples/ensayo.md --watch    # and edit it: the cover keeps count
 |---|---|
 | `mdbrand build <doc.md>` | Build the PDF. `-o` output path · `--brand` · `--style` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `-w`/`--watch` rebuild on every save · `--wordcount ib\|all` · `--allow-missing-glyphs` |
 | `mdbrand new <doc.md>` | Scaffold a document that already builds. `--title` · `--subtitle` · `--author` · `--brand` · `--style` · `--toc` |
-| `mdbrand diagrams <doc.md>` | Figure sizes and smallest label size, without building. `--out <dir>` also keeps the rendered PDFs |
+| `mdbrand diagrams <doc.md>` | Figure sizes and smallest label size, without building, with the document's brand and style (a slide's frame is not a page). `--brand` · `--style` override them · `--out <dir>` also keeps the rendered PDFs |
 | `mdbrand data <doc.md> [path]` | The data files a document can print, with their shape; or what one path names |
-| `mdbrand doctor` | Check the toolchain; prints the install command for anything missing |
-| `mdbrand brand list` · `show` · `validate` · `new` · `path` | Create and diagnose brand bundles |
+| `mdbrand doctor` | Check the toolchain — beamer for decks, vega-cli 6.4.0 for charts in a decimal-comma language included — and the installed bundles; prints the install command for anything missing |
+| `mdbrand brand list` · `show` · `validate` · `new` · `path` | Create and diagnose brand bundles: unknown keys, `requires:`, the slides section's contrast, the logo and fonts |
 | `mdbrand config` · `config init` | What settings are in effect and where they came from |
 | `mdbrand skill install` · `show` · `path` | Install the agent skill, so an AI assistant drives the tool correctly |
 | `mdbrand version` | Which build this is |
@@ -249,7 +261,7 @@ bibliography: refs.bib   # optional: one path, or a list of them
 csl: apa.csl             # optional, alongside a bibliography
 mdbrand:
   brand: amplia
-  style: report          # report | note | letter
+  style: report          # report | note | letter | slides
   reference: "Oferta AS-2164-26"
   confidential: "Confidencial"   # every style; see below for where it prints
   short_title: "Oferta Acme"     # optional; the running header, when the title is too long for it
@@ -1043,7 +1055,7 @@ The tasks live in a [Justfile](Justfile); `just` on its own lists them.
 
 ```sh
 just build      # the binary, versioned from git describe
-just check      # gofmt, go vet and the unit tests
+just check      # gofmt, go vet, golangci-lint and the unit tests
 just torture    # builds testdata/ and reads the PDFs and logs that come out
 just example    # builds examples/demo.md with no bundle configured
 just shots      # regenerates the pictures in this README from the examples
@@ -1055,7 +1067,10 @@ was invisible to `go test` and obvious in a PDF or a XeLaTeX log, so
 `testdata/torture.md` must come out with no warning, no overfull line and no
 missing glyph, and each document in `testdata/traps/` must fail with the words
 that name the fix. CI runs both on every push, and a release does not publish
-without them. [`CLAUDE.md`](CLAUDE.md) has the invariants behind the design, for
+without them. The runners are pinned to `ubuntu-24.04`, because the fixtures
+assert on what that image's pandoc, XeLaTeX and LibreOffice produce; moving to a
+newer image is a change of its own, made with the fixtures green.
+[`CLAUDE.md`](CLAUDE.md) has the invariants behind the design, for
 people and agents working on the code.
 
 `just shots` needs [freeze](https://github.com/charmbracelet/freeze) and
