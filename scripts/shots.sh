@@ -91,7 +91,9 @@ convert demo-1.png demo-2.png ensayo-1.png \
 echo "  pages.png"
 
 mdbrand build charla.md -q >/dev/null
-pdftoppm -r 60 -png charla.pdf deck
+# One page at a time: pdftoppm pads the number to the page count's width, so
+# deck-1.png became deck-01.png the day the deck reached ten pages.
+for n in 1 3 4 6; do pdftoppm -r 60 -png -f $n -l $n -singlefile charla.pdf deck-$n; done
 # Each slide framed on its own, as the pages above are: a white slide on a
 # white README is otherwise a rectangle of nothing.
 for n in 1 3 4 6; do convert deck-$n.png -bordercolor '#b8bcc0' -border 1 -bordercolor none -border 6 frame-$n.png; done

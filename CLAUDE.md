@@ -279,14 +279,15 @@ just build          # or: go build -o mdbrand .
 just check          # gofmt -w . && go vet && golangci-lint && go test
 just lint           # golangci-lint alone, pinned in CI to the same version
 just torture        # builds testdata/ and reads what came out — needs the toolchain
-just example        # builds examples/demo.md with the built-in default bundle
+just example        # writes every example out of the binary and builds it
 just install        # into ~/.local/bin, version from git describe
 just skill          # dev symlink of SKILL.md into ~/.claude/skills/mdbrand
 just shots          # regenerates the README pictures from examples/ (freeze, vhs, ffmpeg)
 ```
 
-`just example` matters: it uses `--brand none`, so it proves the tool works on a
-machine with no bundle configured.
+`just example` matters: every example says `brand: none` and is written out of
+the binary by `mdbrand example`, so it proves the tool works on a machine with
+no bundle configured and that what an agent is handed still builds.
 
 **`just torture` matters more, and is the check to reach for first.** Every
 defect this tool has shipped was invisible to `go test` and plain in a PDF or a
@@ -335,7 +336,7 @@ fixtures assert behaviour that belongs to it.
 
 ## Keep these in step
 
-A user-visible change usually touches four places, and forgetting one is the
+A user-visible change usually touches several places, and forgetting one is the
 common failure:
 
 - **README.md** — for people installing and using it.
@@ -346,6 +347,12 @@ common failure:
 - **README pictures** — `just shots` whenever the result line, an error message
   or the examples change; a screenshot of output the tool no longer prints is
   documentation that lies.
+- **`examples/`** — the agent starts from these (`mdbrand example`), so a
+  feature is not finished until the example nearest to it shows it. A new
+  example needs its directory, an entry in `catalogue` (`cmd/example.go`)
+  and a row in the README and SKILL tables; a new kind of file beside one
+  needs the `//go:embed` patterns in `main.go` widened — `main_test.go`
+  fails until it is.
 - **`testdata/contract/`** — the keys, options, commands, flags and exit
   statuses others depend on, each checked by a test. After a deliberate
   change run `just contract`; a removal goes in the release notes.
