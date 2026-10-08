@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/carlosprados/mdbrand/internal/suggest"
 	"gopkg.in/yaml.v3"
 )
 
@@ -242,7 +243,7 @@ func checkOptionKeys(raw string) error {
 			continue
 		}
 		hint := ""
-		if near := closest(k, known); near != "" {
+		if near := suggest.Closest(k, known); near != "" {
 			hint = fmt.Sprintf(" — did you mean %s?", near)
 		}
 		return fmt.Errorf("mdbrand.%s is not an option mdbrand reads%s\nThe options are %s",
@@ -262,45 +263,6 @@ func optionKeys() []string {
 		}
 	}
 	return keys
-}
-
-// closest is the known key within two edits of k, if there is exactly one
-// nearest; a guess between two is no help.
-func closest(k string, known []string) string {
-	best, bestD, tie := "", 3, false
-	for _, c := range known {
-		switch d := editDistance(k, c); {
-		case d < bestD:
-			best, bestD, tie = c, d, false
-		case d == bestD:
-			tie = true
-		}
-	}
-	if tie {
-		return ""
-	}
-	return best
-}
-
-func editDistance(a, b string) int {
-	ra, rb := []rune(a), []rune(b)
-	prev := make([]int, len(rb)+1)
-	for j := range prev {
-		prev[j] = j
-	}
-	for i := 1; i <= len(ra); i++ {
-		cur := make([]int, len(rb)+1)
-		cur[0] = i
-		for j := 1; j <= len(rb); j++ {
-			cost := 1
-			if ra[i-1] == rb[j-1] {
-				cost = 0
-			}
-			cur[j] = min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost)
-		}
-		prev = cur
-	}
-	return prev[len(rb)]
 }
 
 // Fig is one diagram to render, extracted from the body.
