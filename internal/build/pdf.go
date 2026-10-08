@@ -164,7 +164,7 @@ else would have told you. Fix the key or add the entry.`,
 		if err != nil {
 			return err
 		}
-		if err := judgeFrames(sc.Frames, string(typeset)); err != nil {
+		if err := judgeFrames(sc.Frames, string(typeset), p.results, b.Slides.Diagrams.MinTextPt); err != nil {
 			return err
 		}
 	}

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/doc"
+	"github.com/carlosprados/mdbrand/internal/fig"
 )
 
 func TestScanLogFindsFrameOverflows(t *testing.T) {
@@ -54,10 +56,10 @@ func TestFrameTitleNamesTheSlide(t *testing.T) {
 
 func TestJudgeFramesIgnoresRounding(t *testing.T) {
 	src := "\\begin{frame}{A}\n\\end{frame}"
-	if err := judgeFrames([]frameOver{{Pt: 0.4, Line: 2}}, src); err != nil {
+	if err := judgeFrames([]frameOver{{Pt: 0.4, Line: 2}}, src, nil, 8.5); err != nil {
 		t.Errorf("under a point is rounding, not a defect: %v", err)
 	}
-	err := judgeFrames([]frameOver{{Pt: 28.45, Line: 2}}, src)
+	err := judgeFrames([]frameOver{{Pt: 28.45, Line: 2}}, src, nil, 8.5)
 	if err == nil || !strings.Contains(err.Error(), `"A"`) || !strings.Contains(err.Error(), "10.0 mm") {
 		t.Errorf("want the slide named and the excess in mm, got %v", err)
 	}
@@ -66,10 +68,31 @@ func TestJudgeFramesIgnoresRounding(t *testing.T) {
 // beamer reports a slide with pauses once per overlay, all at its \end{frame}.
 func TestJudgeFramesCountsOverlaysOnce(t *testing.T) {
 	src := "\\begin{frame}{A}\n\\end{frame}"
-	err := judgeFrames([]frameOver{{Pt: 20, Line: 2}, {Pt: 28.45, Line: 2}, {Pt: 5, Line: 2}}, src)
+	err := judgeFrames([]frameOver{{Pt: 20, Line: 2}, {Pt: 28.45, Line: 2}, {Pt: 5, Line: 2}}, src, nil, 8.5)
 	if err == nil || !strings.HasPrefix(err.Error(), "1 slide(s)") ||
 		strings.Count(err.Error(), `"A"`) != 1 || !strings.Contains(err.Error(), "10.0 mm") {
 		t.Errorf("want one slide, as tall as its tallest overlay, got %v", err)
+	}
+}
+
+// A slide with one figure is told the width that makes room: the figure's
+// height and labels shrink with its width, so 100 mm at 48 mm tall and 10pt,
+// over by 10 mm, fits at 79 mm wide and 7.9pt — under a 8.5pt floor, over 7.
+func TestJudgeFramesSizesTheFigure(t *testing.T) {
+	src := "\\begin{frame}{A}\n\\includegraphics[width=100mm,height=48mm]{fig00.pdf}\n\\end{frame}"
+	figs := []*fig.Result{{
+		Fig: &doc.Fig{SrcPath: "/w/fig00.d2", Caption: "Where a job goes"}, PDF: "/w/fig00.pdf",
+		WidthMM: 100, HeightMM: 48, TextPt: 10,
+	}}
+	over := []frameOver{{Pt: 10 / mmPerPt, Line: 3}}
+	err := judgeFrames(over, src, figs, 7)
+	if err == nil || !strings.Contains(err.Error(), "width=79mm") || !strings.Contains(err.Error(), "7.9pt") ||
+		!strings.Contains(err.Error(), `"Where a job goes" (fig00.d2)`) {
+		t.Errorf("want the width that makes room and the labels' size, got %v", err)
+	}
+	err = judgeFrames(over, src, figs, 8.5)
+	if err == nil || strings.Contains(err.Error(), "width=") || !strings.Contains(err.Error(), "a slide of its own") {
+		t.Errorf("under the floor no width will do, got %v", err)
 	}
 }
 

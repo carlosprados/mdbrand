@@ -273,7 +273,8 @@ one that builds.
   d2 layout enough to push every label under the floor.
 - **A slide that does not fit stops the build**, by title and millimetres. Split
   it with another `##`, cut it, or shrink its figure — a 48 mm figure leaves no
-  room for a paragraph.
+  room for a paragraph. With one figure on the slide the error names the exact
+  `width=NNmm` to put on its block, or says no width keeps its labels legible.
 - `--to docx` refuses a deck.
 - The bundle may add `slides: {background, foreground, logo, art, logo_width,
   logo_width_cover, diagrams: {min_text_pt, max_text_pt}}`. `background` colours

@@ -461,6 +461,8 @@ traps=(
 	"slide-overflow.md|fail|\"Twenty points\""
 	"slide-overflow.md|fail|a .docx is a page|--to docx --brand none"
 	"slide-contrast.md|fail|under the 4.5:1|--brands-dir $root/testdata/brands"
+	"slide-figure-room.md|fail|\"A diagram under its argument\""
+	"slide-figure-room.md|fail|put width=71mm on its block"
 	"slide-figure.md|fail|below the 8.5pt floor"
 	"slide-figure.md|fail|direction: right at the root"
 	"accent-pale.md|fail|Set colors.accent|--brands-dir $root/testdata/brands"
