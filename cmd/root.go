@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
@@ -17,6 +18,19 @@ import (
 
 // Version is set at build time: -ldflags "-X github.com/carlosprados/mdbrand/cmd.Version=v0.2.0"
 var Version = "dev"
+
+// version is the running mdbrand: the stamped Version, or for a binary from
+// `go install …@v0.18.0`, which stamps nothing, the module version Go
+// recorded. A bundle's requires: is checked against it.
+func version() string {
+	if Version != "dev" {
+		return Version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		return bi.Main.Version
+	}
+	return Version
+}
 
 var cfgFile string
 
@@ -69,6 +83,7 @@ Front matter drives everything, so a build needs no flags:
 }
 
 func initConfig() {
+	brand.ToolVersion = version()
 	viper.SetEnvPrefix("MDBRAND")
 	viper.AutomaticEnv()
 	viper.SetDefault("brands_dir", defaultBrandsDir())
@@ -131,7 +146,7 @@ func versionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print the version",
 		Run: func(*cobra.Command, []string) {
-			fmt.Println("mdbrand " + Version)
+			fmt.Println("mdbrand " + version())
 		},
 	}
 }

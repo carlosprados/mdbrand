@@ -1,0 +1,8 @@
+# For traps/brand-typo.md: colors.acent, a typo YAML would drop in silence,
+# so every accented word printed in the primary and the build exited 0.
+name: typo
+colors:
+  primary: "1A5FB4"
+  acent: "0B3D82"
+fonts:
+  body: DejaVu Sans

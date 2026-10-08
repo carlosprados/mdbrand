@@ -272,6 +272,29 @@ func figName(f *doc.Fig) string {
 	return filepath.Base(f.SrcPath)
 }
 
+// vegaToSVG renders a Vega-Lite spec. In English it is vl2svg, as it always
+// was; in a language with its own number format it is vl2vg and then vg2svg
+// with that locale, the only route that applies one (see locale.go).
+func vegaToSVG(dir, src, out, lang string) (string, error) {
+	loc, err := localeArgs(dir, lang)
+	if err != nil {
+		return "", err
+	}
+	if loc == nil {
+		return run.Cmd(dir, "vl2svg", src, out)
+	}
+	if err := probe(dir); err != nil {
+		return "", err
+	}
+	vg := strings.TrimSuffix(src, ".vl.json") + ".vg.json"
+	compiled, err := run.Cmd(dir, "vl2vg", src, vg)
+	if err != nil {
+		return compiled, err
+	}
+	log, err := run.Cmd(dir, "vg2svg", append(loc, vg, out)...)
+	return compiled + log, err
+}
+
 // renderVega renders a copy of the spec whose data urls have been settled.
 func renderVega(f *doc.Fig, out string, ds Datasets) error {
 	spec, _, err := VegaSpec(f, ds)
@@ -284,7 +307,7 @@ func renderVega(f *doc.Fig, out string, ds Datasets) error {
 		return err
 	}
 	// No dark-mode rules are injected: this SVG is going onto white paper.
-	log, err := run.Cmd(dir, "vl2svg", filepath.Base(src), out)
+	log, err := vegaToSVG(dir, filepath.Base(src), out, f.Lang)
 	if err != nil {
 		return err
 	}

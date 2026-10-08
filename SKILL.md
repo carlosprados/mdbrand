@@ -228,7 +228,10 @@ the LaTeX packages [fancyhdr](https://ctan.org/pkg/fancyhdr),
 Only for documents with figures: **[d2](https://d2lang.com)**
 ([install](https://d2lang.com/tour/install)) for diagrams ·
 **[vl2svg](https://vega.github.io/vega-lite/)** from
-[vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) for charts.
+[vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) for charts;
+in a document whose `lang` writes a decimal comma (es, ca, pt, de…), charts go
+through `vl2vg` and `vg2svg` with that locale (`30.000`, `ene`), which needs
+vega-cli 6.4.0 or later — an older one stops the build saying so.
 
 Recommended: **[pdftotext](https://poppler.freedesktop.org/)** from poppler,
 which reads each PDF back so a text layer that copies as garbage stops the
@@ -326,6 +329,11 @@ when someone needs to edit or comment, not instead of the PDF.
 artwork outside the `viewBox`, the invalid `data:img/` MIME type that converts
 to a blank page, `<foreignObject>`, a display font whose path has moved, and
 colours that are not plain 6-digit hex.
+
+A bundle may say which mdbrand it needs (`requires: "0.17"`); an older one stops
+and names the release to upgrade to. A key no setting reads stops every build
+with that bundle, naming its path and the nearest real key: fix the key, never
+delete `requires:` to get past it.
 
 Tune per bundle: `colors`, `fonts.body`, `fonts.display`, `fonts.fallback`, `page.margin`,
 `page.linestretch`, `page.logo_width_cover|header`, and the `diagrams` numbers.

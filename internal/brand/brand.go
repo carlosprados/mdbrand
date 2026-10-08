@@ -38,6 +38,9 @@ type Brand struct {
 	Slides   Slides   `yaml:"slides"`
 	Footer   string   `yaml:"footer"`
 
+	// Requires is the oldest mdbrand the bundle works with, e.g. "0.18".
+	Requires string `yaml:"requires"`
+
 	Dir string `yaml:"-"` // resolved bundle directory
 }
 
@@ -289,8 +292,18 @@ func Load(brandsDir, name string) (*Brand, error) {
 		}
 		return nil, err
 	}
+	var root yaml.Node
+	if err := yaml.Unmarshal(raw, &root); err != nil {
+		return nil, fmt.Errorf("%s: %w", f, err)
+	}
+	if err := checkRequires(&root, name); err != nil {
+		return nil, err
+	}
+	if err := checkKeys(&root, name); err != nil {
+		return nil, fmt.Errorf("%w\n  in %s", err, f)
+	}
 	var b Brand
-	if err := yaml.Unmarshal(raw, &b); err != nil {
+	if err := root.Decode(&b); err != nil {
 		return nil, fmt.Errorf("%s: %w", f, err)
 	}
 	b.Dir = dir
@@ -632,6 +645,8 @@ func Scaffold(brandsDir, name string) (string, error) {
 # never copied in, so this bundle can be shared without breaching a licence.
 name: %[1]s
 display_name: %[1]s
+# requires: "0.18"   # optional: the oldest mdbrand this bundle works with; an
+#                    # older one stops instead of skipping settings it lacks
 
 # Vector is what you want. An SVG that merely wraps a PNG will look soft on a
 # cover; "mdbrand brand validate %[1]s" says so.
