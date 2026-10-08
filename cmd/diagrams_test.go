@@ -13,6 +13,9 @@ import (
 // this needs no toolchain.
 func TestDiagramsTakesTheDocumentsBrand(t *testing.T) {
 	dir := t.TempDir()
+	// Nothing of this machine's own configuration may reach the run.
+	t.Setenv("HOME", dir)
+	t.Setenv("XDG_CONFIG_HOME", dir)
 	t.Setenv("MDBRAND_BRAND", "none")
 	doc := filepath.Join(dir, "d.md")
 	src := "---\ntitle: T\nmdbrand:\n  brand: nowhere\n---\n\n```d2\na -> b\n```\n"

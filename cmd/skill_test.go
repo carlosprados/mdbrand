@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/viper"
 )
 
 const fixture = `---
@@ -18,6 +20,9 @@ description: test fixture
 
 func runSkill(t *testing.T, args ...string) (string, error) {
 	t.Helper()
+	// viper is one per process: a run that read the user's config file left
+	// its brands_dir behind for every test after it.
+	viper.Reset()
 	root := Root()
 	var out bytes.Buffer
 	root.SetOut(&out)
