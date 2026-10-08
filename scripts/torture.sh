@@ -301,7 +301,15 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	printf '%s' "$info" | grep -q 'Page size: *453.54 x 255.12 pts' && ok "16:9, 160 × 90 mm" \
 		|| bad "the page is not beamer's 16:9 frame: $(printf '%s' "$info" | grep 'Page size')"
 	pages="$(printf '%s' "$info" | awk '/^Pages:/{print $2}')"
-	[ "${pages:-0}" -eq 8 ] && ok "8 slides" || bad "${pages:-no} slides, want 8"
+	# Nine slides; the last one has a pause and two incremental points, so it
+	# takes three pages that share its number.
+	[ "${pages:-0}" -eq 11 ] && ok "9 slides on 11 pages" || bad "${pages:-no} pages, want 11"
+	first="$(pdftotext -f 9 -l 9 "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	printf '%s' "$first" | grep -qF "Said first" && ! printf '%s' "$first" | grep -qF "revealed" \
+		&& ok "what a pause hides is not in the text layer" || bad "page 9 is not the pause's first overlay: $first"
+	last="$(pdftotext -f 11 -l 11 "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	printf '%s' "$last" | grep -qE "revealed third.* 9 ?$" \
+		&& ok "every overlay carries its slide's number" || bad "the last overlay is not numbered 9: $last"
 	text="$(pdftotext "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
 	printf '%s' "$text" | grep -qF "A diagram — wide and low" && ok "a dash in a frame title prints as a dash" \
 		|| bad "the frame title's dash is not an em dash"

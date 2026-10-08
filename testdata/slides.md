@@ -85,3 +85,14 @@ The repository `wolf-code/0-active/wolfops/internal/scheduler/sniper-polling-win
 breaks after its separators, as it does on the page, a
 [link](https://github.com/carlosprados/mdbrand) is coloured, and an
 [accented phrase]{.accent} prints in the bundle's colors.accent.
+
+## Pauses
+
+Said first.
+
+. . .
+
+::: incremental
+- revealed second
+- revealed third
+:::

@@ -595,6 +595,10 @@ the missing-glyph check, the text layer, `{{data…}}`, `{{words}}`,
   :::
   ```
 
+- Pauses are pandoc's too: `. . .` on a line of its own, or `::: incremental`
+  around a list to reveal it point by point. Each step is a page that keeps
+  the slide's number, and a slide that does not fit is reported once, by its
+  fullest step.
 - The title slide carries `title`, `subtitle`, `author`, `date`, `reference`,
   `confidential` and the bundle's `footer`; `confidential` repeats in every
   slide's footer, beside `short_title`.

@@ -12,20 +12,29 @@ const frameSlackPt = 1.0
 
 // judgeFrames stops a deck with a slide that does not fit. beamer sets the
 // excess over the footer or off the page and exits 0; the build names each
-// slide by its title, and how much is too much.
+// slide by its title, and how much is too much. A slide with pauses is one
+// page per overlay, each reported at the same \end{frame}: it is one slide,
+// as tall as its tallest overlay.
 func judgeFrames(frames []frameOver, texSrc string) error {
-	lines := strings.Split(texSrc, "\n")
-	var w strings.Builder
-	n := 0
+	var order []int
+	tallest := map[int]float64{}
 	for _, f := range frames {
 		if f.Pt <= frameSlackPt {
 			continue
 		}
-		n++
-		fmt.Fprintf(&w, "\n    %-40s %5.1f mm too tall", frameTitle(lines, f.Line), f.Pt*mmPerPt)
+		if _, seen := tallest[f.Line]; !seen {
+			order = append(order, f.Line)
+		}
+		tallest[f.Line] = max(tallest[f.Line], f.Pt)
 	}
+	n := len(order)
 	if n == 0 {
 		return nil
+	}
+	lines := strings.Split(texSrc, "\n")
+	var w strings.Builder
+	for _, line := range order {
+		fmt.Fprintf(&w, "\n    %-40s %5.1f mm too tall", frameTitle(lines, line), tallest[line]*mmPerPt)
 	}
 	return fmt.Errorf(`%d slide(s) run past the bottom of the frame, over the footer or off the page:%s
   Split the slide (another ## heading), cut what it says, or give a figure on
