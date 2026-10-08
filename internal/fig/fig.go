@@ -74,7 +74,7 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64, ds 
 			return nil, err
 		}
 	default:
-		if err := renderVega(f, svg, ds); err != nil {
+		if err := renderVega(f, b, svg, ds); err != nil {
 			return nil, err
 		}
 	}
@@ -275,7 +275,9 @@ func d2Source(f *doc.Fig, b *brand.Brand, scale float64, workDir string) (path s
 	if err != nil {
 		return "", false, err
 	}
-	if bytes.Contains(raw, []byte("font-size")) {
+	sized := bytes.Contains(raw, []byte("font-size"))
+	themed := bytes.Contains(raw, []byte("theme-overrides"))
+	if sized && themed {
 		return f.SrcPath, false, nil
 	}
 	dir := workDir
@@ -283,7 +285,15 @@ func d2Source(f *doc.Fig, b *brand.Brand, scale float64, workDir string) (path s
 		dir = filepath.Dir(f.SrcPath)
 	}
 	gen := filepath.Join(dir, fmt.Sprintf(".mdbrand-fig%02d.d2", f.Index))
-	body := append(bytes.TrimRight(raw, "\n"), []byte(d2Globs(d2FontPx(b, scale)))...)
+	body := bytes.TrimRight(raw, "\n")
+	if !sized {
+		body = append(body, []byte(d2Globs(d2FontPx(b, scale)))...)
+	}
+	// Colours likewise: a .d2 with theme-overrides of its own has taken the
+	// decision back, and an appended block would override it.
+	if !themed {
+		body = append(body, []byte(d2Theme(b))...)
+	}
 	if err := os.WriteFile(gen, body, 0o644); err != nil {
 		return "", false, fmt.Errorf("writing the sized copy of %s: %w", filepath.Base(f.SrcPath), err)
 	}

@@ -251,6 +251,21 @@ Do not relax one without understanding what it cost.
     vega/vega#4361 and vega/vega-lite#9955.
     → `internal/fig/locale_test.go`, `testdata/locale.md`.
 
+21. **A figure takes the brand where its author did not choose.** Charts came
+    out in Vega's blue and Noto Sans and diagrams in d2's, on pages in the
+    brand's colours. Vega gets a `config` filled only where the spec's own is
+    silent, at any depth; d2 gets `theme-overrides` and
+    `dark-theme-overrides` appended unless the source has its own — d2 merges
+    an appended `vars` with the author's, so a `layout-engine` survives, and
+    the dark set matters because d2 writes it into a prefers-color-scheme block
+    that would otherwise keep d2's blue. Fills use the primary as it is; lines
+    and points are darkened to WCAG's 3:1 for graphics only when it falls
+    short; the d2 tints stop where the text colour on the deepest would fall
+    under 4.5:1. The chart font is the body face only when fontconfig has it.
+    Charts change width by a millimetre because Vega measures text in that
+    face; the labels' point size does not move.
+    → `internal/fig/theme_test.go`, the figure-colour checks on `testdata/slides.md`.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.

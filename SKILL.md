@@ -143,6 +143,13 @@ is the primary when the bundle sets none — and then an accent reads as a link.
 
 ## Diagrams
 
+Figures take the bundle's colours by themselves: bars in the primary, lines in
+the primary darkened to 3:1 if needed, axes and labels in the text colour, d2
+shapes in tints of the primary, text in the body face. Do not paste colours or
+a d2 theme into a figure to brand it — anything the source sets wins over the
+bundle, so a hard-coded colour is the one thing that would stop it following
+the brand. `figures: {palette: [...]}` in brand.yaml fixes the series colours.
+
 D2 for architecture, sequence, state and flow; Vega-Lite for data. Inline fence
 or side file, both rendered and placed automatically:
 

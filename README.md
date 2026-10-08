@@ -727,6 +727,24 @@ would have drawn an empty chart and exited 0; so does a remote URL, because a
 build that depends on the network does not reproduce. The data files are
 watched by `build -w` like the document itself.
 
+**Figures wear the brand.** A chart's bars and areas take the bundle's
+primary; its lines, points and rules the same colour, darkened only as far as
+3:1 against white when the primary is lighter than that, since a thin line
+needs what a filled bar does not. Axes, labels and titles take the text colour,
+the grid a tint of the rule, several series a palette that starts with the
+primary, and its text the body face when it is installed. A d2 diagram fills
+its shapes with tints of the primary, deeper for containers, and draws edges
+and labels in the text colour; the tints stop where that text would fall under
+4.5:1. Whatever a spec's own `config`, an `encoding`'s `color`, a `style.fill`
+or the source's own `theme-overrides` sets is left alone: only what the author
+did not choose comes from the bundle. Sizes are unchanged, so is the
+legibility arithmetic. The palette can be fixed in the bundle:
+
+```yaml
+figures:
+  palette: ["F68E1B", "5D6266", "1565C0", "B35A00", "C8CCCE"]   # one per series
+```
+
 **A chart speaks the document's language.** In a document whose `lang` writes
 a decimal comma (Spanish, Catalan, Galician, Basque, Portuguese, Italian,
 German, Dutch, Danish — the same list the tables use), axes print `30.000`, not
@@ -859,6 +877,9 @@ diagrams:
   min_text_pt: 8
   max_text_pt: 12
   max_height_mm: 150
+
+figures:                       # optional; colours come from colors: on their own
+  palette: ["F68E1B", "5D6266", "1565C0"]   # one per chart series; derived when absent
 
 slides:                        # optional; only style slides reads it — see Slides
   background: "222629"

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/doc"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"gopkg.in/yaml.v3"
@@ -99,6 +100,24 @@ the spec's own file for a linked one`, figName(f), strings.Join(r.missing, "\n  
 
 	spec, err = json.Marshal(v)
 	return spec, r.refs, err
+}
+
+// themed fills the spec's config from the brand, the author's keys winning.
+// The body face is named only where it is installed: rsvg-convert would fall
+// back from an absent one without a word.
+func themed(spec []byte, b *brand.Brand) ([]byte, error) {
+	dec := json.NewDecoder(bytes.NewReader(spec))
+	dec.UseNumber()
+	var v any
+	if err := dec.Decode(&v); err != nil {
+		return nil, err
+	}
+	font := ""
+	if b.Fonts.Body != "" && b.BodyFontInstalled() {
+		font = b.Fonts.Body
+	}
+	applyTheme(v, vegaTheme(b, font))
+	return json.Marshal(v)
 }
 
 // DataRefs lists the data files a Vega-Lite figure reads by url, for watch
@@ -296,9 +315,12 @@ func vegaToSVG(dir, src, out, lang string) (string, error) {
 }
 
 // renderVega renders a copy of the spec whose data urls have been settled.
-func renderVega(f *doc.Fig, out string, ds Datasets) error {
+func renderVega(f *doc.Fig, b *brand.Brand, out string, ds Datasets) error {
 	spec, _, err := VegaSpec(f, ds)
 	if err != nil {
+		return err
+	}
+	if spec, err = themed(spec, b); err != nil {
 		return err
 	}
 	dir := filepath.Dir(out)
