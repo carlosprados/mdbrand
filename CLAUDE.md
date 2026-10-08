@@ -239,6 +239,17 @@ Do not relax one without understanding what it cost.
     → `internal/brand/keys_test.go`, `traps/brand-typo.md`,
     `traps/brand-future.md`.
 
+20. **A chart prints numbers and months in the document's language.** In a
+    Spanish document Vega printed `30,000` and `Jan`, exit 0. Every obvious
+    route drops the locale in silence: the CLIs hand the view
+    `{number: null, time: null}`, which overwrites a spec's `config.locale`;
+    vl2svg's `-f`/`-t` pass the file's text, not its object (`-f` loses the
+    grouping, `-t` crashes); vega-cli's own were a stub before 6.4.0. So a
+    decimal-comma `lang` compiles with vl2vg and renders with `vg2svg -f -t`,
+    after a probe that renders `format(1000, ',')` and stops unless it reads
+    `1.000`. English keeps vl2svg, byte for byte.
+    → `internal/fig/locale_test.go`, `testdata/locale.md`.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.

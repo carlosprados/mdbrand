@@ -277,6 +277,9 @@ type Fig struct {
 	Attrs       map[string]string // width=120mm, scale=0.6, …
 	Placeholder string            // token left in the body
 	Index       int
+	// Lang is the document's lang, which a chart formats its numbers and
+	// dates in; "" for a source rendered on its own.
+	Lang string
 }
 
 var (
@@ -349,7 +352,7 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 			return "", nil, err
 		}
 		ph := fmt.Sprintf("@@MDBRAND_FIG_%d@@", idx)
-		figs = append(figs, &Fig{Kind: kind, SrcPath: src, BaseDir: absDocDir, Caption: attrs["caption"], Attrs: attrs, Placeholder: ph, Index: idx})
+		figs = append(figs, &Fig{Kind: kind, SrcPath: src, BaseDir: absDocDir, Caption: attrs["caption"], Attrs: attrs, Placeholder: ph, Index: idx, Lang: f.Meta.Lang})
 		out = append(out, ph)
 	}
 	body = strings.Join(out, "\n")
@@ -387,7 +390,7 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 		}
 		idx := len(figs)
 		ph := fmt.Sprintf("@@MDBRAND_FIG_%d@@", idx)
-		figs = append(figs, &Fig{Kind: kind, SrcPath: p, BaseDir: filepath.Dir(p), Caption: m[1], Attrs: attrs, Placeholder: ph, Index: idx})
+		figs = append(figs, &Fig{Kind: kind, SrcPath: p, BaseDir: filepath.Dir(p), Caption: m[1], Attrs: attrs, Placeholder: ph, Index: idx, Lang: f.Meta.Lang})
 		f.Refs = append(f.Refs, p)
 		return ph
 	})

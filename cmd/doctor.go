@@ -43,6 +43,10 @@ as garbage stops the build; without it a build warns that it was not checked.`,
 			bin("rsvg-convert", "apt install librsvg2-bin  ·  https://gitlab.gnome.org/GNOME/librsvg", true)
 			bin("d2", "curl -fsSL https://d2lang.com/install.sh | sh -s --  ·  https://d2lang.com/tour/install", false)
 			bin("vl2svg", "npm i -g vega-cli vega-lite  ·  https://vega.github.io/vega-lite/", false)
+			// A chart in a language with a decimal comma goes through these two:
+			// vl2svg cannot apply a locale (see internal/fig/locale.go).
+			bin("vl2vg", "npm i -g vega-lite  ·  https://vega.github.io/vega-lite/", false)
+			bin("vg2svg", "npm i -g vega-cli@latest (6.4.0 or later)  ·  https://vega.github.io/vega/usage/#cli", false)
 			bin("pdftotext", "apt install poppler-utils (brew install poppler)  ·  https://poppler.freedesktop.org/", false)
 
 			// LaTeX packages: a missing .sty is a build failure whose message

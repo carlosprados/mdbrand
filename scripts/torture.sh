@@ -254,6 +254,27 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	done
 fi
 
+# ----------------------------------------------------------------- the locale
+# A chart in a Spanish document wrote 30,000 and Jan. Its locale only reaches
+# Vega through vl2vg and vg2svg -f -t, and only from vega-cli 6.4.0; the
+# axis labels are read back from the SVG, which pdftotext may split.
+echo
+echo "testdata/locale.md — a chart in the document's language"
+out="$("$bin" build "$root/testdata/locale.md" --work "$work/locale" -o "$work/locale.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	svg="$work/locale/fig00.svg"
+	for want in ">10.000<" ">ene<" ">abr<"; do
+		grep -qF -- "$want" "$svg" && ok "the chart prints ${want//[<>]/}" || bad "the chart lacks ${want//[<>]/}"
+	done
+	for unwanted in ">10,000<" ">Jan<"; do
+		grep -qF -- "$unwanted" "$svg" && bad "the chart prints ${unwanted//[<>]/}, in English" || ok "no ${unwanted//[<>]/}"
+	done
+fi
+
 # ------------------------------------------------------------------- the deck
 # style slides: a beamer deck from the deck bundle, which is set in DejaVu so
 # it builds anywhere and carries every slides key. Each check is a defect the

@@ -135,7 +135,7 @@ Required only if a document contains diagrams:
 | Tool | What it does here | Install |
 |---|---|---|
 | **[d2](https://d2lang.com)** | Renders `.d2` diagrams ([install guide](https://d2lang.com/tour/install), [language tour](https://d2lang.com/tour/intro)) | `curl -fsSL https://d2lang.com/install.sh \| sh -s --` (or `brew install d2`) |
-| **[vl2svg](https://vega.github.io/vega-lite/)** | Renders Vega-Lite charts ([CLI source](https://github.com/vega/vega/tree/main/packages/vega-cli), [chart docs](https://vega.github.io/vega-lite/docs/)) | `npm i -g vega-cli vega-lite` |
+| **[vl2svg](https://vega.github.io/vega-lite/)** | Renders Vega-Lite charts ([CLI source](https://github.com/vega/vega/tree/main/packages/vega-cli), [chart docs](https://vega.github.io/vega-lite/docs/)); in a document whose `lang` writes a decimal comma, `vl2vg` and `vg2svg` from vega-cli **6.4.0 or later** | `npm i -g vega-cli vega-lite` |
 
 Recommended: **[pdftotext](https://poppler.freedesktop.org/)** from poppler
 (`apt install poppler-utils`, `dnf install poppler-utils`, `pacman -S poppler`).
@@ -715,6 +715,17 @@ would have drawn an empty chart and exited 0; so does a remote URL, because a
 build that depends on the network does not reproduce. The data files are
 watched by `build -w` like the document itself.
 
+**A chart speaks the document's language.** In a document whose `lang` writes
+a decimal comma (Spanish, Catalan, Galician, Basque, Portuguese, Italian,
+German, Dutch, Danish — the same list the tables use), axes print `30.000`, not
+`30,000`, and in Spanish months and days are `ene`, `lunes`. Vega has no way to
+take that from the spec: its CLIs overwrite a spec's `config.locale`, and
+`vl2svg -f/-t` pass the file's text where an object is wanted. So those charts
+are compiled with `vl2vg` and rendered with `vg2svg -f -t`, which works from
+vega-cli 6.4.0; before the first one, mdbrand renders a probe and stops if the
+installed vega-cli still prints `1,000`. English documents take `vl2svg` as
+they always did.
+
 **The label size is mdbrand's to set, not yours.** d2 defaults to 16px, which
 the render scale then halves — 8px on the page. mdbrand appends the font-size
 globs to a copy of the source before compiling it, sized from the bundle's
@@ -940,6 +951,10 @@ which would only bring back the silence it exists to end.
 **`is not a setting mdbrand reads`** — a key in `brand.yaml` that nothing reads:
 a typo, usually, and the message names the nearest real key. If the key is
 right, the bundle needs a newer mdbrand, and should say so with `requires:`.
+
+**`the installed vega-cli cannot apply a locale`** — the document's `lang`
+writes a decimal comma and vega-cli is older than 6.4.0, whose `-f` and `-t`
+read nothing: the charts would print in English. `npm i -g vega-cli@latest`.
 
 **`colour(s) asked for in a way that neither the PDF nor the .docx can print`**
 — a `color=` or `style=` attribute, which pandoc drops in silence. Write

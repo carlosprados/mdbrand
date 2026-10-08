@@ -228,7 +228,10 @@ the LaTeX packages [fancyhdr](https://ctan.org/pkg/fancyhdr),
 Only for documents with figures: **[d2](https://d2lang.com)**
 ([install](https://d2lang.com/tour/install)) for diagrams ·
 **[vl2svg](https://vega.github.io/vega-lite/)** from
-[vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) for charts.
+[vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) for charts;
+in a document whose `lang` writes a decimal comma (es, ca, pt, de…), charts go
+through `vl2vg` and `vg2svg` with that locale (`30.000`, `ene`), which needs
+vega-cli 6.4.0 or later — an older one stops the build saying so.
 
 Recommended: **[pdftotext](https://poppler.freedesktop.org/)** from poppler,
 which reads each PDF back so a text layer that copies as garbage stops the
