@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/paths"
 	"gopkg.in/yaml.v3"
 
@@ -282,7 +283,7 @@ func Load(brandsDir, name string) (*Brand, error) {
 		return Default(), nil
 	}
 	if brandsDir == "" {
-		return nil, fmt.Errorf("brand %q: %w", name, ErrNoBrandsDir)
+		return nil, exit.AsEnvironment(fmt.Errorf("brand %q: %w", name, ErrNoBrandsDir))
 	}
 	// Absolute from here on. Every path in a bundle resolves against its
 	// directory, and the tools that read them run with the work directory as
@@ -296,8 +297,8 @@ func Load(brandsDir, name string) (*Brand, error) {
 	raw, err := os.ReadFile(f)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("brand %q not found: no %s\n  brands dir: %s\n  available: %s\n  create it with: mdbrand brand new %s",
-				name, f, brandsDir, strings.Join(List(brandsDir), ", "), name)
+			return nil, exit.AsEnvironment(fmt.Errorf("brand %q not found: no %s\n  brands dir: %s\n  available: %s\n  create it with: mdbrand brand new %s",
+				name, f, brandsDir, strings.Join(List(brandsDir), ", "), name))
 		}
 		return nil, err
 	}

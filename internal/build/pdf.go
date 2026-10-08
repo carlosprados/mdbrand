@@ -12,6 +12,7 @@ import (
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/doc"
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/imgsize"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/carlosprados/mdbrand/internal/tex"
@@ -324,10 +325,10 @@ func bodyFontArgs(b *brand.Brand, rep *Report, args []string) ([]string, error) 
 		rep.Warnings = append(rep.Warnings, fmt.Sprintf(
 			"%s is not installed; the default bundle set this document in Latin Modern instead", b.Fonts.Body))
 	default:
-		return nil, fmt.Errorf(`the %s bundle sets its body type in %q, and fontconfig cannot find it.
+		return nil, exit.AsEnvironment(fmt.Errorf(`the %s bundle sets its body type in %q, and fontconfig cannot find it.
 The document would not be the one the bundle describes, so this stops here
 rather than letting XeLaTeX substitute a face nobody chose. Install the family,
-or change fonts.body in the bundle to one this machine has.`, b.Name, b.Fonts.Body)
+or change fonts.body in the bundle to one this machine has.`, b.Name, b.Fonts.Body))
 	}
 	return args, nil
 }
@@ -407,9 +408,9 @@ func fallback(b *brand.Brand, body string, m doc.Meta) (string, []tex.FallbackCh
 	}
 	fb, ok := brand.FontCharset(b.Fonts.Fallback)
 	if !ok {
-		return "", nil, fmt.Errorf(`the %s bundle names %q as fonts.fallback, and fontconfig cannot find it.
+		return "", nil, exit.AsEnvironment(fmt.Errorf(`the %s bundle names %q as fonts.fallback, and fontconfig cannot find it.
 Install it, or remove fonts.fallback and let the missing-glyph check name the
-characters the body face lacks`, b.Name, b.Fonts.Fallback)
+characters the body face lacks`, b.Name, b.Fonts.Fallback))
 	}
 	bodyCov, ok := brand.FontCharset(b.Fonts.Body)
 	if !ok {

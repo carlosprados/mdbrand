@@ -23,6 +23,7 @@ import (
 
 	"github.com/carlosprados/mdbrand/internal/data"
 	"github.com/carlosprados/mdbrand/internal/doc"
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/carlosprados/mdbrand/internal/tex"
@@ -141,7 +142,7 @@ func pipeline(o Options, inputs *[]string) (*Report, error) {
 		return nil, err
 	}
 	if missing := run.Missing(toolsFor(formats)...); len(missing) > 0 {
-		return nil, fmt.Errorf("missing tools: %s\n  run: mdbrand doctor", strings.Join(missing, ", "))
+		return nil, exit.AsEnvironment(fmt.Errorf("missing tools: %s\n  run: mdbrand doctor", strings.Join(missing, ", ")))
 	}
 	p, err := prepare(o, d, inputs)
 	if err != nil {

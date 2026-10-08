@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +34,7 @@ as garbage stops the build; without it a build warns that it was not checked.`,
 			fails := printChecks(out, append(toolChecks(), latexChecks()...))
 			fails += bundleReport(out)
 			if fails > 0 {
-				return fmt.Errorf("%d required item(s) missing", fails)
+				return exit.AsEnvironment(fmt.Errorf("%d required item(s) missing", fails))
 			}
 			fmt.Fprintln(out, "\n  all good")
 			return nil

@@ -15,8 +15,11 @@ import (
 
 func brandCmd() *cobra.Command {
 	c := &cobra.Command{
-		Use:   "brand",
-		Short: "Create, inspect and validate brand bundles",
+		Use:                        "brand",
+		Short:                      "Create, inspect and validate brand bundles",
+		Args:                       cobra.ArbitraryArgs,
+		SuggestionsMinimumDistance: 2,
+		RunE:                       groupRun,
 		Long: `A brand bundle is a directory with a brand.yaml, a logo and colours. It lives
 outside this tool, so the same document can be published under another identity
 by changing one word.
@@ -72,7 +75,7 @@ func brandShowCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "show <name>",
 		Short: "Print a bundle's resolved settings, defaults included",
-		Args:  cobra.ExactArgs(1),
+		Args:  usageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			b, err := brand.Load(brandsDir(), args[0])
 			if err != nil {
@@ -165,7 +168,7 @@ func brandNewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "new <name>",
 		Short: "Scaffold a bundle, then tell you what to drop into it",
-		Args:  cobra.ExactArgs(1),
+		Args:  usageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir, err := brand.Scaffold(brandsDir(), args[0])
 			if err != nil {
@@ -189,7 +192,7 @@ func brandPathCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "path [name]",
 		Short: "Print the brands directory, or one bundle's directory",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  usageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir, err := needBrandsDir()
 			if err != nil {

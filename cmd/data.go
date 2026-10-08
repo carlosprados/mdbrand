@@ -63,7 +63,7 @@ and text stops the build, since Vega-Lite would drop the text without a word.
 
   mdbrand data propuesta.md
   mdbrand data propuesta.md 'data.maquinas[m5.large]'`,
-		Args: cobra.RangeArgs(1, 2),
+		Args: usageArgs(cobra.RangeArgs(1, 2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			d, err := doc.Read(args[0])
 			if err != nil {

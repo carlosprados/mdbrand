@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/paths"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -55,6 +57,10 @@ identity by changing one word.
   mdbrand brand validate amplia        diagnose a bundle before it bites
   mdbrand skill install                install the agent skill, for AI assistants
 
+Exit status says who has to act: 0 built; 1 the document or its bundle would
+make a defective PDF, and the message names the fix; 2 the command line is
+wrong; 3 the machine lacks a tool, font or bundle — mdbrand doctor.
+
 Front matter drives everything, so a build needs no flags:
 
   ---
@@ -68,14 +74,19 @@ Front matter drives everything, so a build needs no flags:
     brand: amplia
     style: report      # report | note | letter | slides
   ---`,
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		SilenceUsage:               true,
+		SilenceErrors:              true,
+		Args:                       cobra.ArbitraryArgs,
+		SuggestionsMinimumDistance: 2, // what cobra sets for its own message
+		RunE:                       groupRun,
 	}
 
 	root.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default $XDG_CONFIG_HOME/mdbrand/config.yaml)")
 	root.PersistentFlags().String("brands-dir", "", "directory holding brand bundles (env MDBRAND_BRANDS_DIR)")
 	_ = viper.BindPFlag("brands_dir", root.PersistentFlags().Lookup("brands-dir"))
 
+	// A wrong flag is the typist's to fix, not the document's.
+	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return exit.AsUsage(err) })
 	cobra.OnInitialize(initConfig)
 
 	root.AddCommand(buildCmd(), newCmd(), doctorCmd(), brandCmd(), diagramsCmd(), dataCmd(), skillCmd(), configCmd(), versionCmd())
@@ -155,6 +166,7 @@ func configCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "config",
 		Short: "Show where mdbrand reads its settings from",
+		Args:  usageArgs(cobra.NoArgs),
 		Long: `Settings resolve in this order, later wins:
   built-in default  ->  config file  ->  MDBRAND_* environment  ->  flag`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -218,4 +230,25 @@ func orNone(s string) string {
 		return "(none)"
 	}
 	return s
+}
+
+// groupRun is the Run of a command that only groups others. cobra reports an
+// unknown command from inside Find as an untyped error, and below the root
+// not at all: `mdbrand brand frob` printed the help and exited 0. A group
+// that runs takes the stray argument itself and calls it a usage error, in
+// cobra's own words.
+func groupRun(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return cmd.Help()
+	}
+	msg := fmt.Sprintf("unknown command %q for %q", args[0], cmd.CommandPath())
+	if s := cmd.SuggestionsFor(args[0]); len(s) > 0 {
+		msg += "\n\nDid you mean this?\n\t" + strings.Join(s, "\n\t") + "\n"
+	}
+	return exit.AsUsage(errors.New(msg))
+}
+
+// usageArgs marks what an argument validator refuses as a usage error.
+func usageArgs(v cobra.PositionalArgs) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error { return exit.AsUsage(v(cmd, args)) }
 }

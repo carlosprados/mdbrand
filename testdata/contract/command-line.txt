@@ -1,0 +1,53 @@
+command mdbrand
+command mdbrand brand
+command mdbrand brand list
+command mdbrand brand new
+command mdbrand brand path
+command mdbrand brand show
+command mdbrand brand validate
+command mdbrand build
+command mdbrand config
+command mdbrand config init
+command mdbrand data
+command mdbrand diagrams
+command mdbrand doctor
+command mdbrand new
+command mdbrand skill
+command mdbrand skill install
+command mdbrand skill path
+command mdbrand skill show
+command mdbrand version
+exit 0 ok
+exit 1 defect
+exit 2 usage
+exit 3 environment
+flag mdbrand --brands-dir (string)
+flag mdbrand --config (string)
+flag mdbrand build --allow-missing-glyphs (bool)
+flag mdbrand build --brand (string)
+flag mdbrand build --out -o (string)
+flag mdbrand build --quiet -q (bool)
+flag mdbrand build --style (string)
+flag mdbrand build --to (stringSlice)
+flag mdbrand build --watch -w (bool)
+flag mdbrand build --wordcount (string)
+flag mdbrand build --work (string)
+flag mdbrand diagrams --brand (string)
+flag mdbrand diagrams --out (string)
+flag mdbrand diagrams --style (string)
+flag mdbrand new --author (string)
+flag mdbrand new --brand (string)
+flag mdbrand new --style (string)
+flag mdbrand new --subtitle (string)
+flag mdbrand new --title (string)
+flag mdbrand new --toc (bool)
+flag mdbrand skill install --dir (string)
+flag mdbrand skill install --force (bool)
+flag mdbrand skill install --project (bool)
+flag mdbrand skill path --project (bool)
+format docx
+format pdf
+style letter
+style note
+style report
+style slides

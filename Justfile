@@ -31,6 +31,11 @@ skill:
 test:
     go test ./...
 
+# Rewrite testdata/contract after a deliberate change to a key, flag or status
+contract:
+    MDBRAND_UPDATE_CONTRACT=1 go test ./... -run Contract
+    git diff --stat testdata/contract
+
 # gofmt -w .
 fmt:
     gofmt -w .
