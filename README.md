@@ -794,6 +794,7 @@ mdbrand brand path amplia
 ```yaml
 name: amplia
 display_name: Amplía Soluciones S.L.
+requires: "0.17"               # optional; the oldest mdbrand this bundle works with
 logo: logo.svg                 # vector; an SVG wrapping a PNG will look soft
 logo_secondary: cliente.svg    # optional; right of the COVER only, same baseline
 
@@ -843,6 +844,14 @@ slides:                        # optional; only style slides reads it — see Sl
 
 footer: ""                     # optional line under the cover rule
 ```
+
+**A bundle is read by whatever mdbrand each reader has**, so it can say which
+it needs: with `requires: "0.17"`, an older mdbrand stops and names the release
+to upgrade to, instead of skipping the settings it does not know and building
+a document without them. Set it to the release that introduced the newest
+setting the bundle uses. A key that no setting reads stops the build as well,
+naming its full path and the nearest real key — `colors.acent` used to vanish
+and leave every accent in the primary.
 
 **Leave `headheight` out unless you mean it.** `logo_width_header` is a width,
 but what the running header has to reserve is a *height*, and the two differ by
@@ -923,6 +932,14 @@ with the document.
 page. Split it with another `##` heading, cut it, or give its figure less
 height: in a deck a figure takes up to 48 mm on its own, so one with a
 paragraph above it is the usual culprit.
+
+**`requires mdbrand 0.18 or later`** — the bundle was written for a newer
+mdbrand than this one. Upgrade from the releases page; do not delete the line,
+which would only bring back the silence it exists to end.
+
+**`is not a setting mdbrand reads`** — a key in `brand.yaml` that nothing reads:
+a typo, usually, and the message names the nearest real key. If the key is
+right, the bundle needs a newer mdbrand, and should say so with `requires:`.
 
 **`colour(s) asked for in a way that neither the PDF nor the .docx can print`**
 — a `color=` or `style=` attribute, which pandoc drops in silence. Write

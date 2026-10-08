@@ -327,6 +327,11 @@ artwork outside the `viewBox`, the invalid `data:img/` MIME type that converts
 to a blank page, `<foreignObject>`, a display font whose path has moved, and
 colours that are not plain 6-digit hex.
 
+A bundle may say which mdbrand it needs (`requires: "0.17"`); an older one stops
+and names the release to upgrade to. A key no setting reads stops every build
+with that bundle, naming its path and the nearest real key: fix the key, never
+delete `requires:` to get past it.
+
 Tune per bundle: `colors`, `fonts.body`, `fonts.display`, `fonts.fallback`, `page.margin`,
 `page.linestretch`, `page.logo_width_cover|header`, and the `diagrams` numbers.
 

@@ -227,6 +227,18 @@ Do not relax one without understanding what it cost.
     → `internal/build/slides_test.go`, `internal/brand/slides_test.go`,
     `internal/tex/tex_test.go`, `testdata/slides.md`, `traps/slide-*.md`.
 
+19. **A bundle says which mdbrand it needs, and no key in it is dropped.** A
+    bundle is shared and the reader's binary is not the author's: v0.16
+    skipped `slides:` and `colors.accent` in silence. `requires:` is checked
+    against the running version before anything else, so a key from the
+    future reads as "upgrade" and not as a typo; then every key is walked
+    against the structs' yaml tags and an unknown one stops the build by its
+    dotted path, with the nearest real key. An unstamped build is `dev` and is
+    never compared, which is why CI checks out every tag and stamps the
+    version as a release does — without it, `traps/brand-future.md` builds.
+    → `internal/brand/keys_test.go`, `traps/brand-typo.md`,
+    `traps/brand-future.md`.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.

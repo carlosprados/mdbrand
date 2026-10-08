@@ -114,7 +114,7 @@ the link.`,
 			}
 			file := filepath.Join(target, "SKILL.md")
 			body := stampRe.ReplaceAllString(strings.TrimRight(SkillDoc, "\n"), "") +
-				fmt.Sprintf("\n\n<!-- installed by mdbrand %s -->\n", Version)
+				fmt.Sprintf("\n\n<!-- installed by mdbrand %s -->\n", version())
 
 			out := cmd.OutOrStdout()
 			// Lstat, not Stat: a symlink must be seen as a symlink, or writing

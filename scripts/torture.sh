@@ -426,6 +426,8 @@ traps=(
 	"slide-figure.md|fail|direction: right at the root"
 	"accent-pale.md|fail|Set colors.accent|--brands-dir $root/testdata/brands"
 	"accent-pale.md|ok|Set colors.accent|--style note --brands-dir $root/testdata/brands"
+	"brand-typo.md|fail|colors.acent is not a setting mdbrand reads — did you mean accent?|--brands-dir $root/testdata/brands"
+	"brand-future.md|fail|requires mdbrand 99.0 or later|--brands-dir $root/testdata/brands"
 )
 
 echo

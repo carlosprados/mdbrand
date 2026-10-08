@@ -1,0 +1,9 @@
+# For traps/brand-future.md: a bundle for an mdbrand that does not exist yet,
+# carrying a setting this one does not know. The reader must be told to
+# upgrade, not that the setting is a typo.
+name: future
+requires: "99.0"
+fonts:
+  body: DejaVu Sans
+slides:
+  hologram: true
