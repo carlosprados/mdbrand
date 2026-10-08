@@ -116,6 +116,11 @@ func TestScanLogFindsConfidentialTooWide(t *testing.T) {
 	if over := scanLog("Output written on doc.pdf (1 page, 10 bytes).").ConfOverPt; over != 0 {
 		t.Errorf("a clean log reported the label %v pt too wide", over)
 	}
+	// The running title's marker is its own: one must not read as the other.
+	sc := scanLog("MDBRAND-TITLE-TOOWIDE over=12.5pt\n")
+	if sc.TitleOverPt != 12.5 || sc.ConfOverPt != 0 {
+		t.Errorf("title over = %v, label over = %v; want 12.5 and 0", sc.TitleOverPt, sc.ConfOverPt)
+	}
 }
 
 // The count alone sent the reader to the log with a grep and a map from .tex

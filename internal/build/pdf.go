@@ -53,7 +53,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 		CoverLogoWidth:          b.Page.LogoWidthCover,
 		CoverLogoSecondaryWidth: b.Page.LogoWidthCoverSecondary,
 		HeaderLogoWidth:         b.Page.LogoWidthHeader,
-		HeaderTitle:             d.Meta.Title,
+		HeaderTitle:             d.Meta.RunningTitle(),
 		Title:                   d.Meta.Title,
 		Subtitle:                d.Meta.Subtitle,
 		Author:                  d.Meta.AuthorString(),
@@ -271,6 +271,12 @@ every page left of the centred page number, and at this length the two would
 print over each other. Shorten the label — the cover has room for the full
 wording, the footer only for a word or two`, sc.ConfOverPt)
 	}
+	if sc.TitleOverPt > 0 {
+		return fmt.Errorf(`the running header title is %.1fpt too wide to sit beside the logo on one
+line: it would print under the mark, or wrap onto a second line of the header.
+Set mdbrand.short_title to a shorter form for the header; the cover and the
+title block keep the full title`, sc.TitleOverPt)
+	}
 	if len(sc.Wide) > 0 {
 		var w strings.Builder
 		fmt.Fprintf(&w, "%d code block(s) stay past the measure at the smallest legible size:", len(sc.Wide))
@@ -397,6 +403,8 @@ var (
 	// What the preamble reports when the footer's confidentiality label would
 	// reach the centred page number: fancyhdr overprints the two without a word.
 	confRe = regexp.MustCompile(`MDBRAND-CONFIDENTIAL-TOOWIDE over=([0-9.]+)pt`)
+	// And when the running title would run under the header's logo.
+	titleRe = regexp.MustCompile(`MDBRAND-TITLE-TOOWIDE over=([0-9.]+)pt`)
 )
 
 // overfull is one line the measure could not hold: how far past it went, and
@@ -424,6 +432,7 @@ type scan struct {
 	Pages       int
 	HeadShortPt float64
 	ConfOverPt  float64
+	TitleOverPt float64
 }
 
 // scanLog pulls the things that matter out of a xelatex log.
@@ -486,7 +495,12 @@ func scanLog(log string) scan {
 	if m := confRe.FindStringSubmatch(log); m != nil {
 		confOverPt, _ = strconv.ParseFloat(m[1], 64)
 	}
-	return scan{Holes: holes, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt, ConfOverPt: confOverPt}
+	var titleOverPt float64
+	if m := titleRe.FindStringSubmatch(log); m != nil {
+		titleOverPt, _ = strconv.ParseFloat(m[1], 64)
+	}
+	return scan{Holes: holes, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
+		ConfOverPt: confOverPt, TitleOverPt: titleOverPt}
 }
 
 // offendingText reassembles the line XeLaTeX prints just below an Overfull

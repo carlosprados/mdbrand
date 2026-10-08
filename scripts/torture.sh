@@ -114,6 +114,12 @@ if command -v pdftotext >/dev/null; then
 		&& ok "brackets beside capitals copy as themselves" \
 		|| bad "brackets beside capitals do not survive text extraction"
 
+	# The running header prints short_title; the cover keeps the full title.
+	last="$(pdftotext -f "$pages" -l "$pages" "$work/torture.pdf" - 2>/dev/null)"
+	printf '%s' "$last" | grep -qF "Torture, short" \
+		&& ok "the running header prints short_title" \
+		|| bad "the running header does not print short_title"
+
 	# The cover's confidentiality label repeats in every footer: the last page
 	# is the one furthest from the cover, so it is the witness.
 	last="$(pdftotext -f "$pages" -l "$pages" "$work/torture.pdf" - 2>/dev/null)"
@@ -354,6 +360,7 @@ traps=(
 	"span-colour.md|fail|[words]{.accent}"
 	"span-colour.md|fail|[words]{.accent}|--to docx --brand none"
 	"confidential-too-long.md|fail|too wide for the footer"
+	"title-too-long.md|fail|Set mdbrand.short_title"
 )
 
 echo

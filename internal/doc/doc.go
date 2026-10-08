@@ -103,6 +103,7 @@ type Options struct {
 	Style        string    `yaml:"style"`
 	Confidential string    `yaml:"confidential"` // stamped under the cover rule
 	Reference    string    `yaml:"reference"`    // file/offer number on the cover
+	ShortTitle   string    `yaml:"short_title"`  // the running header's title, when the full one is too long
 	WordCount    WordCount `yaml:"wordcount"`
 	// Data replaces the default data/ beside the document with these
 	// directories or files, resolved against the document.
@@ -397,4 +398,13 @@ func (fg *Fig) Scale() float64 {
 		return 0
 	}
 	return x
+}
+
+// RunningTitle is the title the running header prints: short_title when the
+// document gives one, the full title otherwise.
+func (m Meta) RunningTitle() string {
+	if m.Options.ShortTitle != "" {
+		return m.Options.ShortTitle
+	}
+	return m.Title
 }

@@ -247,6 +247,7 @@ mdbrand:
   style: report          # report | note | letter
   reference: "Oferta AS-2164-26"
   confidential: "Confidencial"   # every style; see below for where it prints
+  short_title: "Oferta Acme"     # optional; the running header, when the title is too long for it
 ---
 ```
 

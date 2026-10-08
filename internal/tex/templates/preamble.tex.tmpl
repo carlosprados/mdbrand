@@ -106,6 +106,20 @@
 {{- end}}
   \renewcommand{\headrulewidth}{0.4pt}%
 }
+% The running title gets the whole \headwidth from fancyhdr and runs under the
+% logo, or wraps to a second line, without a word in the log. Measured in one
+% line against the logo's real box (an image, or the brand's name set as text)
+% plus 2mm; mdbrand stops the build on the marker and names short_title. 4mm
+% refused a title that read cleanly 2.3mm from the mark.
+\newsavebox\mdbrandHeadTitleBox
+\newsavebox\mdbrandHeadLogoBox
+\AtBeginDocument{%
+  \sbox\mdbrandHeadTitleBox{\brandDisplay\fontsize{8.5}{10}\selectfont\brandRunningTitle}%
+  \sbox\mdbrandHeadLogoBox{\brandLogo{ {{- .HeaderLogoWidth -}} }}%
+  \ifdim\dimexpr\wd\mdbrandHeadTitleBox+\wd\mdbrandHeadLogoBox+2mm\relax>\textwidth
+    \typeout{MDBRAND-TITLE-TOOWIDE over=\the\dimexpr\wd\mdbrandHeadTitleBox+\wd\mdbrandHeadLogoBox+2mm-\textwidth\relax}%
+  \fi
+}
 
 % Figures placed by mdbrand are already sized in millimetres; centre them and
 % keep the caption small and grey.

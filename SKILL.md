@@ -49,6 +49,7 @@ mdbrand:
   style: report                   # report | note | letter
   reference: "Oferta AS-2164-26"  # report, optional
   confidential: "Confidencial"    # optional; report: cover + footers, note: title + footers, letter: under the date
+  short_title: "Oferta Acme"      # optional; the running header's title. A title too long to sit beside the logo stops the build naming it
   formats: [pdf, docx]            # optional; default pdf. --to overrides
 ---
 ```

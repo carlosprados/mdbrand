@@ -178,7 +178,7 @@ func docxLook(p *prepared) (docx.Look, error) {
 		Primary: b.Colors.Primary, Text: b.Colors.Text, Rule: b.Colors.Rule, Link: b.Colors.Link,
 		PaperWMM: tex.PaperWidthMM(b.Page.PaperSize), PaperHMM: tex.PaperHeightMM(b.Page.PaperSize),
 		MarginMM: margin, LineStretch: b.Page.LineStretch,
-		LogoHeaderWMM: header, RunningTitle: p.d.Meta.Title, Confidential: p.d.Meta.Options.Confidential,
+		LogoHeaderWMM: header, RunningTitle: p.d.Meta.RunningTitle(), Confidential: p.d.Meta.Options.Confidential,
 		Layout: p.style, NumberFromCover: p.style == "report",
 	}, nil
 }

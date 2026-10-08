@@ -11,6 +11,7 @@ mdbrand:
   brand: none
   style: report
   confidential: "Confidential & internal"
+  short_title: "Torture, short"
 ---
 
 # What this is
