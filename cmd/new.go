@@ -140,12 +140,10 @@ func scaffold(style, brandName, title, subtitle, author string, toc bool) string
 
 Texto. Las tablas, listas y énfasis de Markdown funcionan como esperas.
 
-Un diagrama, con los globs de tamaño de fuente que hacen falta para que el texto
-se lea en papel — ` + "`**`" + ` alcanza también a las formas anidadas, ` + "`*`" + ` no:
+Un diagrama. Sin tamaños de fuente: mdbrand los pone él para que el texto se
+lea en papel, y uno declarado en el bloque le quita esa decisión:
 
 ` + "```d2 caption=\"Flujo de datos\"" + `
-**.style.font-size: 32
-(** -> **)[*].style.font-size: 32
 origen: Origen de datos
 motor: Motor
 salida: Informe
