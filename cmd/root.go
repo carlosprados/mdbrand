@@ -27,7 +27,8 @@ func Root() *cobra.Command {
 		Short: "Markdown to a branded A4 PDF, in one command",
 		Long: `mdbrand turns a Markdown document into a branded A4 PDF with pandoc and
 XeLaTeX: cover with your logo, running header with your logo, D2 diagrams and
-Vega-Lite charts rendered and sized so their text is legible on paper.
+Vega-Lite charts rendered and sized so their text is legible on paper. With
+style slides, the same document is a 16:9 deck for a talk.
 
 The brand lives in a bundle outside this tool — a directory with a brand.yaml,
 a logo and colours — so the same document can be published under a different
@@ -51,7 +52,7 @@ Front matter drives everything, so a build needs no flags:
   toc: true
   mdbrand:
     brand: amplia
-    style: report      # report | note | letter
+    style: report      # report | note | letter | slides
   ---`,
 		SilenceUsage:  true,
 		SilenceErrors: true,

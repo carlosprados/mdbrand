@@ -3,6 +3,7 @@
 # tool prints today and not what it printed when someone last took a screenshot.
 #
 #   assets/readme/pages.png      the demo's cover and first page, the essay's cover
+#   assets/readme/slides.png     four slides of the example deck
 #   assets/readme/build.png      a build, as the terminal shows it
 #   assets/readme/trap.png       a build that stops, naming the fix
 #   assets/readme/wordcount.png  the essay counted by two criteria
@@ -86,6 +87,15 @@ convert demo-1.png demo-2.png ensayo-1.png \
 	-bordercolor none -border 12 +append \
 	"$out/pages.png"
 echo "  pages.png"
+
+mdbrand build deck.md -q >/dev/null
+pdftoppm -r 60 -png deck.pdf deck
+# Each slide framed on its own, as the pages above are: a white slide on a
+# white README is otherwise a rectangle of nothing.
+for n in 1 3 4 6; do convert deck-$n.png -bordercolor '#b8bcc0' -border 1 -bordercolor none -border 6 frame-$n.png; done
+convert \( frame-1.png frame-3.png +append \) \( frame-4.png frame-6.png +append \) -append \
+	-bordercolor none -border 6 "$out/slides.png"
+echo "  slides.png"
 
 shot build.png "mdbrand build demo.md"
 shot trap.png "mdbrand build missing-glyph.md"

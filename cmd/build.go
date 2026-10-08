@@ -44,6 +44,11 @@ legibility band (min_text_pt..max_text_pt in the brand bundle) without growing
 taller than max_height_mm. If a diagram cannot satisfy that, the build stops and
 says what to change — it does not ship an illegible figure.
 
+With style slides the document is a 16:9 beamer deck: # opens a section, ##
+is a slide. Figures are sized for the frame instead (140 mm wide, 48 mm tall,
+the bundle's slides.diagrams band, 8.5-14pt by default), and a slide whose
+content runs past the bottom of its frame stops the build, named by its title.
+
 A chart's "data": {"url": "data/x.csv"} resolves against the document, or
 against the spec's own file when it is linked. A missing file or a remote URL
 stops the build: vl2svg alone would draw an empty chart and exit 0.

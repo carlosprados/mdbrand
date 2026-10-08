@@ -1,6 +1,6 @@
 ---
 name: mdbrand
-description: Generate branded A4 PDFs from Markdown with one command — cover and running header with the client's logo, D2 diagrams and Vega-Lite charts rendered and sized legibly for paper, missing-glyph detection; the same document also as a branded .docx for Word or Google Docs. Use INSTEAD of hand-rolling pandoc/XeLaTeX invocations, brand preambles, reference.docx files or diagram renders. Load when asked for a PDF, a Word/.docx or Google Docs version, report, propuesta, informe, nota interna, memo or carta from Markdown; when a document needs a cover, letterhead or logo header; when a diagram must go into a PDF; or when a pandoc PDF build misbehaves (missing characters, illegible or page-eating figures, blank logo).
+description: Generate branded A4 PDFs from Markdown with one command — cover and running header with the client's logo, D2 diagrams and Vega-Lite charts rendered and sized legibly for paper, missing-glyph detection; the same document also as a branded .docx for Word or Google Docs, or as a branded 16:9 slide deck (style slides, beamer) for a technical talk. Use INSTEAD of hand-rolling pandoc/XeLaTeX invocations, brand preambles, reference.docx files or diagram renders. Load when asked for a PDF, a Word/.docx or Google Docs version, report, propuesta, informe, nota interna, memo, carta, presentación, slides or deck from Markdown; when a document needs a cover, letterhead or logo header; when a diagram must go into a PDF; or when a pandoc PDF build misbehaves (missing characters, illegible or page-eating figures, blank logo).
 ---
 
 # mdbrand — Markdown to a branded A4 PDF
@@ -46,7 +46,7 @@ bibliography: refs.bib            # optional; one path or a list of them
 csl: apa.csl                      # optional, alongside a bibliography
 mdbrand:
   brand: amplia                   # bundle name; `none` for unbranded
-  style: report                   # report | note | letter
+  style: report                   # report | note | letter | slides
   reference: "Oferta AS-2164-26"  # report, optional
   confidential: "Confidencial"    # optional; report: cover + footers, note: title + footers, letter: under the date
   short_title: "Oferta Acme"      # optional; the running header's title. A title too long to sit beside the logo stops the build naming it
@@ -61,6 +61,7 @@ mean" — a misspelt option used to be dropped in silence.
 - `note` — no cover; title block plus header from page 1. Internal notes.
 - `letter` — letterhead; needs `to:` (list), `place:`, `greeting:`, `signature:`
   (block scalar, one line per line).
+- `slides` — a 16:9 beamer deck. See *Slides* below.
 
 Overrides exist as flags (`--brand`, `--style`, `-o`, `--work`) but a document
 should carry its own configuration so the build command never changes.
@@ -239,6 +240,32 @@ Latin Modern, so it works on a machine with nothing installed.
 
 Built with [Go](https://go.dev/dl/) 1.26+; prebuilt binaries are attached to
 every [release](https://github.com/carlosprados/mdbrand/releases).
+
+## Slides
+
+`style: slides` makes a 16:9 deck (160 × 90 mm) from the same Markdown, bundle
+and figures, for technical talks. `mdbrand new talk.md --style slides` writes
+one that builds.
+
+- `#` opens a section with a cover slide; `##` is one slide. Use `##` for every
+  slide: text under a `#` alone becomes a slide titled by the section.
+- `:::: columns` / `::: column` for two columns; `::: notes` for speaker notes,
+  which never print.
+- Figures get 140 × 48 mm at most and a band of 8.5–14 pt. Draw them wide and
+  low (`direction: right`) and keep edge labels few: one edge label can widen a
+  d2 layout enough to push every label under the floor.
+- **A slide that does not fit stops the build**, by title and millimetres. Split
+  it with another `##`, cut it, or shrink its figure — a 48 mm figure leaves no
+  room for a paragraph.
+- `--to docx` refuses a deck.
+- The bundle may add `slides: {background, foreground, logo, art, logo_width,
+  logo_width_cover, diagrams: {min_text_pt, max_text_pt}}`. `background` colours
+  the title and section slides; `foreground` must reach 4.5:1 on it and every
+  fill of an SVG logo 3:1, or the deck stops — `slides.logo` is the variant of
+  the mark for that ground.
+
+Look at the deck before calling it done, as with any PDF:
+`pdftoppm -r 50 -png talk.pdf s` and read a few of the pages.
 
 ## Word and Google Docs
 

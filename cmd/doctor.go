@@ -72,6 +72,12 @@ as garbage stops the build; without it a build warns that it was not checked.`,
 				}
 				checks = append(checks, c)
 			}
+			// beamer is a class, not a package, and only style slides loads it.
+			deck := check{name: "latex: beamer.cls (style slides)", hint: "apt install texlive-latex-recommended  ·  https://ctan.org/pkg/beamer"}
+			if o, err := run.Cmd("", "kpsewhich", "beamer.cls"); err == nil && strings.TrimSpace(o) != "" {
+				deck.ok = true
+			}
+			checks = append(checks, deck)
 
 			// d2's own PDF export is deliberately unused; say so once here so
 			// nobody "fixes" the pipeline by reaching for it.
