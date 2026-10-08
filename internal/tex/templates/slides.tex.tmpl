@@ -67,11 +67,14 @@
 \newcommand{\mdbrandMarkCover}{\expandafter\gdef\csname mdbrandCover\the\value{page}\endcsname{}}
 \newcommand{\mdbrandIfCover}[2]{\ifcsname mdbrandCover\the\value{page}\endcsname #1\else #2\fi}
 
+% "8 / 9": beamer counts slides, not pages, so a slide with pauses is one; the
+% covers count too, so a number is the one the audience can ask for. The total
+% comes from the .aux, and every build runs xelatex at least twice.
 \setbeamertemplate{footline}{\mdbrandIfCover{}{%
   \hbox to\paperwidth{\hskip{{.SlideMarginMM}}mm\begingroup\color{brandRule}\rule{\dimexpr\paperwidth-{{.SlideMarginMM}}mm*2\relax}{0.3pt}\endgroup\hss}%
   \vskip1.2mm
   \hbox to\paperwidth{\hskip{{.SlideMarginMM}}mm\raisebox{-0.2mm}{\brandLogo{ {{- .Brand.Slides.LogoWidth -}} }}\hfill
-    \begingroup\brandDisplay\fontsize{7}{8}\selectfont\color{brandText}\brandConfidential\brandRunningTitle\quad\insertframenumber\endgroup
+    \begingroup\brandDisplay\fontsize{7}{8}\selectfont\color{brandText}\brandConfidential\brandRunningTitle\quad\insertframenumber\,/\,\inserttotalframenumber\endgroup
     \hskip{{.SlideMarginMM}}mm}%
   \vskip3mm}}
 

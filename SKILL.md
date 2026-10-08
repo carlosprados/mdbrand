@@ -266,6 +266,8 @@ one that builds.
 - `. . .` on a line of its own pauses; `::: incremental` around a list reveals
   it point by point. Each step is a page with the slide's number, and a slide is
   judged by its fullest step.
+- The footer numbers slides out of the total (`8 / 24`), covers included,
+  pauses not.
 - Figures get 140 × 48 mm at most and a band of 8.5–14 pt. Draw them wide and
   low (`direction: right`) and keep edge labels few: one edge label can widen a
   d2 layout enough to push every label under the floor.
