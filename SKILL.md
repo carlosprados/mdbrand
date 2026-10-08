@@ -1,162 +1,190 @@
 ---
 name: mdbrand
-description: Generate branded A4 PDFs from Markdown with one command — cover and running header with the client's logo, D2 diagrams and Vega-Lite charts rendered and sized legibly for paper, missing-glyph detection; the same document also as a branded .docx for Word or Google Docs, or as a branded 16:9 slide deck (style slides, beamer) for a technical talk. Use INSTEAD of hand-rolling pandoc/XeLaTeX invocations, brand preambles, reference.docx files or diagram renders. Load when asked for a PDF, a Word/.docx or Google Docs version, report, propuesta, informe, nota interna, memo, carta, presentación, slides or deck from Markdown; when a document needs a cover, letterhead or logo header; when a diagram must go into a PDF; or when a pandoc PDF build misbehaves (missing characters, illegible or page-eating figures, blank logo).
+description: Generate branded documents from Markdown with one command — A4 PDF reports, internal notes and letters with the client's logo on the cover and header; 16:9 slide decks for technical talks with printable speaker notes; the same document as a branded .docx for Word or Google Docs. D2 diagrams and Vega-Lite charts are rendered and sized legibly, tables and charts read YAML/JSON/CSV data files, citations resolve from a .bib, {{words}} counts to an essay's limit, and every trap that would print a defective PDF stops the build naming the fix. Ships worked examples to start from (mdbrand example). Use INSTEAD of hand-rolling pandoc/XeLaTeX invocations, LaTeX preambles, reference.docx files or diagram renders. Load when asked for a PDF, Word/.docx or Google Docs version, report, propuesta, oferta, informe, nota interna, memo, carta, ensayo, monografía, presentación, charla, slides or deck from Markdown; when a document needs a cover, letterhead or logo; when a diagram, chart or data table must go into a PDF; or when a pandoc PDF build misbehaves (missing characters, illegible or page-eating figures, blank logo).
 ---
 
-# mdbrand — Markdown to a branded A4 PDF
+# mdbrand — branded documents from Markdown
 
-Do not assemble a pandoc command line, a LaTeX preamble or a diagram render by
-hand. That path re-derives the same decisions and rediscovers the same traps
-every time. Use the CLI; it holds them all.
+Never assemble a pandoc command line, a LaTeX preamble or a diagram render by
+hand: that path rediscovers the same traps every time. mdbrand holds them, and
+a build that would print a defective document fails naming the fix.
+
+## The loop
+
+1. **Start from the nearest worked example**, never from an empty file. Its
+   front matter is right and commented, and it shows the syntax of everything
+   it uses.
+
+   ```sh
+   mdbrand example                    # what there is, and what each is for
+   mdbrand example carta ./out        # writes ./out/carta.md (+ any data/, refs.bib)
+   mdbrand example charla --show      # read one without writing anything
+   ```
+
+2. **Adapt it.** Replace the content, keep the shape. Set `mdbrand.brand` to
+   the identity asked for (`mdbrand brand list` shows the installed bundles);
+   leave `brand: none` when no identity was asked for — it builds anywhere.
+3. **Build once:** `mdbrand build out/carta.md`. Everything comes from the
+   front matter; there are no flags to remember. `--watch` is for a person
+   beside a PDF viewer and never returns — do not run it in the foreground.
+4. **Act on the exit status**, not on the wording of the message:
+
+   | Status | Who acts | What to do |
+   |---|---|---|
+   | 0 | — | Built. Read stderr anyway: warnings (`  ! …`) do not stop a build. |
+   | 1 | The document or bundle | The message names the fix. Apply it to the `.md` (or the bundle) and build again. |
+   | 2 | The command line | Fix the command: a flag, an argument, a file that is not there. |
+   | 3 | The machine | A tool, font or bundle is missing. Run `mdbrand doctor` and give the user its install command; do not edit the document around the gap. |
+
+5. **Look at the pages before calling it done.** A zero exit says the build
+   ran, not that the document is right.
+
+   ```sh
+   pdftoppm -f 1 -l 2 -r 60 -png out/carta.pdf p   # then read p-1.png, p-2.png
+   ```
+
+6. **Report** the paths and the result line the build printed — it gives the
+   pages and the word count with its criterion. Quote that count; never count
+   words yourself.
+
+## Which example
+
+| Asked for | Example | Style and what it shows |
+|---|---|---|
+| A report, proposal or offer for a client | `informe` | `report`: cover with reference and confidential label, table of contents, diagram, chart, table, code |
+| An internal note or memo; a Word or Google Docs version | `nota` | `note`, `formats: [pdf, docx]`: title block, header from page 1 |
+| A formal letter | `carta` | `letter`: letterhead, recipient lines, place and date, subject, greeting, signature |
+| Numbers kept in a spreadsheet, YAML or JSON | `datos` | `{{data…}}` values, ```` ```table ```` blocks, a CSV linked whole, a chart reading the same data |
+| An essay with a word limit; anything with citations | `ensayo` | `{{words}}` on the cover, `{.nocount}`, `bibliography:` and `[@key, p. 12]` |
+| Slides for a talk; speaker notes | `charla` | `slides`, `formats: [pdf, notes]`: sections, figures for the frame, columns, pauses, notes |
+
+They combine: a proposal quoting a price list is `informe` with the data and
+table blocks of `datos`.
+
+## Commands
 
 ```sh
-mdbrand build informe.md          # everything comes from the front matter
-mdbrand new informe.md --toc      # scaffold with the front matter already right
-mdbrand doctor                    # toolchain check + the install command for what's missing
-mdbrand diagrams informe.md       # figure sizes and label point size, without a build
+mdbrand build doc.md              # build from the front matter; -q prints only the result
+mdbrand example [name] [dir]      # worked examples, carried in the binary
+mdbrand new doc.md --style note   # a bare scaffold, when no example is near
+mdbrand data doc.md               # every {{data…}} name the document can use
+mdbrand diagrams doc.md           # figure sizes and label point size, without a build
+mdbrand doctor                    # the toolchain, and the install command for what's missing
 mdbrand brand list|show|validate|new
 ```
 
-`mdbrand <cmd> --help` is the full manual. Read it instead of guessing flags.
+`mdbrand <cmd> --help` is the complete manual; read it rather than guess a flag.
+Flags (`--brand`, `--style`, `--to`, `-o`, `--work`) override the front matter
+for one build; a document should carry its own settings.
 
-`mdbrand build --watch` is for a person writing beside a PDF viewer: it never
-returns. An agent builds once and reads the result; if it does start a watch,
-it runs it in the background and stops it when done.
-
-**There is nothing to set up first.** With no bundle configured, `mdbrand new`
-writes `brand: none` and the document builds on the built-in defaults, diagrams
-included. Reach for a bundle when the document needs an identity, not before.
-
-This document is embedded in the binary. If it looks out of step with the tool,
+This file is embedded in the binary. If it looks out of step with the tool,
 `mdbrand skill install --force` rewrites it from the installed binary, and
-`mdbrand version` says which one that is.
+`mdbrand version` names that binary.
 
-## Front matter is the interface
+## Front matter
 
 ```yaml
 ---
 title: "…"
 subtitle: "…"                     # optional
 author: "Departamento de Tecnología — Amplía Soluciones S.L."
-date: "7 de septiembre de 2026"
-lang: es-ES
+date: "9 de octubre de 2026"
+lang: es-ES                       # hyphenation, Tabla/Figura, 1.250,5 and charts in Spanish
 toc: true                         # optional
-numbersections: true              # optional; pandoc's own key
-bibliography: refs.bib            # optional; one path or a list of them
-csl: apa.csl                      # optional, alongside a bibliography
+numbersections: true              # optional; pandoc's own keys pass through
+bibliography: refs.bib            # optional; one path or a list. Turns citations on
+csl: apa.csl                      # optional, with a bibliography
 mdbrand:
-  brand: amplia                   # bundle name; `none` for unbranded
+  brand: amplia                   # bundle name; none = built-in defaults
   style: report                   # report | note | letter | slides
-  reference: "Oferta AS-2164-26"  # report, optional
-  confidential: "Confidencial"    # optional; report: cover + footers, note: title + footers, letter: under the date
-  short_title: "Oferta Acme"      # optional; the running header's title. A title too long to sit beside the logo stops the build naming it
-  formats: [pdf, docx]            # optional; default pdf. --to overrides
+  reference: "Oferta AS-2164-26"  # report cover, optional
+  confidential: "Confidencial"    # report: cover + footers; note: title + footers; letter: under the date; slides: footer
+  short_title: "Oferta Acme"      # the running header's title when the real one is too long
+  formats: [pdf, docx]            # pdf (default) | docx | notes, in any combination
+  wordcount: all                  # or {base: ib, include: [tables]}; default ib
+  data: [precios/, extra.yaml]    # where {{data…}} reads; default data/ beside the document
+  # letter only: to: [lines], place:, greeting:, signature: | (one line per line)
 ---
 ```
 
-A key under `mdbrand:` that no option reads stops the build with a "did you
-mean" — a misspelt option used to be dropped in silence.
+A key under `mdbrand:` that no option reads stops the build with "did you
+mean". A title too long for the running header stops it asking for
+`short_title`.
 
 - `report` — cover with logo, header with logo from page 2, optional ToC.
-- `note` — no cover; title block plus header from page 1. Internal notes.
-- `letter` — letterhead; needs `to:` (list), `place:`, `greeting:`, `signature:`
-  (block scalar, one line per line).
-- `slides` — a 16:9 beamer deck. See *Slides* below.
-
-Overrides exist as flags (`--brand`, `--style`, `-o`, `--work`) but a document
-should carry its own configuration so the build command never changes.
+- `note` — no cover; title block plus header from page 1.
+- `letter` — letterhead; `title` prints as the subject line.
+- `slides` — a 16:9 beamer deck. See *Slides*.
 
 ## Word count
 
-Every build prints the word count; `{{words}}` in the body, the front matter or
-a caption puts it in the PDF, formatted for `lang`. The default criterion is the
-IB's (Extended Essay, TOK): prose, lists, headings, block quotes and content
-footnotes count; code, figures and captions, tables, math, citations,
-citation-only notes and the bibliography do not. Mark a heading `{.nocount}` to
-drop its section (appendix, abstract with its own limit). Change the criterion
-with `mdbrand: {wordcount: all}` or `wordcount: {base: ib, include: [tables]}`;
-`mdbrand build --help` lists the parts. When a user asks for a word limit,
-report the number the build printed and the criterion it names, not a count of
-your own.
+Every build prints the count; `{{words}}` in the body, front matter or a
+caption puts it in the document, grouped for `lang` (4.512 in es). The default
+criterion is the IB's (Extended Essay, TOK): prose, lists, headings, block
+quotes and content footnotes count; code, figures and captions, tables, math,
+citations, citation-only notes and the bibliography do not. A heading marked
+`{.nocount}` drops its section (appendix, abstract with its own limit), and so
+does a `::: {.nocount}` div. `mdbrand build --help` lists the parts a
+`wordcount: {base, include}` can add. Near a hard limit, leave a margin: word
+processors disagree by a percent or two.
 
 ## Data
 
-Numbers and names the document quotes (machine specs, rates, client name) go in
-`data/` beside it — YAML, JSON, CSV, TSV — and print with `{{data.file.key}}`
-in the prose, captions or front matter (quote that scalar):
-`{{data.maquinas[m5.large].ram}}` (brackets for keys with dots),
-`{{data.equipo.0.nombre}}` (index), `{{data.ec2[t3.micro].vcpu}}` (a record by
-its `id`). Values print literally — Markdown characters included; tag a YAML
-value `!md` for Markdown. A wrong key stops the build listing the real ones.
-Name anchor-only entries with a leading `_` (`_base: &base {…}`) so they are
-never listed as data.
-Run `mdbrand data doc.md` to see every namespace and its keys before writing
-placeholders, rather than opening the files. `mdbrand: {data: [dir, file]}`
-points elsewhere. No loops or conditions: prepare such content upstream.
+Values the document quotes (specs, prices, a client's name) live in `data/`
+beside it — YAML, JSON, CSV, TSV — and print with `{{data.file.key}}` in the
+prose, captions or front matter (quote that scalar):
 
-Tables from the same data — never type a table whose rows are in a data file:
+- `{{data.maquinas[m5.large].ram}}` — brackets for keys with dots
+- `{{data.equipo.0.nombre}}` — an index
+- `{{data.ec2[t3.micro].vcpu}}` — a record by its `id` field
+
+Values print literally, Markdown characters included; tag a YAML value `!md`
+to have it read as Markdown. A wrong key stops the build listing the real ones.
+Name anchor-only entries with a leading `_` (`_base: &base {…}`). Run
+`mdbrand data doc.md` before writing placeholders instead of opening the files.
+No loops or conditions: prepare that content upstream.
+
+Never type a table whose rows are in a data file:
 
 ````markdown
 ```table
-source: maquinas              # data path; the key of a mapping is the id column
+source: maquinas              # data path; a mapping's key becomes the id column
 where: {familia: m5}          # equality only; or rows: [id, id] to pick and order
 columns: {id: Tipo, ram: {label: RAM, unit: GiB}, precio: {label: "€/h", decimals: 3}}
-sort: -ram                    # one field, - descends
-total: [ram, precio]          # optional: exact Total row
+sort: -ram                    # one field; - descends
+total: [ram, precio]          # optional: an exact Total row
 transpose: true               # optional: records become columns
 caption: Instancias m5
 ```
 ````
 
-Or `![Caption](data/file.csv)` alone on a line for a whole file. Numbers
-right-align and `decimals` localizes to `lang` on its own. A missing field
-fails the build: write `field: ~` for a deliberately empty cell.
+Or `![Caption](data/file.csv)` alone on a line for a whole file. A CSV's
+separator, BOM and decimal commas are handled; Latin-1 and ragged rows are
+refused. A missing field fails the build: write `field: ~` for an empty cell.
+A chart reads the same records with `"data": {"name": "maquinas"}` — prefer it
+to a url when a table shows the same numbers.
 
-A chart reads the same data with `"data": {"name": "maquinas"}` instead of a
-url — prefer it when a table shows the same numbers, so both read them alike.
-
-Every table — data or hand-written — is kept together by the tool (no page
-break leaves fewer than three rows on a side) and labelled *Tabla* in Spanish;
-do not add `\needspace` or raw LaTeX to fix either.
+Every table, data or hand-written, is kept together (no page break leaves fewer
+than three rows on a side) and labelled *Tabla* in Spanish. Do not add
+`\needspace` or raw LaTeX for either.
 
 ## Citations
 
-Declaring `bibliography:` is the whole switch: mdbrand then runs pandoc with
-`--citeproc`, so `@key` and `[@key, p. 42]` resolve and the list lands wherever
-the document puts a `# Referencias` heading. `csl:` picks the style.
+`bibliography:` is the whole switch: `@key` and `[@key, p. 42]` resolve, and
+the list lands where the document puts `::: {#refs}` (under a `# Referencias
+{.nocount}` heading), or at the end. `csl:` picks the style. Paths resolve
+against the document. A missing `.bib` or a key with no entry stops the build:
+pandoc alone exits 0 and prints `(key?)` in the middle of a sentence.
 
-**Paths resolve against the document, not the working directory**, and a missing
-`.bib` fails the build by name. So does a key with no entry: pandoc reports
-those as warnings and still exits 0, which is how `(fml?)` ends up printed in
-the middle of a sentence in a PDF nobody re-read.
-
-## Coloured words
-
-`[words]{.accent}` sets them in the bundle's `colors.accent` (its primary
-unless it names one), in the PDF and the `.docx` (Word and Google Docs both
-keep it). Under 4.5:1 against white, a deck stops and a page warns, naming a
-darker shade for `colors.accent`; put it in the bundle, not in the document. That is the only colour:
-`[x]{color=#c2410c}`, `colour=`, `style=` and a `::: {.accent}` block stop the
-build, because pandoc drops them in silence on both outputs. Use it sparingly —
-a phrase, not a paragraph. Links print in the bundle's `colors.link`, which
-is the primary when the bundle sets none — and then an accent reads as a link.
-
-## Diagrams
-
-Figures take the bundle's colours by themselves: bars in the primary, lines in
-the primary darkened to 3:1 if needed, axes and labels in the text colour, d2
-shapes in tints of the primary, text in the body face. Do not paste colours or
-a d2 theme into a figure to brand it — anything the source sets wins over the
-bundle, so a hard-coded colour is the one thing that would stop it following
-the brand. `figures: {palette: [...]}` in brand.yaml fixes the series colours.
+## Diagrams and charts
 
 D2 for architecture, sequence, state and flow; Vega-Lite for data. Inline fence
-or side file, both rendered and placed automatically:
+or side file, both rendered, sized and placed:
 
 ````markdown
 ```d2 caption="Arquitectura"
-mesa: Mesa
-mesa -> og.trainer: listas
+direction: right
+api -> cola -> worker
 ```
 
 ![Latencia p95](diagrams/latencia.vl.json)
@@ -165,233 +193,159 @@ mesa -> og.trainer: listas
 Fences: `d2`, `vegalite`/`vega`/`vl`. Attributes: `caption="…"`, `width=120mm`,
 `scale=0.4`.
 
-Chart data may live in a file: `"data": {"url": "data/ventas.csv"}` resolves
-against the document (fenced) or the spec's own file (linked). Keep it local —
-a missing file or an `https://` URL stops the build, since `vl2svg` would
-otherwise draw an empty chart and exit 0.
-
-**Do not write font-size globs.** mdbrand sizes the labels itself, from the
-brand's band and the scale in force, on a copy of the source. The recursive glob
-the old instructions asked for also matched the keys inside a `vars` block, so
-d2 refused the file with `"style" needs a value`; nothing to paste means nothing
-to collide. Declaring a `font-size` anywhere in the `.d2` turns the injection
-off — do that only when you mean to own the number.
-
-`vars`, including `vars.d2-config`, works — which is how you pick a layout
-engine: `vars: { d2-config: { layout-engine: elk } }`. ELK packs some graphs
-tighter than d2's default dagre and routes edges differently, so it is worth a
-try when a figure fails the legibility floor; look at the result before keeping
-it. **Containers do not change the shape
-of a layout**: in d2 v0.7.1 a `direction:` inside a container is ignored by both
-dagre and ELK, so containers group boxes and nothing more. Only the root
-`direction` is honoured.
-
-mdbrand places each figure at the widest size that fits the measure, keeps its
-labels inside the brand's `min_text_pt..max_text_pt` band and stays under
-`max_height_mm`. If that is impossible the build fails: raise the font size in
-the source and lower the scale by the same factor (shrinks whitespace, not
-text), or split the figure. Do not "fix" it by scaling the whole diagram down.
-
-**Pictures.** An `.svg` rendered elsewhere, linked as `![caption](x.svg)`, is
-a figure: checked, sized for legibility, converted by `rsvg-convert` — so it can
-fail the legibility floor like a diagram, and the fix is its source's font
-size. PNG, JPEG and PDF stay as they are. Relative picture paths resolve against
-the document; a missing one stops the build by name.
+- **Sizing is the tool's.** Each figure is placed at the widest size that fits
+  the measure, keeps its labels inside the brand's `min_text_pt..max_text_pt`
+  and stays under `max_height_mm`. When that is impossible the build fails with
+  fixes in order of preference. Never "fix" it by scaling the whole figure
+  down; `mdbrand diagrams doc.md` shows the numbers without a build.
+- **Do not write font sizes into a .d2.** mdbrand sets them on a copy of the
+  source; declaring any `font-size` turns that off.
+- **Only the root `direction:` shapes a d2 layout** — inside a container d2
+  ignores it. `vars: { d2-config: { layout-engine: elk } }` packs some graphs
+  tighter than dagre; look at the result before keeping it.
+- **Colours come from the brand** where the source is silent: bars and shapes
+  in the primary and its tints, lines darkened to 3:1 if needed, axes in the
+  text colour. Do not paste colours or a d2 theme to brand a figure — what the
+  source sets wins, so a hard-coded colour is what stops it following the
+  bundle. `figures: {palette: [...]}` in brand.yaml fixes series colours.
+- **Faces:** chart text is set in the body face when fontconfig has it; d2
+  labels print in fontconfig's default sans (d2 only reads TrueType files).
+- **Chart data** may be a file: `"data": {"url": "data/ventas.csv"}` resolves
+  against the document (fence) or the spec (side file). A missing file or an
+  `https://` URL stops the build — `vl2svg` would draw empty axes and exit 0.
+  In a decimal-comma `lang` numbers print as that language writes them
+  (`30.000`), and in Spanish so do month names.
+- **Pictures:** an `.svg` made elsewhere is treated as a figure (sized, checked
+  for legibility); PNG, JPEG and PDF keep their markup. A missing picture stops
+  the build by name.
+- **No `|md|` blocks in d2**: they become `<foreignObject>`, which the PDF
+  route drops in silence, so the build refuses them.
 
 ## Code blocks
 
-Fitted the same way: a fenced block is set at the largest size whose longest
-line stays inside the measure, stepping down to `\small` and `\footnotesize`.
-A block still too wide at the smallest legible size is warned about with the
-columns it has and the columns that fit, so shorten or split it.
+A block is set at the largest size whose longest line fits the measure,
+stepping down to `\footnotesize`. A fence **with a language** wraps what still
+does not fit, marked with an arrow; a **bare fence** is never wrapped, because
+it may hold an ASCII diagram. So put the language on real code and leave it off
+pictures. A block still too wide is warned about with the columns it has and
+the columns that fit.
 
-A fence **with a language** is wrapped instead, marked with a continuation
-arrow. A **bare fence** is never wrapped: it is as likely to hold an ASCII
-diagram, and folding one destroys its alignment without a word. So put the
-language on real code, and leave it off pictures. Neither treatment can break a
-single token longer than the measure — a URL in a string literal — and that one
-comes back in the overfull warning, quoted.
+## Coloured words
 
-## Dependencies
-
-`mdbrand doctor` checks every one of these and prints the install command plus
-the project's own page for whatever is missing.
-
-Always needed: **[pandoc](https://pandoc.org)**
-([install](https://pandoc.org/installing.html)) ·
-**[XeLaTeX](https://tug.org/texlive/)** from TeX Live, or
-[MiKTeX](https://miktex.org) on Windows ·
-**[rsvg-convert](https://gitlab.gnome.org/GNOME/librsvg)** from librsvg ·
-the LaTeX packages [fancyhdr](https://ctan.org/pkg/fancyhdr),
-[geometry](https://ctan.org/pkg/geometry),
-[fontspec](https://ctan.org/pkg/fontspec),
-[etoolbox](https://ctan.org/pkg/etoolbox),
-[microtype](https://ctan.org/pkg/microtype),
-[caption](https://ctan.org/pkg/caption),
-[xcolor](https://ctan.org/pkg/xcolor), and
-[newunicodechar](https://ctan.org/pkg/newunicodechar) when a bundle declares
-`fonts.fallback`.
-
-Only for documents with figures: **[d2](https://d2lang.com)**
-([install](https://d2lang.com/tour/install)) for diagrams ·
-**[vl2svg](https://vega.github.io/vega-lite/)** from
-[vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) for charts;
-in a document whose `lang` writes a decimal comma (es, ca, pt, de…), charts go
-through `vl2vg` and `vg2svg` with that locale (`30.000`, `ene`), which needs
-vega-cli 6.4.0 or later — an older one stops the build saying so.
-
-Recommended: **[pdftotext](https://poppler.freedesktop.org/)** from poppler,
-which reads each PDF back so a text layer that copies as garbage stops the
-build. Without it the build warns that the check did not run.
-
-Fonts: the bundle's body font must be installed — [Inter](https://rsms.me/inter/)
-is the usual one — and is found through
-[fontconfig](https://www.freedesktop.org/wiki/Software/fontconfig/). If it is
-not there the build stops and says so; `--brand none` instead falls back to
-Latin Modern, so it works on a machine with nothing installed.
-
-Built with [Go](https://go.dev/dl/) 1.26+; prebuilt binaries are attached to
-every [release](https://github.com/carlosprados/mdbrand/releases).
+`[words]{.accent}` sets them in the bundle's `colors.accent` (its primary
+unless it names one), in the PDF and the `.docx`. That is the only colour:
+`color=`, `colour=`, `style=` and a `::: {.accent}` block stop the build,
+because pandoc drops them in silence. Use it for a phrase, not a paragraph.
+Under 4.5:1 against white a deck stops and a page warns, naming a darker shade
+to put in the bundle.
 
 ## Slides
 
 `style: slides` makes a 16:9 deck (160 × 90 mm) from the same Markdown, bundle
-and figures, for technical talks. `mdbrand new talk.md --style slides` writes
-one that builds.
+and figures. Start from `mdbrand example charla`.
 
 - `#` opens a section with a cover slide; `##` is one slide. Use `##` for every
   slide: text under a `#` alone becomes a slide titled by the section.
-- `:::: columns` / `::: column` for two columns; `::: notes` for speaker notes,
-  which never print on a slide. `--to pdf,notes` (or `formats: [pdf, notes]`)
-  also writes `talk-notes.pdf`: each slide at half size beside its note, two to
-  an A4 sheet, pauses collapsed. A note has room for 17 lines; a longer one
-  stops the build by the slide's title. `--to notes` on a page is refused.
+- `:::: columns` / `::: column` for two columns.
 - `. . .` on a line of its own pauses; `::: incremental` around a list reveals
-  it point by point. Each step is a page with the slide's number, and a slide is
-  judged by its fullest step.
-- The footer numbers slides out of the total (`8 / 24`), covers included,
-  pauses not.
-- Figures get 140 × 48 mm at most and a band of 8.5–14 pt. Draw them wide and
-  low (`direction: right`) and keep edge labels few: one edge label can widen a
-  d2 layout enough to push every label under the floor.
-- **A slide that does not fit stops the build**, by title and millimetres. Split
-  it with another `##`, cut it, or shrink its figure — a 48 mm figure leaves no
-  room for a paragraph. With one figure on the slide the error names the exact
-  `width=NNmm` to put on its block, or says no width keeps its labels legible.
-- `--to docx` refuses a deck.
+  it point by point. A slide with pauses is one slide: one number, judged by
+  its fullest step.
+- `::: notes` holds what to say; it never prints on a slide. With `notes` in
+  `formats` (`formats: [pdf, notes]`, or `--to pdf,notes`) the build also
+  writes `talk-notes.pdf`: every slide at half size beside its note, two to an
+  A4 sheet, pauses shown whole. A note has room for 17 lines; a longer one
+  stops the build by the slide's title.
+- The footer numbers slides out of the total (`8 / 24`), covers included.
+- Figures get 140 × 48 mm at most and a band of 8.5–14 pt: draw them wide and
+  low (`direction: right`), with few edge labels.
+- **A slide that does not fit stops the build**, by title and millimetres.
+  Split it with another `##` or cut it. With one figure on the slide the error
+  names the exact `width=NNmm` to put on its block, or says no width keeps its
+  labels legible.
+- A deck refuses `docx`; a page refuses `notes`.
 - The bundle may add `slides: {background, foreground, logo, art, logo_width,
-  logo_width_cover, diagrams: {min_text_pt, max_text_pt}}`. `background` colours
-  the title and section slides; `foreground` must reach 4.5:1 on it and every
-  fill of an SVG logo 3:1, or the deck stops — `slides.logo` is the variant of
-  the mark for that ground.
-
-Look at the deck before calling it done, as with any PDF:
-`pdftoppm -r 50 -png talk.pdf s` and read a few of the pages.
+  logo_width_cover, diagrams: {min_text_pt, max_text_pt}}`; colours are held
+  to WCAG contrast and a failing pair stops the deck.
 
 ## Word and Google Docs
 
-`--to docx` (or `formats: [docx]`, or `--to pdf,docx` for both) writes a
-branded `.docx` from the same document: cover, header, numbered captions,
-figures at their PDF size, tables that never break a word or split a row, a
-filled table of contents. The PDF is still the reference; offer the `.docx`
-when someone needs to edit or comment, not instead of the PDF.
+`formats: [pdf, docx]` (or `--to pdf,docx`) writes a branded `.docx` beside the
+PDF from the same document: cover, header, numbered captions, figures at their
+PDF size, tables that never break a word, a filled table of contents. The PDF
+stays the reference; offer the `.docx` when someone needs to edit or comment.
 
 - A named bundle needs `fonts.office: {body, display, mono}` — faces the
-  readers have (Google Docs: Google Fonts only). Without it the build stops
-  and prints the block to add. Never put a licensed display face there.
+  readers have (Google Docs: Google Fonts only). Without it the build stops and
+  prints the block to add. Never put a licensed face there.
 - A picture linked as PDF stops a `.docx` build: export it as SVG or PNG.
-- For Google Docs, upload it converted: `gog drive upload x.docx --convert-to doc`.
-- It is one-way. Edits made in Word or Docs do not flow back; carry them into
-  the `.md` (`pandoc x.docx -t markdown` helps to see them).
-
-## Hard rules
-
-- **XeLaTeX only.** pdflatex cannot take the Unicode. Not configurable.
-- **A missing glyph fails the build**, naming the character and font — a font
-  without `☐` prints nothing at all and only the log would know. Fix the text
-  (`[ ]` also takes a pen tick better), change `fonts.body`, or declare a
-  `fonts.fallback` that covers it — only the characters the body lacks and the
-  fallback has are redirected, so one neither covers still stops the build.
-  Override only deliberately with `--allow-missing-glyphs`.
-- **The PDF's text layer must read as its text.** Private-use characters in
-  what pdftotext extracts fail the build — a PDF that prints "(SD1)" and
-  copies as U+EE4E SD1 U+EE4F is garbage to Turnitin. Contextual alternates are
-  off for that reason; there is no override.
-- **`header-includes` is refused, not applied.** So are `include-before` and
-  `include-after`. mdbrand injects its preamble and cover through pandoc's
-  `--include-in-header` and its two siblings, and a variable set on pandoc's
-  command line replaces the metadata field of that name — the document's lines
-  would vanish in silence. Anything a document needs in the preamble belongs in
-  the brand bundle. Everything else in the front matter still reaches pandoc
-  untouched (`numbersections`, `lang`, …).
-- **No `|md|` blocks in d2.** They become `<foreignObject>`, which
-  `rsvg-convert` drops silently. Short labels; prose in the document.
-- **Never use d2's own PDF export** — it downloads a Playwright driver from
-  dead URLs. The route is source → SVG → `rsvg-convert` → PDF, and it is
-  already what mdbrand does.
-- **Never put a licensed font or a client logo in a repository that can be read
-  anonymously.** A bundle may carry its font (`fonts.display.path: [fonts/otf]`,
-  relative paths resolve inside the bundle) only when the bundle's own
-  distribution respects that licence — private or internal, never public.
-  Otherwise leave it out: candidates expand `~` and `$VARS`, and mdbrand asks
-  fontconfig for an installed copy. If the font is absent the cover falls back
-  to the body font and the build still succeeds.
+- Google Docs: `gog drive upload x.docx --convert-to doc`.
+- It is one-way: carry edits made in Word or Docs back into the `.md`
+  (`pandoc x.docx -t markdown` helps to see them).
 
 ## Brand bundles
 
 `brands_dir` (see `mdbrand config`) holds one directory per identity:
-`brand.yaml` plus `logo.svg`. Create with `mdbrand brand new <name>`, then
-`mdbrand brand validate <name>` — it catches an SVG that merely wraps a bitmap,
-artwork outside the `viewBox`, the invalid `data:img/` MIME type that converts
-to a blank page, `<foreignObject>`, a display font whose path has moved, and
-colours that are not plain 6-digit hex.
+`brand.yaml` plus a logo. `mdbrand brand new <name>` creates one;
+`mdbrand brand validate <name>` catches what would print wrong — an SVG that
+merely wraps a bitmap, artwork outside the `viewBox`, a `data:` URI that
+converts to a blank page, a display font whose path moved, colours that are not
+6-digit hex, slide colours under WCAG contrast.
 
-A bundle may say which mdbrand it needs (`requires: "0.17"`); an older one stops
-and names the release to upgrade to. A key no setting reads stops every build
-with that bundle, naming its path and the nearest real key: fix the key, never
-delete `requires:` to get past it.
+- `requires: "0.17"` names the mdbrand a bundle needs; an older binary stops
+  and names the release to upgrade to. A key no setting reads stops every build
+  with that bundle, by its dotted path and the nearest real key: fix the key,
+  never delete `requires:` to get past it.
+- Tune `colors` (primary, accent, link, text, rule), `fonts.body`,
+  `fonts.display`, `fonts.fallback`, `fonts.office`, `page.margin`,
+  `page.linestretch`, `page.logo_width_*` and the `diagrams` numbers.
+- `logo_secondary:` adds a second mark on the cover only (co-branding).
+- **Do not set `page.headheight`.** mdbrand sizes the header from the logo's
+  real height; a declared one too small fails the build with both fixes.
+- **Never put a licensed font or a client logo in a repository that can be
+  read anonymously.** A private or internal bundle may carry its font
+  (`fonts.display.path: [fonts/otf]`, relative to the bundle); a public one
+  leaves it out and lets fontconfig find an installed copy.
 
-Tune per bundle: `colors`, `fonts.body`, `fonts.display`, `fonts.fallback`, `page.margin`,
-`page.linestretch`, `page.logo_width_cover|header`, and the `diagrams` numbers.
+## Hard rules
 
-`logo_secondary:` adds a second mark at the right of the **cover only**, on the
-same baseline as the first, the way a letterhead sets two identities — a
-co-branded proposal, a funding body's emblem, an institution above a federation.
-Width is `page.logo_width_cover_secondary`. The running header keeps one mark:
-at 16 mm a second one is a smudge, not an identity.
-
-**Do not set `page.headheight`.** mdbrand measures the logo and sizes the header
-box from its real height, because `logo_width_header` is a width and a square
-mark is four times taller than the old fixed default could hold — it overflowed
-the box and printed over the first line of every page. A declared `headheight`
-that cannot hold the mark fails the build with the two fixes; `brand validate`
-prints the value actually in use.
-
-## Check the PDF before reporting it done
-
-A zero exit says the build ran, not that the document is right: a logo can land
-blank, a table can run past the measure, a figure can push a section onto a page
-of its own. None of that fails a build. Look at the pages you made.
-
-```sh
-pdftoppm -f 1 -l 1 -r 110 -png informe.pdf page   # then read page-1.png
-pdffonts informe.pdf                              # which faces really embedded
-pdfinfo informe.pdf                               # page size and count
-```
-
-Warnings go to **stderr** and do not stop the build. An overfull line is
-reported with how far it ran over and the text it could not fit, which is enough
-to find it in the Markdown without opening the log — so do not discard stderr
-and then call the document finished.
+- **A missing glyph fails the build**, naming the character and the font — a
+  font without `☐` prints nothing at all. Fix the text, change `fonts.body`, or
+  declare a `fonts.fallback` that covers it. `--allow-missing-glyphs` only when
+  the holes are truly wanted.
+- **The text layer must read as the text.** A PDF that prints "(SD1)" and
+  copies as private-use characters fails the build: plagiarism checkers and
+  screen readers read that layer.
+- **`header-includes`, `include-before` and `include-after` are refused**, not
+  applied: mdbrand owns the preamble, and pandoc would drop them in silence.
+  Anything a document needs there belongs in the bundle. The rest of the front
+  matter reaches pandoc untouched.
+- **XeLaTeX only**, and mdbrand runs it: never call pandoc's PDF engine or d2's
+  own PDF export by hand.
 
 ## When a build looks wrong
 
-The exit status says who acts: **1** fix the document or bundle (the message
-names how); **2** fix the command line; **3** the machine lacks a tool, font
-or bundle — run `mdbrand doctor` and give the user its install command rather
-than editing the document around it. Branch on the status, not on the
-message: the wording is not part of the contract and improves every release.
+`--work ./out` keeps everything: the generated `.tex` and preamble, the
+rewritten Markdown, every figure as SVG and PDF, and the full XeLaTeX log. Read
+the log before theorising. `pdffonts x.pdf` says which faces were embedded;
+`pdfinfo x.pdf` gives page size and count.
 
-`--work ./out` keeps the generated `preamble.tex`, `before.tex`, `after.tex`,
-the rewritten Markdown, every figure and the full XeLaTeX log. Read the log
-before theorising.
+An overfull line is reported on stderr with how far it ran and the text it
+could not fit — enough to find it in the Markdown. Do not discard stderr and
+then call the document finished.
+
+## Dependencies
+
+`mdbrand doctor` checks all of these and prints, for anything missing, the
+install command and the project's page.
+
+- Always: [pandoc](https://pandoc.org), XeLaTeX from
+  [TeX Live](https://tug.org/texlive/) (beamer and pgf for decks), and
+  [rsvg-convert](https://gitlab.gnome.org/GNOME/librsvg).
+- Documents with figures: [d2](https://d2lang.com) for diagrams;
+  [vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) and
+  vega-lite for charts — 6.4.0 or later in a decimal-comma language.
+- Recommended: `pdftotext` from [poppler](https://poppler.freedesktop.org/),
+  which reads each PDF back to check its text layer.
+- Fonts: the bundle's body face, found through fontconfig. A named bundle whose
+  face is absent stops the build (exit 3); `brand: none` falls back to Latin
+  Modern and builds on a bare machine.
