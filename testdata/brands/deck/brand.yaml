@@ -1,0 +1,16 @@
+# A deck bundle set in DejaVu, which every fontconfig install carries, so
+# testdata/slides.md builds on any machine, CI included. It has every slides
+# key: a dark ground for the cover slides, the type on it, and artwork.
+name: deck
+display_name: Deck
+logo: logo.svg
+colors:
+  primary: "E8710A"
+  text: "3A3F44"
+  rule: "C0C0C0"
+fonts:
+  body: DejaVu Sans
+slides:
+  background: "1F2328"
+  foreground: "F2F2F2"
+  art: art.svg

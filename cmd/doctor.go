@@ -108,6 +108,8 @@ as garbage stops the build; without it a build warns that it was not checked.`,
 					continue
 				}
 				probs, warns := b.Check()
+				sp, sw := b.CheckSlides()
+				probs, warns = append(probs, sp...), append(warns, sw...)
 				status := "ok"
 				if len(probs) > 0 {
 					status = fmt.Sprintf("%d problem(s)", len(probs))

@@ -54,7 +54,7 @@
   \begingroup\color{brandPrimary}\rule{12mm}{0.8pt}\endgroup\par\vskip1mm}
 
 {{- if .Confidential}}
-\newcommand{\brandConfidential}{\color{brandPrimary}{{texEscape .Confidential}}\quad}
+\newcommand{\brandConfidential}{\begingroup\color{brandPrimary}{{texEscape .Confidential}}\endgroup\quad}
 {{- else}}
 \newcommand{\brandConfidential}{}
 {{- end}}

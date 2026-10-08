@@ -1,0 +1,12 @@
+# For traps/slide-contrast.md: grey type on a charcoal ground, 2.5:1, which a
+# projector in a lit room turns into no type at all.
+name: deck-faint
+colors:
+  primary: "E8710A"
+  text: "5D6266"
+  rule: "C0C0C0"
+fonts:
+  body: DejaVu Sans
+slides:
+  background: "222629"
+  foreground: "5D6266"

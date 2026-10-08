@@ -156,6 +156,15 @@ else would have told you. Fix the key or add the entry.`,
 	if err := judgeLog(sc, o, rep); err != nil {
 		return err
 	}
+	if slides {
+		typeset, err := os.ReadFile(texPath)
+		if err != nil {
+			return err
+		}
+		if err := judgeFrames(sc.Frames, string(typeset)); err != nil {
+			return err
+		}
+	}
 	if err := checkTextLayer(work, stem+".pdf", md.String(), rep); err != nil {
 		return err
 	}
@@ -486,7 +495,18 @@ var (
 	confRe = regexp.MustCompile(`MDBRAND-CONFIDENTIAL-TOOWIDE over=([0-9.]+)pt`)
 	// And when the running title would run under the header's logo.
 	titleRe = regexp.MustCompile(`MDBRAND-TITLE-TOOWIDE over=([0-9.]+)pt`)
+	// A slide whose content runs past the bottom of its frame. beamer prints
+	// the rest over the footer, or off the page, and says so only here. The
+	// line is the frame's \end{frame} in the .tex, fragile frames included.
+	frameRe = regexp.MustCompile(`Overfull \\vbox \(([0-9.]+)pt too high\) detected at line (\d+)`)
 )
+
+// frameOver is one slide that does not fit: by how much, and where its frame
+// ends in the .tex, which is how its title is found.
+type frameOver struct {
+	Pt   float64
+	Line int
+}
 
 // overfull is one line the measure could not hold: how far past it went, and
 // enough of its text to find it in the Markdown. The count on its own is a
@@ -514,6 +534,7 @@ type scan struct {
 	HeadShortPt float64
 	ConfOverPt  float64
 	TitleOverPt float64
+	Frames      []frameOver
 }
 
 // scanLog pulls the things that matter out of a xelatex log.
@@ -580,8 +601,14 @@ func scanLog(log string) scan {
 	if m := titleRe.FindStringSubmatch(log); m != nil {
 		titleOverPt, _ = strconv.ParseFloat(m[1], 64)
 	}
+	var frames []frameOver
+	for _, m := range frameRe.FindAllStringSubmatch(log, -1) {
+		pt, _ := strconv.ParseFloat(m[1], 64)
+		line, _ := strconv.Atoi(m[2])
+		frames = append(frames, frameOver{Pt: pt, Line: line})
+	}
 	return scan{Holes: holes, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
-		ConfOverPt: confOverPt, TitleOverPt: titleOverPt}
+		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames}
 }
 
 // offendingText reassembles the line XeLaTeX prints just below an Overfull

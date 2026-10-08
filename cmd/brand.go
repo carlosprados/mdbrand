@@ -134,6 +134,10 @@ With no arguments, validates every installed bundle.`,
 				} else if h != "" {
 					warns = append(warns, h)
 				}
+				// Only a deck reads the slides section, so a build in another
+				// style never stops over it; validate is where it is seen.
+				sp, sw := b.CheckSlides()
+				probs, warns = append(probs, sp...), append(warns, sw...)
 				fmt.Fprintf(out, "%s (%s)\n", n, b.Dir)
 				for _, p := range probs {
 					fmt.Fprintf(out, "  PROBLEM  %s\n", p)

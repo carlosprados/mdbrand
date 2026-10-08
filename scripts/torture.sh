@@ -254,6 +254,44 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	done
 fi
 
+# ------------------------------------------------------------------- the deck
+# style slides: a beamer deck from the deck bundle, which is set in DejaVu so
+# it builds anywhere and carries every slides key. Each check is a defect the
+# deck shipped with while it was being built: captions numbered once a table
+# loaded the caption package, an em dash printed as three hyphens in a frame
+# title, the confidential label's colour running into the footer.
+echo
+echo "testdata/slides.md — the slides style"
+out="$("$bin" build "$root/testdata/slides.md" --brands-dir "$root/testdata/brands" \
+	--work "$work/slides" -o "$work/slides.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+warnings="$(printf '%s\n' "$out" | grep '^  !')"
+[ -z "$warnings" ] && ok "no warnings" || { bad "warnings, and this deck must produce none:"; printf '%s\n' "$warnings" | sed 's/^/        /'; }
+if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
+	log="$work/slides/slides.log"
+	n="$(grep -c 'Overfull' "$log")"
+	[ "$n" -eq 0 ] && ok "nothing overfull, across or down" || bad "$n overfull box(es) in the log"
+	n="$(grep -c 'Missing character' "$log")"
+	[ "$n" -eq 0 ] && ok "no missing glyph" || bad "$n missing glyph(s) in the log"
+	info="$(pdfinfo "$work/slides.pdf" 2>/dev/null)"
+	printf '%s' "$info" | grep -q 'Page size: *453.54 x 255.12 pts' && ok "16:9, 160 × 90 mm" \
+		|| bad "the page is not beamer's 16:9 frame: $(printf '%s' "$info" | grep 'Page size')"
+	pages="$(printf '%s' "$info" | awk '/^Pages:/{print $2}')"
+	[ "${pages:-0}" -eq 8 ] && ok "8 slides" || bad "${pages:-no} slides, want 8"
+	text="$(pdftotext "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	printf '%s' "$text" | grep -qF "A diagram — wide and low" && ok "a dash in a frame title prints as a dash" \
+		|| bad "the frame title's dash is not an em dash"
+	for absent in "---" "Figure 1" "Speaker notes"; do
+		printf '%s' "$text" | grep -qF -- "$absent" && bad "the deck prints \"$absent\"" || ok "no \"$absent\" on any slide"
+	done
+	# The label is orange; the title and number beside it must not be.
+	grep -qF '\begingroup\color{brandPrimary}Internal\endgroup' "$work/slides/slides.tex" \
+		&& ok "the confidential label keeps its colour to itself" || bad "the confidential label's colour is not grouped"
+fi
+
 # -------------------------------------------------------------------- the docx
 # The same fixtures as .docx files. A .docx has no log: it is laid out by
 # whatever opens it. LibreOffice, rendering it to PDF, is the witness — not
@@ -376,6 +414,11 @@ traps=(
 	"confidential-too-long.md|ok|the .docx footer fits about|--to docx --brand none"
 	"title-too-long.md|fail|Set mdbrand.short_title"
 	"unknown-option.md|fail|did you mean confidential?"
+	"slide-overflow.md|fail|run past the bottom of the frame"
+	"slide-overflow.md|fail|\"Twenty points\""
+	"slide-overflow.md|fail|a .docx is a page|--to docx --brand none"
+	"slide-contrast.md|fail|under the 4.5:1|--brands-dir $root/testdata/brands"
+	"slide-figure.md|fail|below the 8.5pt floor"
 )
 
 echo
