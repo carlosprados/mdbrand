@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -67,11 +68,14 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		}
 		look.LogoAspect, _ = imgsize.Aspect(filepath.Join(work, meta.Logo))
 	}
-	if checked, err := docxGlyphs(look, body, meta, o.AllowHoles); err != nil {
+	display, plain := d.Meta.Printed()
+	unchecked, err := docxGlyphs(look, body, append(display, b.Footer), plain, o.AllowHoles)
+	if err != nil {
 		return err
-	} else if !checked {
+	}
+	for _, face := range unchecked {
 		rep.Warnings = append(rep.Warnings, fmt.Sprintf(
-			"%s is not installed here, so the .docx's characters were not checked against it", look.Body))
+			"%s is not installed here, so the .docx's characters were not checked against it", face))
 	}
 
 	before, after := docx.Front(p.style, meta, look)
@@ -203,14 +207,12 @@ func docxLogoFile(src, work, stem string) (string, error) {
 
 // docxGlyphs is the .docx's missing-glyph check. The PDF's is read from
 // XeLaTeX's log; a .docx is set on the reader's machine, so the best this one
-// can do is ask fontconfig whether the body face, installed here, covers the
-// prose. A face that is not installed cannot be checked, and the reader hears
-// that rather than nothing.
-func docxGlyphs(l docx.Look, body string, m docx.Meta, allow bool) (bool, error) {
-	cov, ok := brand.FontCharset(l.Body)
-	if !ok {
-		return false, nil
-	}
+// can do is ask fontconfig whether the faces, installed here, cover the text
+// each sets: the prose and a letter's greeting in the body face, the front
+// matter the cover, letterhead, header and footer print in the display face.
+// A face that is not installed cannot be checked; it is returned, so the
+// reader hears that rather than nothing.
+func docxGlyphs(l docx.Look, body string, display, plain []string, allow bool) ([]string, error) {
 	var prose strings.Builder
 	last := 0
 	for _, sp := range mdtext.Protected(body) {
@@ -218,11 +220,38 @@ func docxGlyphs(l docx.Look, body string, m docx.Meta, allow bool) (bool, error)
 		last = sp[1]
 	}
 	prose.WriteString(body[last:])
-	text := strings.Join([]string{prose.String(), m.Title, m.Subtitle, m.Author, m.Greeting, m.Signature}, "\n")
+	var unchecked, found []string
+	for _, set := range []struct{ face, role, text string }{
+		{l.Body, "body", strings.Join(append([]string{prose.String()}, plain...), "\n")},
+		{l.Display, "display", strings.Join(display, "\n")},
+	} {
+		cov, ok := brand.FontCharset(set.face)
+		if !ok {
+			if !slices.Contains(unchecked, set.face) {
+				unchecked = append(unchecked, set.face)
+			}
+			continue
+		}
+		if holes := missingGlyphs(cov, set.text); len(holes) > 0 {
+			found = append(found, fmt.Sprintf("%s, the .docx's %s face (fonts.office.%s), has no glyph for %d character(s) it sets:\n  %s",
+				set.face, set.role, set.role, len(holes), strings.Join(holes, "\n  ")))
+		}
+	}
+	if len(found) == 0 || allow {
+		return unchecked, nil
+	}
+	return unchecked, fmt.Errorf(`%s
+Word would print them in whatever face it finds, or as boxes. Fix the text, or
+name a face that covers them; override with --allow-missing-glyphs`, strings.Join(found, "\n"))
+}
+
+// missingGlyphs lists the characters of text the face lacks, each once,
+// leaving out ASCII, variation selectors and the no-break space.
+func missingGlyphs(cov brand.Charset, text string) []string {
 	seen := map[rune]bool{}
 	var holes []string
 	for _, r := range text {
-		if r < 0x80 || seen[r] || (r >= 0xFE00 && r <= 0xFE0F) || r == ' ' {
+		if r < 0x80 || seen[r] || (r >= 0xFE00 && r <= 0xFE0F) || r == '\u00a0' {
 			continue
 		}
 		seen[r] = true
@@ -230,12 +259,5 @@ func docxGlyphs(l docx.Look, body string, m docx.Meta, allow bool) (bool, error)
 			holes = append(holes, fmt.Sprintf("%c (U+%04X)", r, r))
 		}
 	}
-	if len(holes) == 0 || allow {
-		return true, nil
-	}
-	return true, fmt.Errorf(`%s, the .docx's body face, has no glyph for %d character(s) the document uses:
-  %s
-Word would print them in whatever face it finds, or as boxes. Fix the text, or
-name a fonts.office.body that covers them; override with --allow-missing-glyphs`,
-		l.Body, len(holes), strings.Join(holes, "\n  "))
+	return holes
 }

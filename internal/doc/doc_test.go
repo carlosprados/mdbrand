@@ -3,6 +3,8 @@ package doc
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -348,5 +350,43 @@ func TestWordCountShapes(t *testing.T) {
 	err := yaml.Unmarshal([]byte("wordcount: {base: ib, incluide: [tables]}"), &o)
 	if err == nil || !strings.Contains(err.Error(), "incluide") {
 		t.Errorf("an unknown key must be refused by name, got %v", err)
+	}
+}
+
+// The glyph checks read Printed, so a string field added to the front matter
+// and printed somewhere would go unchecked until someone remembered to add it
+// there. Every string field gets a value of its own; each must come back from
+// Printed unless it is named here as one no page prints.
+func TestPrintedCoversEveryField(t *testing.T) {
+	notPrinted := map[string]bool{"Lang": true, "CSL": true, "Brand": true, "Style": true}
+	var m Meta
+	want := map[string]string{}
+	fill := func(v reflect.Value) {
+		for i := 0; i < v.NumField(); i++ {
+			f, name := v.Field(i), v.Type().Field(i).Name
+			if notPrinted[name] {
+				continue
+			}
+			switch {
+			case f.Kind() == reflect.String:
+				f.SetString("v-" + name)
+				want[name] = "v-" + name
+			case f.Type() == reflect.TypeOf([]string(nil)):
+				f.Set(reflect.ValueOf([]string{"v-" + name}))
+				want[name] = "v-" + name
+			}
+		}
+	}
+	fill(reflect.ValueOf(&m).Elem())
+	fill(reflect.ValueOf(&m.Options).Elem())
+	m.Author = "v-Author"
+	want["Author"] = "v-Author"
+
+	display, body := m.Printed()
+	got := append(display, body...)
+	for name, v := range want {
+		if !slices.Contains(got, v) {
+			t.Errorf("%s is not in Printed: print it there, or name it in notPrinted", name)
+		}
 	}
 }

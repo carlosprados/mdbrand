@@ -325,7 +325,8 @@ characters the body face lacks`, b.Name, b.Fonts.Fallback)
 		// Latin Modern, whose coverage is not the one we would be comparing.
 		return "", nil, nil
 	}
-	text := strings.Join([]string{body, m.Title, m.Subtitle, m.AuthorString(), m.Options.Reference}, "\n")
+	display, plain := m.Printed()
+	text := strings.Join(append(append([]string{body, b.Footer}, display...), plain...), "\n")
 	rs := brand.FallbackRunes(text, bodyCov, fb)
 	if len(rs) == 0 {
 		return "", nil, nil

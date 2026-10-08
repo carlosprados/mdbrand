@@ -371,6 +371,7 @@ traps=(
 	"pdf-picture.md|fail|a .docx cannot hold one|--to docx --brand none"
 	"span-colour.md|fail|[words]{.accent}"
 	"span-colour.md|fail|[words]{.accent}|--to docx --brand none"
+	"display-glyph.md|fail|display face (fonts.office.display), has no glyph|--to docx --brands-dir $root/testdata/brands"
 	"confidential-too-long.md|fail|too wide for the footer"
 	"title-too-long.md|fail|Set mdbrand.short_title"
 )

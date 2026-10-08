@@ -408,3 +408,15 @@ func (m Meta) RunningTitle() string {
 	}
 	return m.Title
 }
+
+// Printed is every front matter string a page prints, split by the face both
+// writers set it in: a letter's greeting in the body face; the cover, the
+// letterhead, the running header, the footer and the signature in the display
+// face. The glyph checks read this, so a field printed somewhere and missing
+// here goes unchecked — TestPrintedCoversEveryField is there for that.
+func (m Meta) Printed() (display, body []string) {
+	o := m.Options
+	display = append([]string{m.Title, o.ShortTitle, m.Subtitle, m.AuthorString(), m.Date,
+		o.Reference, o.Confidential, o.Place, o.Signature}, o.To...)
+	return display, []string{o.Greeting}
+}
