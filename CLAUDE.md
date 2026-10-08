@@ -100,7 +100,11 @@ Do not relax one without understanding what it cost.
    default brands directory came out relative, and `config init`, `skill
    install` and `brand new` wrote into the working directory while
    `brand.Load` read a local `acme/` as the bundle. Each now refuses by name.
-   → `internal/paths/paths_test.go`, `cmd/home_test.go`.
+   And a relative `--brands-dir` reached `rsvg-convert`, which runs in the
+   work directory, as a logo path that led nowhere: `brand.Load` makes the
+   bundle's directory absolute.
+   → `internal/paths/paths_test.go`, `cmd/home_test.go`,
+   `internal/brand/brand_test.go`.
 9. **Never write through a symlink.** `skill install` uses `os.Lstat`: in a
    checkout the installed skill is a symlink to this repository's `SKILL.md`.
 10. **Licensed fonts and client logos never enter a repository that can be read

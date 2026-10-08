@@ -265,7 +265,14 @@ func Load(brandsDir, name string) (*Brand, error) {
 	if brandsDir == "" {
 		return nil, fmt.Errorf("brand %q: %w", name, ErrNoBrandsDir)
 	}
-	dir := filepath.Join(brandsDir, name)
+	// Absolute from here on. Every path in a bundle resolves against its
+	// directory, and the tools that read them run with the work directory as
+	// their cwd: `--brands-dir testdata/brands` handed rsvg-convert a logo
+	// path relative to a directory it was not in, and the build died there.
+	dir, err := filepath.Abs(filepath.Join(brandsDir, name))
+	if err != nil {
+		return nil, err
+	}
 	f := filepath.Join(dir, "brand.yaml")
 	raw, err := os.ReadFile(f)
 	if err != nil {
