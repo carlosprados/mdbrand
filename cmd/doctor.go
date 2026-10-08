@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -29,124 +30,8 @@ Recommended: pdftotext, which reads each PDF back so a text layer that copies
 as garbage stops the build; without it a build warns that it was not checked.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
-			var checks []check
-
-			bin := func(name, hint string, required bool) {
-				c := check{name: name, hint: hint, required: required, ok: run.Have(name)}
-				if c.ok {
-					c.detail, _ = exec.LookPath(name)
-				}
-				checks = append(checks, c)
-			}
-			bin("pandoc", "apt install pandoc  ·  https://pandoc.org/installing.html", true)
-			bin("xelatex", "apt install texlive-xetex  ·  https://tug.org/texlive/", true)
-			bin("rsvg-convert", "apt install librsvg2-bin  ·  https://gitlab.gnome.org/GNOME/librsvg", true)
-			bin("d2", "curl -fsSL https://d2lang.com/install.sh | sh -s --  ·  https://d2lang.com/tour/install", false)
-			bin("vl2svg", "npm i -g vega-cli vega-lite  ·  https://vega.github.io/vega-lite/", false)
-			// A chart in a language with a decimal comma goes through these two:
-			// vl2svg cannot apply a locale (see internal/fig/locale.go).
-			bin("vl2vg", "npm i -g vega-lite  ·  https://vega.github.io/vega-lite/", false)
-			bin("vg2svg", "npm i -g vega-cli@latest (6.4.0 or later)  ·  https://vega.github.io/vega/usage/#cli", false)
-			bin("pdftotext", "apt install poppler-utils (brew install poppler)  ·  https://poppler.freedesktop.org/", false)
-
-			// LaTeX packages: a missing .sty is a build failure whose message
-			// names the file and not the package that carries it.
-			// lmodern is not in the preamble: pandoc's own default template
-			// loads it, so a build dies with `File lmodern.sty not found`
-			// before mdbrand's LaTeX is ever reached. A minimal TeX Live, and
-			// any apt install with --no-install-recommends, lacks it. Found on
-			// a CI runner, which is the whole point of having one.
-			for _, p := range []struct{ sty, pkg string }{
-				{"fancyhdr", "texlive-latex-extra"},
-				{"geometry", "texlive-latex-base"},
-				{"fontspec", "texlive-xetex"},
-				{"etoolbox", "texlive-latex-recommended"},
-				{"microtype", "texlive-latex-recommended"},
-				{"caption", "texlive-latex-recommended"},
-				{"fvextra", "texlive-latex-extra"},
-				{"lmodern", "lmodern"},
-				{"xcolor", "texlive-latex-recommended"},
-				// Only loaded when fonts.fallback redirects a character, but a
-				// bundle that declares one dies without it.
-				{"newunicodechar", "texlive-latex-extra"},
-			} {
-				c := check{name: "latex: " + p.sty, hint: "apt install " + p.pkg + "  ·  https://ctan.org/pkg/" + p.sty, required: true}
-				if o, err := run.Cmd("", "kpsewhich", p.sty+".sty"); err == nil && strings.TrimSpace(o) != "" {
-					c.ok = true
-				}
-				checks = append(checks, c)
-			}
-			// beamer is a class, not a package, and only style slides loads it.
-			deck := check{name: "latex: beamer.cls (style slides)", hint: "apt install texlive-latex-recommended  ·  https://ctan.org/pkg/beamer"}
-			if o, err := run.Cmd("", "kpsewhich", "beamer.cls"); err == nil && strings.TrimSpace(o) != "" {
-				deck.ok = true
-			}
-			checks = append(checks, deck)
-
-			// d2's own PDF export is deliberately unused; say so once here so
-			// nobody "fixes" the pipeline by reaching for it.
-			fails := 0
-			for _, c := range checks {
-				mark, label := "ok  ", ""
-				if !c.ok {
-					if c.required {
-						mark, fails = "MISSING", fails+1
-					} else {
-						mark = "absent"
-					}
-					label = "   -> " + c.hint
-				}
-				fmt.Fprintf(out, "  %-7s %-22s %s%s\n", mark, c.name, c.detail, label)
-			}
-
-			// Brands.
-			dir := brandsDir()
-			names := brand.List(dir)
-			fmt.Fprintf(out, "\n  brands dir: %s\n", dir)
-			if dir == "" {
-				fmt.Fprintf(out, "    not set: %v\n", brand.ErrNoBrandsDir)
-				names = nil
-			} else if _, err := os.Stat(dir); err != nil {
-				fmt.Fprintf(out, "    does not exist yet -> mdbrand brand new <name>\n")
-			} else if len(names) == 0 {
-				fmt.Fprintf(out, "    no bundles yet -> mdbrand brand new <name>\n")
-			}
-			for _, n := range names {
-				b, err := brand.Load(dir, n)
-				if err != nil {
-					fmt.Fprintf(out, "    %-12s ERROR %v\n", n, err)
-					continue
-				}
-				probs, warns := b.Check()
-				sp, sw := b.CheckSlides()
-				probs, warns = append(probs, sp...), append(warns, sw...)
-				status := "ok"
-				if len(probs) > 0 {
-					status = fmt.Sprintf("%d problem(s)", len(probs))
-				} else if len(warns) > 0 {
-					status = fmt.Sprintf("%d warning(s)", len(warns))
-				}
-				fmt.Fprintf(out, "    %-12s %s\n", n, status)
-			}
-
-			// Fonts declared by the installed bundles.
-			if run.Have("fc-list") {
-				fmt.Fprintln(out)
-				for _, n := range names {
-					b, err := brand.Load(dir, n)
-					if err != nil {
-						continue
-					}
-					o, _ := run.Cmd("", "fc-list", b.Fonts.Body)
-					if strings.TrimSpace(o) == "" {
-						fmt.Fprintf(out, "  MISSING body font %q for brand %s -> install it, or change fonts.body\n", b.Fonts.Body, n)
-						fails++
-					} else {
-						fmt.Fprintf(out, "  ok      body font %-14s (brand %s)\n", b.Fonts.Body, n)
-					}
-				}
-			}
-
+			fails := printChecks(out, append(toolChecks(), latexChecks()...))
+			fails += bundleReport(out)
 			if fails > 0 {
 				return fmt.Errorf("%d required item(s) missing", fails)
 			}
@@ -154,4 +39,146 @@ as garbage stops the build; without it a build warns that it was not checked.`,
 			return nil
 		},
 	}
+}
+
+// toolChecks are the programs a build runs.
+func toolChecks() []check {
+	var checks []check
+	bin := func(name, hint string, required bool) {
+		c := check{name: name, hint: hint, required: required, ok: run.Have(name)}
+		if c.ok {
+			c.detail, _ = exec.LookPath(name)
+		}
+		checks = append(checks, c)
+	}
+	bin("pandoc", "apt install pandoc  ·  https://pandoc.org/installing.html", true)
+	bin("xelatex", "apt install texlive-xetex  ·  https://tug.org/texlive/", true)
+	bin("rsvg-convert", "apt install librsvg2-bin  ·  https://gitlab.gnome.org/GNOME/librsvg", true)
+	bin("d2", "curl -fsSL https://d2lang.com/install.sh | sh -s --  ·  https://d2lang.com/tour/install", false)
+	bin("vl2svg", "npm i -g vega-cli vega-lite  ·  https://vega.github.io/vega-lite/", false)
+	// A chart in a language with a decimal comma goes through these two:
+	// vl2svg cannot apply a locale (see internal/fig/locale.go).
+	bin("vl2vg", "npm i -g vega-lite  ·  https://vega.github.io/vega-lite/", false)
+	bin("vg2svg", "npm i -g vega-cli@latest (6.4.0 or later)  ·  https://vega.github.io/vega/usage/#cli", false)
+	bin("pdftotext", "apt install poppler-utils (brew install poppler)  ·  https://poppler.freedesktop.org/", false)
+	return checks
+}
+
+// latexChecks are the LaTeX files a build loads. A missing .sty is a build
+// failure whose message names the file and not the package that carries it.
+func latexChecks() []check {
+	var checks []check
+	// lmodern is not in the preamble: pandoc's own default template loads
+	// it, so a build dies with `File lmodern.sty not found` before mdbrand's
+	// LaTeX is ever reached. A minimal TeX Live, and any apt install with
+	// --no-install-recommends, lacks it. Found on a CI runner, which is the
+	// whole point of having one.
+	for _, p := range []struct{ sty, pkg string }{
+		{"fancyhdr", "texlive-latex-extra"},
+		{"geometry", "texlive-latex-base"},
+		{"fontspec", "texlive-xetex"},
+		{"etoolbox", "texlive-latex-recommended"},
+		{"microtype", "texlive-latex-recommended"},
+		{"caption", "texlive-latex-recommended"},
+		{"fvextra", "texlive-latex-extra"},
+		{"lmodern", "lmodern"},
+		{"xcolor", "texlive-latex-recommended"},
+		// Only loaded when fonts.fallback redirects a character, but a
+		// bundle that declares one dies without it.
+		{"newunicodechar", "texlive-latex-extra"},
+	} {
+		c := check{name: "latex: " + p.sty, hint: "apt install " + p.pkg + "  ·  https://ctan.org/pkg/" + p.sty, required: true}
+		c.ok = kpsewhich(p.sty + ".sty")
+		checks = append(checks, c)
+	}
+	// beamer is a class, not a package, and only style slides loads it.
+	return append(checks, check{name: "latex: beamer.cls (style slides)",
+		hint: "apt install texlive-latex-recommended  ·  https://ctan.org/pkg/beamer", ok: kpsewhich("beamer.cls")})
+}
+
+func kpsewhich(file string) bool {
+	o, err := run.Cmd("", "kpsewhich", file)
+	return err == nil && strings.TrimSpace(o) != ""
+}
+
+// printChecks lists the checks and returns how many required ones failed.
+func printChecks(out io.Writer, checks []check) int {
+	fails := 0
+	for _, c := range checks {
+		mark, label := "ok  ", ""
+		if !c.ok {
+			if c.required {
+				mark, fails = "MISSING", fails+1
+			} else {
+				mark = "absent"
+			}
+			label = "   -> " + c.hint
+		}
+		fmt.Fprintf(out, "  %-7s %-22s %s%s\n", mark, c.name, c.detail, label)
+	}
+	return fails
+}
+
+// bundleReport lists the installed bundles and their body fonts, and returns
+// how many required fonts are missing.
+func bundleReport(out io.Writer) int {
+	dir := brandsDir()
+	names := brand.List(dir)
+	fmt.Fprintf(out, "\n  brands dir: %s\n", dir)
+	switch {
+	case dir == "":
+		fmt.Fprintf(out, "    not set: %v\n", brand.ErrNoBrandsDir)
+		names = nil
+	case !exists(dir):
+		fmt.Fprintf(out, "    does not exist yet -> mdbrand brand new <name>\n")
+	case len(names) == 0:
+		fmt.Fprintf(out, "    no bundles yet -> mdbrand brand new <name>\n")
+	}
+	for _, n := range names {
+		fmt.Fprintf(out, "    %-12s %s\n", n, bundleStatus(dir, n))
+	}
+	if !run.Have("fc-list") {
+		return 0
+	}
+	// Fonts declared by the installed bundles.
+	fmt.Fprintln(out)
+	fails := 0
+	for _, n := range names {
+		b, err := brand.Load(dir, n)
+		if err != nil {
+			continue
+		}
+		o, _ := run.Cmd("", "fc-list", b.Fonts.Body)
+		if strings.TrimSpace(o) == "" {
+			fmt.Fprintf(out, "  MISSING body font %q for brand %s -> install it, or change fonts.body\n", b.Fonts.Body, n)
+			fails++
+		} else {
+			fmt.Fprintf(out, "  ok      body font %-14s (brand %s)\n", b.Fonts.Body, n)
+		}
+	}
+	return fails
+}
+
+// bundleStatus is one bundle's line in the report: ok, its problems, or its
+// warnings.
+func bundleStatus(dir, name string) string {
+	b, err := brand.Load(dir, name)
+	if err != nil {
+		return fmt.Sprintf("ERROR %v", err)
+	}
+	probs, warns := b.Check()
+	sp, sw := b.CheckSlides()
+	probs, warns = append(probs, sp...), append(warns, sw...)
+	switch {
+	case len(probs) > 0:
+		return fmt.Sprintf("%d problem(s)", len(probs))
+	case len(warns) > 0:
+		return fmt.Sprintf("%d warning(s)", len(warns))
+	}
+	return "ok"
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

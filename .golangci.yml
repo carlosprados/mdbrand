@@ -101,12 +101,6 @@ linters:
       - path: internal/data/table.go
         text: "func `render`"
         linters: [gocognit]
-      - path: cmd/diagrams.go
-        text: "func `diagramsCmd`"
-        linters: [gocognit]
-      - path: cmd/doctor.go
-        text: "func `doctorCmd`"
-        linters: [gocognit]
       - path: internal/mdtext/mdtext.go
         text: "func `Protected`"
         linters: [gocognit]
