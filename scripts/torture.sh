@@ -284,7 +284,7 @@ fi
 echo
 echo "testdata/slides.md — the slides style"
 out="$("$bin" build "$root/testdata/slides.md" --brands-dir "$root/testdata/brands" \
-	--work "$work/slides" -o "$work/slides.pdf" 2>&1)"
+	--to pdf,notes --work "$work/slides" -o "$work/slides.pdf" 2>&1)"
 status=$?
 if [ $status -eq 0 ]; then ok "builds"; else
 	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
@@ -333,6 +333,21 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	# The label is orange; the title and number beside it must not be.
 	grep -qF '\begingroup\color{brandPrimary}Internal\endgroup' "$work/slides/slides.tex" \
 		&& ok "the confidential label keeps its colour to itself" || bad "the confidential label's colour is not grouped"
+	# The speaker notes: one page per content slide, pauses collapsed, two to
+	# an A4 sheet, numbered out of the deck's own total.
+	notes="$work/slides-notes.pdf"
+	ninfo="$(pdfinfo "$notes" 2>/dev/null)"
+	printf '%s' "$ninfo" | grep -q 'Page size: *595.28 x 841.89 pts' && ok "the notes are on A4" \
+		|| bad "the notes are not A4: $(printf '%s' "$ninfo" | grep 'Page size')"
+	npages="$(printf '%s' "$ninfo" | awk '/^Pages:/{print $2}')"
+	[ "${npages:-0}" -eq 3 ] && ok "six content slides, two to a sheet: 3 pages" || bad "${npages:-no} pages of notes, want 3"
+	ntext="$(pdftotext "$notes" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	printf '%s' "$ntext" | grep -qF "Speaker notes: never on the slide." && ok "the note is beside its slide" \
+		|| bad "the speaker note is missing from the notes"
+	printf '%s' "$ntext" | grep -qE "3 ?/ ?9" && printf '%s' "$ntext" | grep -qE "9 ?/ ?9" \
+		&& ok "notes are numbered out of the deck's total" || bad "the notes' numbers are not out of 9"
+	printf '%s' "$ntext" | grep -qF "revealed third" && ok "a slide with pauses is shown whole" \
+		|| bad "the pauses slide is not shown whole in the notes"
 fi
 
 # -------------------------------------------------------------------- the docx
@@ -461,6 +476,9 @@ traps=(
 	"slide-overflow.md|fail|\"Twenty points\""
 	"slide-overflow.md|fail|a .docx is a page|--to docx --brand none"
 	"slide-contrast.md|fail|under the 4.5:1|--brands-dir $root/testdata/brands"
+	"note-too-long.md|fail|\"Short slide, long speech\""
+	"note-too-long.md|fail|room for 17 lines"
+	"notes-on-page.md|fail|speaker notes belong to a deck"
 	"slide-figure-room.md|fail|\"A diagram under its argument\""
 	"slide-figure-room.md|fail|put width=71mm on its block"
 	"slide-figure.md|fail|below the 8.5pt floor"

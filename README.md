@@ -605,6 +605,14 @@ the missing-glyph check, the text layer, `{{data…}}`, `{{words}}`,
   :::
   ```
 
+- The notes print on their own: `--to pdf,notes`, or `formats: [pdf, notes]`
+  in the front matter, writes `talk-notes.pdf` beside the deck — every slide at
+  half size with its note beside it, two to an A4 sheet, a slide with pauses
+  shown whole, numbered as the deck's footer numbers it. A slide without notes
+  keeps its page, with room to write by hand. A note has room for 17 lines,
+  and a longer one stops the build by the slide's title rather than run off
+  the sheet.
+
 - Pauses are pandoc's too: `. . .` on a line of its own, or `::: incremental`
   around a list to reveal it point by point. Each step is a page that keeps
   the slide's number, and a slide that does not fit is reported once, by its

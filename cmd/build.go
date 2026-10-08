@@ -142,6 +142,12 @@ readers have; the build stops without them, and refuses a .docx asking for any
 other face, or holding a picture linked as PDF. For Google Docs, upload it
 converted: gog drive upload informe.docx --convert-to doc
 
+--to notes, for a deck (style slides), writes its speaker notes beside it as
+talk-notes.pdf: every slide at half size with its ::: notes beside it, two to
+an A4 sheet, pauses collapsed, and room to write on a slide without notes.
+--to pdf,notes writes the deck and its notes. A note too long for its page
+stops the build by the slide's title.
+
 --watch keeps mdbrand running and rebuilds whenever a file the build read
 changes: the document, its linked figures and pictures, the bibliography and
 CSL, the bundle's brand.yaml and logos. The set is taken from each build, so a
@@ -194,7 +200,7 @@ file. Ctrl-C stops it.
 		},
 	}
 	c.Flags().StringVarP(&o.Output, "out", "o", "", "output file (default: alongside the input); with several formats, each takes its own extension")
-	c.Flags().StringSliceVar(&o.Formats, "to", nil, "pdf | docx | pdf,docx; overrides the front matter's formats (default pdf)")
+	c.Flags().StringSliceVar(&o.Formats, "to", nil, "pdf | docx | notes, or a list (pdf,notes); overrides the front matter's formats (default pdf)")
 	c.Flags().StringVar(&o.BrandName, "brand", "", "brand bundle to use; overrides the front matter")
 	c.Flags().StringVar(&o.Style, "style", "", "report | note | letter | slides; overrides the front matter")
 	c.Flags().StringVar(&o.WordCount, "wordcount", "", "ib | all: the {{words}} criterion; replaces the front matter's entirely")
@@ -210,6 +216,10 @@ func printReport(out, errOut io.Writer, rep *build.Report) {
 		if o.Format == "pdf" {
 			fmt.Fprintf(out, "%s  (%d pages, %d words by %s, brand %s, style %s)\n",
 				o.Path, o.Pages, rep.Words, rep.WordRule, rep.Brand, rep.Style)
+			continue
+		}
+		if o.Format == "notes" {
+			fmt.Fprintf(out, "%s  (%d A4 pages of speaker notes, brand %s)\n", o.Path, o.Pages, rep.Brand)
 			continue
 		}
 		// A .docx has no page count of its own: whatever opens it paginates it.

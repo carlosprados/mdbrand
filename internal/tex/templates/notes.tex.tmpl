@@ -1,0 +1,28 @@
+% Speaker notes: the deck's own .tex again, in handout mode so a slide with
+% pauses is one page, showing only its note pages, two to an A4 sheet. Each
+% note page is the slide at half size beside its note, set in the body face.
+% mdbrand puts a \note in every frame, so a slide without notes still gets
+% its page — room to write by hand — and that \note names the frame's
+% \end{frame} line, which is how a note too long for its page is reported
+% by the slide's title.
+\usepackage{pgfpages}
+\pgfpagesuselayout{2 on 1}[a4paper,border shrink=8mm]
+\setbeameroption{show only notes}
+\newbox\mdbrandNoteBox
+\def\mdbrandNoteLine{0}
+\newcommand{\mdbrandNoteFrame}[1]{\gdef\mdbrandNoteLine{#1}}
+% The note column: the frame's width less the margins and the slide at half
+% size. A note taller than it runs off the page in silence, so it is measured.
+\newcommand{\mdbrandNoteWidth}{\dimexpr\paperwidth-{{.NotesMarginMM}}mm*3-0.5\paperwidth-3mm\relax}
+\setbeamertemplate{note page}{%
+  \setbox\mdbrandNoteBox=\vtop{\hsize=\mdbrandNoteWidth\raggedright
+    \fontsize{9}{11.5}\selectfont\color{brandText}\insertnote}%
+  \ifdim\dimexpr\ht\mdbrandNoteBox+\dp\mdbrandNoteBox\relax>{{.NotesHeightMM}}mm
+    \typeout{MDBRAND-NOTE-TOOLONG line=\mdbrandNoteLine\space over=\the\dimexpr\ht\mdbrandNoteBox+\dp\mdbrandNoteBox-{{.NotesHeightMM}}mm\relax}%
+  \fi
+  \vskip{{.NotesMarginMM}}mm
+  \hbox to\paperwidth{\hskip{{.NotesMarginMM}}mm
+    \vtop{\vskip0pt\hbox{\fcolorbox{brandRule}{white}{\insertslideintonotes{0.5}}}}\hskip{{.NotesMarginMM}}mm
+    \vtop{\vskip0pt\hsize=\mdbrandNoteWidth
+      \begingroup\brandDisplay\fontsize{7}{8}\selectfont\color{brandPrimary}\insertframenumber\,/\,{{.NotesTotal}}\endgroup\par\vskip2mm
+      \box\mdbrandNoteBox}\hss}}

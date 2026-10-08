@@ -36,6 +36,12 @@ const (
 	// title, above the footer and beside a caption. Measured: a 55mm figure
 	// with both overflowed the frame by 4.5mm.
 	SlideFigureMaxHeightMM = 48.0
+	// NotesMarginMM is the margin of a speaker-notes page, which is a frame
+	// of the deck's own size before pgfpages sets two to an A4 sheet.
+	NotesMarginMM = 6.0
+	// NotesHeightMM is the height a note may take: the frame's, less its
+	// margins and the slide number above the note.
+	NotesHeightMM = SlideHeightMM - 2*NotesMarginMM - 8
 )
 
 // FigureBox is the room a figure has in a style, and the brand as the figure
@@ -102,6 +108,11 @@ type Data struct {
 	SlideLogoFile string // the mark on the title and section slides
 	SlideArtFile  string // bled to their right edge; "" when there is none
 	SlideMarginMM float64
+
+	// Speaker notes only.
+	NotesMarginMM float64
+	NotesHeightMM float64
+	NotesTotal    int // the deck's slides, covers included, as its footer counts them
 
 	FallbackFont  string         // fonts.fallback; "" when there is nothing to redirect
 	FallbackChars []FallbackChar // the characters redirected to it

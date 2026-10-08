@@ -253,6 +253,9 @@ func TestOutputPath(t *testing.T) {
 		{"docs/x.md", "", "docx", 2, "docs/x.docx"},
 		{"x.md", "out/informe.pdf", "docx", 2, "out/informe.docx"},
 		{"x.md", "informe.txt", "pdf", 1, "informe.txt"},
+		{"talks/x.md", "", "notes", 2, "talks/x-notes.pdf"},
+		{"x.md", "out/talk.pdf", "notes", 2, "out/talk-notes.pdf"},
+		{"x.md", "out/notas.pdf", "notes", 1, "out/notas.pdf"},
 	} {
 		got, err := outputPath(Options{Input: c.in, Output: c.out}, c.format, c.n)
 		if err != nil || got != c.want {
