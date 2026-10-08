@@ -601,7 +601,9 @@ the missing-glyph check, the text layer, `{{data…}}`, `{{words}}`,
   fullest step.
 - The title slide carries `title`, `subtitle`, `author`, `date`, `reference`,
   `confidential` and the bundle's `footer`; `confidential` repeats in every
-  slide's footer, beside `short_title`.
+  slide's footer, beside `short_title` and the slide's number out of the
+  total, `8 / 24`. The covers count, so the number is the one in the PDF
+  the audience has; a slide with pauses counts once.
 
 **Figures are sized for the frame, not the page**: 140 mm wide, 48 mm tall at
 most, and a legibility band of 8.5–14 pt. The floor is the 18 pt that a slide

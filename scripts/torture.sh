@@ -308,8 +308,12 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	printf '%s' "$first" | grep -qF "Said first" && ! printf '%s' "$first" | grep -qF "revealed" \
 		&& ok "what a pause hides is not in the text layer" || bad "page 9 is not the pause's first overlay: $first"
 	last="$(pdftotext -f 11 -l 11 "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
-	printf '%s' "$last" | grep -qE "revealed third.* 9 ?$" \
-		&& ok "every overlay carries its slide's number" || bad "the last overlay is not numbered 9: $last"
+	printf '%s' "$last" | grep -qE "revealed third.* 9 ?/ ?9 ?$" \
+		&& ok "every overlay carries its slide's number, out of slides, not pages" \
+		|| bad "the last overlay is not numbered 9 / 9: $last"
+	third="$(pdftotext -f 3 -l 3 "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	printf '%s' "$third" | grep -qE " 3 ?/ ?9 ?$" \
+		&& ok "the first slide after the covers is 3 / 9" || bad "page 3 is not numbered 3 / 9: $third"
 	text="$(pdftotext "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
 	printf '%s' "$text" | grep -qF "A diagram — wide and low" && ok "a dash in a frame title prints as a dash" \
 		|| bad "the frame title's dash is not an em dash"
