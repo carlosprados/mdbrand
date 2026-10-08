@@ -48,7 +48,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 
 	meta := docx.Meta{
 		Title: d.Meta.Title, Subtitle: d.Meta.Subtitle, Author: d.Meta.AuthorString(), Date: d.Meta.Date,
-		Reference: d.Meta.Options.Reference, Confidential: d.Meta.Options.Confidential,
+		Reference: d.Meta.Options.Reference, Confidential: d.Meta.Options.Confidential, BrandFooter: b.Footer,
 		To: d.Meta.Options.To, Place: d.Meta.Options.Place,
 		Greeting: d.Meta.Options.Greeting, Signature: d.Meta.Options.Signature,
 		TOC: d.Meta.TOC != nil && *d.Meta.TOC, TOCDepth: d.Meta.TOCDepth, Lang: d.Meta.Lang,

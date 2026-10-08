@@ -10,6 +10,7 @@ bibliography: refs.bib
 mdbrand:
   brand: none
   style: report
+  reference: "Ref. MDB-0001"
   confidential: "Confidential & internal"
   short_title: "Torture, short"
 ---

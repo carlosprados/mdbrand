@@ -114,6 +114,13 @@ if command -v pdftotext >/dev/null; then
 		&& ok "brackets beside capitals copy as themselves" \
 		|| bad "brackets beside capitals do not survive text extraction"
 
+	# The cover, top to bottom: reference under the subtitle, then author and
+	# date at the foot, then the label. The .docx is held to the same order.
+	pdftotext -f 1 -l 1 "$work/torture.pdf" - 2>/dev/null | tr -s '[:space:]' ' ' \
+		| grep -qF "Ref. MDB-0001 mdbrand September 2026 Confidential & internal" \
+		&& ok "the cover sets reference, author, date and label in order" \
+		|| bad "the cover's reference, author, date and label are out of order"
+
 	# The running header prints short_title; the cover keeps the full title.
 	last="$(pdftotext -f "$pages" -l "$pages" "$work/torture.pdf" - 2>/dev/null)"
 	printf '%s' "$last" | grep -qF "Torture, short" \
@@ -327,6 +334,11 @@ if command -v soffice >/dev/null && command -v pdffonts >/dev/null && command -v
 		&& ok "letter.docx: the confidentiality label prints" \
 		|| bad "letter.docx: the confidentiality label is nowhere in the letter"
 	text="$(pdftotext "$work/lo/torture.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	# The .docx cover put reference and label together under the subtitle, in
+	# bold primary; the PDF sets the label at the foot.
+	printf '%s' "$text" | grep -qF "Ref. MDB-0001 mdbrand September 2026 Confidential & internal" \
+		&& ok "torture.docx: the cover follows the PDF's order" \
+		|| bad "torture.docx: the cover's reference, author, date and label are out of the PDF's order"
 	pages="$(pdfinfo "$work/lo/torture.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
 	pdftotext -f "$pages" -l "$pages" "$work/lo/torture.pdf" - 2>/dev/null | grep -qF "Confidential & internal" \
 		&& ok "torture.docx: the confidentiality label prints in the last page's footer" \
