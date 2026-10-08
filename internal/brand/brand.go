@@ -47,6 +47,10 @@ type Colors struct {
 	Text    string `yaml:"text"`    // cover and header type
 	Rule    string `yaml:"rule"`    // hairlines
 	Link    string `yaml:"link"`    // links; the primary when unset
+	// Accent is the colour of [words]{.accent}: type, where the primary is
+	// usually drawn as rules. A light primary — an orange — makes rules that
+	// read and words that do not, so a bundle may set the words apart.
+	Accent string `yaml:"accent"`
 }
 
 type Fonts struct {
@@ -200,6 +204,9 @@ func (b *Brand) applyDefaults() {
 	// the built-in blue for both.
 	if b.Colors.Link == "" {
 		b.Colors.Link = b.Colors.Primary
+	}
+	if b.Colors.Accent == "" {
+		b.Colors.Accent = b.Colors.Primary
 	}
 	if b.Fonts.Body == "" {
 		b.Fonts.Body = "Inter"
@@ -560,7 +567,7 @@ func (b *Brand) Check() (problems, warnings []string) {
 	}
 	for label, v := range map[string]string{
 		"colors.primary": b.Colors.Primary, "colors.text": b.Colors.Text, "colors.rule": b.Colors.Rule,
-		"colors.link": b.Colors.Link,
+		"colors.link": b.Colors.Link, "colors.accent": b.Colors.Accent,
 	} {
 		if !hexRe.MatchString(v) {
 			add(&problems, "%s: %q is not a 6-digit hex without '#'", label, v)
@@ -636,6 +643,8 @@ colors:
   text: "3A3A3A"      # cover and header type
   rule: "C8CCCE"      # hairlines
   # link: "1565C0"    # optional; links, the primary when unset
+  # accent: "AE6413"  # optional; [words]{.accent}, the primary when unset.
+  #                   # Words need 4.5:1 on white, which a light primary misses
 
 fonts:
   body: Inter         # fontconfig family; must cover the glyphs you type

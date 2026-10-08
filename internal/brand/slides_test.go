@@ -80,3 +80,18 @@ func TestSvgFillsExpandsShortHex(t *testing.T) {
 		t.Errorf("svgFills = %v", got)
 	}
 }
+
+// The suggestion an accent error makes must itself pass, and be no darker
+// than it needs to be: the next lighter step of the same hue would fail.
+func TestDarkenStopsAtTheRatio(t *testing.T) {
+	got := Darken("F68E1B", 4.5)
+	if c := Contrast(got, "FFFFFF"); c < 4.5 || c > 4.7 {
+		t.Errorf("Darken(F68E1B) = %s at %.2f:1, want just over 4.5", got, c)
+	}
+	if got := Darken("1B1B1B", 4.5); got != "1B1B1B" {
+		t.Errorf("a colour that already passes must come back as it is, got %s", got)
+	}
+	if Darken("nope", 4.5) != "" {
+		t.Error("a non-colour has no darker shade")
+	}
+}

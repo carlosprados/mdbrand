@@ -129,6 +129,9 @@ else would have told you. Fix the key or add the entry.`,
 	if err := spanProblems(pandocOut); err != nil {
 		return err
 	}
+	if err := accentContrast(b, pandocOut, slides, rep); err != nil {
+		return err
+	}
 
 	texPath := filepath.Join(work, stem+".tex")
 	texSrc, err := os.ReadFile(texPath)
@@ -231,7 +234,7 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		return nil, err
 	}
 	geometry := fmt.Sprintf("margin=%s,headheight=%s,headsep=%s", b.Page.Margin, headHeight, b.Page.HeadSep)
-	filter, err := writeSpanFilter(p.work)
+	filter, err := writeSpanFilter(p.work, p.b)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +277,7 @@ var linkVars = []string{
 // heading, and none of the page's geometry.
 func slideArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 	o, d, b, rep := p.o, p.d, p.b, p.rep
-	filter, err := writeSpanFilter(p.work)
+	filter, err := writeSpanFilter(p.work, p.b)
 	if err != nil {
 		return nil, err
 	}

@@ -132,8 +132,10 @@ the middle of a sentence in a PDF nobody re-read.
 
 ## Coloured words
 
-`[words]{.accent}` sets them in the bundle's `colors.primary`, in the PDF and
-the `.docx` (Word and Google Docs both keep it). That is the only colour:
+`[words]{.accent}` sets them in the bundle's `colors.accent` (its primary
+unless it names one), in the PDF and the `.docx` (Word and Google Docs both
+keep it). Under 4.5:1 against white, a deck stops and a page warns, naming a
+darker shade for `colors.accent`; put it in the bundle, not in the document. That is the only colour:
 `[x]{color=#c2410c}`, `colour=`, `style=` and a `::: {.accent}` block stop the
 build, because pandoc drops them in silence on both outputs. Use it sparingly —
 a phrase, not a paragraph. Links print in the bundle's `colors.link`, which

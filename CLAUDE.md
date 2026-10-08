@@ -198,10 +198,18 @@ Do not relax one without understanding what it cost.
 
 17. **A colour pandoc would drop is refused.** `color=`, `colour=` and
     `style=` vanish on both writers, so the words printed black and the build
-    exited 0. `[words]{.accent}` is the one colour, the brand's primary,
-    through `internal/build/spans.lua` for both outputs; the filter reports
-    everything else on stderr and the build stops naming `.accent`.
-    → `internal/build/build_test.go`, `traps/span-colour.md`.
+    exited 0. `[words]{.accent}` is the one colour, the brand's
+    `colors.accent` (its primary by default), through
+    `internal/build/spans.lua` for both outputs; the filter reports everything
+    else on stderr and the build stops naming `.accent`. It also reports each
+    accent it sets, and only then is the colour measured against white: Amplía's
+    orange is 2.4:1 as words. Under 4.5:1 a deck stops and a page warns — pale
+    accents have always printed, and a document that built must still build —
+    both naming the darker shade of the same hue that passes. The filter names
+    `brandAccent` only when the bundle declares one, so a bundle without it
+    keeps its `.tex` byte for byte.
+    → `internal/build/build_test.go`, `internal/build/slides_test.go`,
+    `traps/span-colour.md`, `traps/accent-pale.md`.
 
 18. **A slide that does not fit stops the build, by its title.** beamer sets
     the excess over the footer or off the page and exits 0; the log's

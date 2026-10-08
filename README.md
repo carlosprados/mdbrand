@@ -500,13 +500,21 @@ ends up printed in the middle of a sentence.
 The deadline is [non-negotiable]{.accent}, and the rest is detail.
 ```
 
-`.accent` sets the words in the bundle's `colors.primary`, in the PDF and the
+`.accent` sets the words in the bundle's `colors.accent` — its primary, unless
+the bundle names a colour for words — in the PDF and the
 `.docx` alike — in the `.docx` as an *Accent* character style, with the colour
 also on each run, because Google Docs drops character styles when it imports.
 The palette is the brand's, not the author's: there is no hex colour. A span
 with `color=`, `colour=` or `style=` stops the build, and so does a
 `::: {.accent}` block, because pandoc drops those attributes on both outputs
 and the words would print black without a word of warning.
+
+**An accent is type, and type has to be read.** A primary is often drawn as
+rules and bullets, where a light orange is fine; set as words on white it can
+fall to 2.4:1. When a document uses `.accent`, its colour is measured against
+the page: under 4.5:1 a page warns and a deck stops, and both name a darker
+shade of the same hue that passes, for `colors.accent`. The primary stays as it
+is for everything else.
 
 Links are set in the bundle's `colors.link`, in both outputs, so a reader can
 see what is clickable; the contents, citations and footnote marks keep the
@@ -794,6 +802,7 @@ colors:
   text: "5D6266"               # cover and header type
   rule: "C8CCCE"               # hairlines
   link: "1565C0"               # optional; links — the primary when unset
+  accent: "AE6413"             # optional; [words]{.accent} — the primary when unset
 
 fonts:
   body: Inter                  # fontconfig family

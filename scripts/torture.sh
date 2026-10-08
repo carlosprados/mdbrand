@@ -287,6 +287,10 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	for absent in "---" "Figure 1" "Speaker notes"; do
 		printf '%s' "$text" | grep -qF -- "$absent" && bad "the deck prints \"$absent\"" || ok "no \"$absent\" on any slide"
 	done
+	# The bundle's colors.accent differs from its primary, so accented words
+	# take a colour of their own.
+	grep -qF '\textcolor{brandAccent}{accented phrase}' "$work/slides/slides.tex" \
+		&& ok "accented words print in colors.accent" || bad "accented words are not in colors.accent"
 	# The label is orange; the title and number beside it must not be.
 	grep -qF '\begingroup\color{brandPrimary}Internal\endgroup' "$work/slides/slides.tex" \
 		&& ok "the confidential label keeps its colour to itself" || bad "the confidential label's colour is not grouped"
@@ -419,6 +423,8 @@ traps=(
 	"slide-overflow.md|fail|a .docx is a page|--to docx --brand none"
 	"slide-contrast.md|fail|under the 4.5:1|--brands-dir $root/testdata/brands"
 	"slide-figure.md|fail|below the 8.5pt floor"
+	"accent-pale.md|fail|Set colors.accent|--brands-dir $root/testdata/brands"
+	"accent-pale.md|ok|Set colors.accent|--style note --brands-dir $root/testdata/brands"
 )
 
 echo

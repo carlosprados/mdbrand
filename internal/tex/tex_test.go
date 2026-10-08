@@ -274,3 +274,21 @@ func TestSlidesPreambleRenders(t *testing.T) {
 		}
 	}
 }
+
+// brandAccent is defined only when the bundle sets an accent of its own, so
+// every bundle without one keeps its preamble byte for byte.
+func TestAccentColourDefinedOnlyWhenDeclared(t *testing.T) {
+	b := brand.Default()
+	got, err := Render("preamble", &Data{Brand: b, Style: "report"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "brandAccent") {
+		t.Error("an accent equal to the primary must not be defined")
+	}
+	b.Colors.Accent = "AE6413"
+	got, _ = Render("preamble", &Data{Brand: b, Style: "report"})
+	if !strings.Contains(got, `\definecolor{brandAccent}{HTML}{AE6413}`) {
+		t.Error("a declared accent must be defined")
+	}
+}

@@ -82,5 +82,6 @@ Speaker notes: never on the slide.
 ## A long path
 
 The repository `wolf-code/0-active/wolfops/internal/scheduler/sniper-polling-window.go`
-breaks after its separators, as it does on the page, and a
-[link](https://github.com/carlosprados/mdbrand) is coloured.
+breaks after its separators, as it does on the page, a
+[link](https://github.com/carlosprados/mdbrand) is coloured, and an
+[accented phrase]{.accent} prints in the bundle's colors.accent.

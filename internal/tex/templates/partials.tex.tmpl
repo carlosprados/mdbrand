@@ -4,7 +4,10 @@
 {{define "colors"}}\definecolor{brandPrimary}{HTML}{ {{- .Brand.Colors.Primary -}} }
 \definecolor{brandText}{HTML}{ {{- .Brand.Colors.Text -}} }
 \definecolor{brandRule}{HTML}{ {{- .Brand.Colors.Rule -}} }
-\definecolor{brandLink}{HTML}{ {{- .Brand.Colors.Link -}} }{{end}}
+\definecolor{brandLink}{HTML}{ {{- .Brand.Colors.Link -}} }
+{{- if ne .Brand.Colors.Accent .Brand.Colors.Primary}}
+\definecolor{brandAccent}{HTML}{ {{- .Brand.Colors.Accent -}} }
+{{- end}}{{end}}
 
 {{define "fallback"}}{{if .FallbackChars -}}
 % fonts.fallback: the characters this document uses that the body face lacks

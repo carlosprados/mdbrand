@@ -2,11 +2,9 @@ package brand
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -160,27 +158,4 @@ func svgFills(src string) []string {
 		}
 	}
 	return out
-}
-
-// Contrast is the WCAG 2 contrast ratio between two 6-digit hex colours.
-func Contrast(a, b string) float64 {
-	la, lb := luminance(a), luminance(b)
-	if la < lb {
-		la, lb = lb, la
-	}
-	return (la + 0.05) / (lb + 0.05)
-}
-
-func luminance(hex string) float64 {
-	var ch [3]float64
-	for i := range ch {
-		v, _ := strconv.ParseUint(hex[2*i:2*i+2], 16, 8)
-		c := float64(v) / 255
-		if c <= 0.03928 {
-			ch[i] = c / 12.92
-		} else {
-			ch[i] = math.Pow((c+0.055)/1.055, 2.4)
-		}
-	}
-	return 0.2126*ch[0] + 0.7152*ch[1] + 0.0722*ch[2]
 }

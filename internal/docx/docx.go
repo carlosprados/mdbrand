@@ -26,6 +26,7 @@ type Look struct {
 	Body, Display, Mono string // font families the reader's machine is asked for
 	Primary, Text, Rule string // hex colours, no '#'
 	Link                string
+	Accent              string // [words]{.accent}; the primary when the bundle sets none
 
 	PaperWMM, PaperHMM float64
 	MarginMM           float64
@@ -39,6 +40,15 @@ type Look struct {
 	Confidential    string // repeated left of the page number in every footer
 	Layout          string // report | note | letter
 	NumberFromCover bool   // report: the cover is page 0, so the first text page is 1
+}
+
+// accent is the colour of accented words: Accent, or the primary for a Look
+// built without one.
+func (l Look) accent() string {
+	if l.Accent != "" {
+		return l.Accent
+	}
+	return l.Primary
 }
 
 // TextWidthMM is the measure between the margins.

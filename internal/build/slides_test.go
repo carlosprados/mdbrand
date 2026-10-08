@@ -1,8 +1,12 @@
 package build
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/carlosprados/mdbrand/internal/brand"
 )
 
 func TestScanLogFindsFrameOverflows(t *testing.T) {
@@ -56,5 +60,44 @@ func TestJudgeFramesIgnoresRounding(t *testing.T) {
 	err := judgeFrames([]frameOver{{Pt: 28.45, Line: 2}}, src)
 	if err == nil || !strings.Contains(err.Error(), `"A"`) || !strings.Contains(err.Error(), "10.0 mm") {
 		t.Errorf("want the slide named and the excess in mm, got %v", err)
+	}
+}
+
+// The accent is measured only when a document prints words in it, stops a
+// deck and warns on a page — a pale accent has always printed on paper.
+func TestAccentContrast(t *testing.T) {
+	b := brand.Default()
+	b.Colors.Primary, b.Colors.Accent = "F68E1B", "F68E1B"
+	rep := &Report{}
+	if err := accentContrast(b, "no accents here", true, rep); err != nil || len(rep.Warnings) > 0 {
+		t.Errorf("a document with no accent must not be measured: %v %v", err, rep.Warnings)
+	}
+	err := accentContrast(b, "MDBRAND-ACCENT\n", true, rep)
+	if err == nil || !strings.Contains(err.Error(), "colors.accent") || !strings.Contains(err.Error(), "AE6413") {
+		t.Errorf("a deck must stop, naming colors.accent and a shade that passes: %v", err)
+	}
+	if err := accentContrast(b, "MDBRAND-ACCENT\n", false, rep); err != nil || len(rep.Warnings) != 1 {
+		t.Errorf("a page must warn, not stop: %v %v", err, rep.Warnings)
+	}
+	b.Colors.Accent = "AE6413"
+	if err := accentContrast(b, "MDBRAND-ACCENT\n", true, &Report{}); err != nil {
+		t.Errorf("a dark enough accent must pass: %v", err)
+	}
+}
+
+// A bundle without colors.accent must leave the filter, and so the .tex,
+// byte for byte as it was.
+func TestSpanFilterNamesTheAccentOnlyWhenItDiffers(t *testing.T) {
+	b := brand.Default()
+	for _, c := range []struct{ accent, want string }{{b.Colors.Primary, "brandPrimary"}, {"AE6413", "brandAccent"}} {
+		b.Colors.Accent = c.accent
+		work := t.TempDir()
+		if _, err := writeSpanFilter(work, b); err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := os.ReadFile(filepath.Join(work, spanFilterName))
+		if !strings.Contains(string(raw), `\\textcolor{`+c.want+`}`) {
+			t.Errorf("accent %s: filter does not name %s", c.accent, c.want)
+		}
 	}
 }
