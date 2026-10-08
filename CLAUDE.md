@@ -47,6 +47,7 @@ internal/build/          the pipeline: prepare.go is what every output format
                          the PDF's own, and owns the xelatex run and its log;
                          docx.go is the .docx's
 internal/run/            external commands, with their output on failure
+internal/exit/           exit statuses: 1 defect, 2 usage, 3 environment
 scripts/torture.sh       builds the fixtures and reads the PDFs and logs
 testdata/                torture.md, which must come out clean, and
                          traps/, which must each fail naming the fix

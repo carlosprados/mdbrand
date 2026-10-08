@@ -21,7 +21,7 @@ func newCmd() *cobra.Command {
 		Long: `Write a new Markdown document carrying front matter mdbrand understands, so
 "mdbrand build" on it needs no flags. Includes a commented example of a D2
 diagram and a Vega-Lite chart.`,
-		Args: cobra.ExactArgs(1),
+		Args: usageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := args[0]
 			if _, err := os.Stat(path); err == nil {

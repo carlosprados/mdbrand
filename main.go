@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/carlosprados/mdbrand/cmd"
+	"github.com/carlosprados/mdbrand/internal/exit"
 )
 
 // The agent skill travels inside the binary, so `mdbrand skill install` works
@@ -26,6 +27,6 @@ func main() {
 	}
 	if err := cmd.Root().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "mdbrand: "+err.Error())
-		os.Exit(1)
+		os.Exit(exit.Code(err))
 	}
 }

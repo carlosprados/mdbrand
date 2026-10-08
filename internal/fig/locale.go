@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/carlosprados/mdbrand/internal/words"
 )
@@ -91,7 +92,7 @@ var (
 func probe(dir string) error {
 	probeOnce.Do(func() {
 		if missing := run.Missing("vl2vg", "vg2svg"); len(missing) > 0 {
-			probeErr = fmt.Errorf("charts in this language need %s: npm i -g vega-cli vega-lite", strings.Join(missing, ", "))
+			probeErr = exit.AsEnvironment(fmt.Errorf("charts in this language need %s: npm i -g vega-cli vega-lite", strings.Join(missing, ", ")))
 			return
 		}
 		spec := `{"width":60,"height":20,"marks":[{"type":"text","encode":{"enter":{"text":{"signal":"format(1000, ',')"}}}}]}`
@@ -106,10 +107,10 @@ func probe(dir string) error {
 		if err == nil && strings.Contains(out, ">1.000<") {
 			return
 		}
-		probeErr = fmt.Errorf(`this document's charts need numbers in its own language (1.000, not 1,000),
+		probeErr = exit.AsEnvironment(fmt.Errorf(`this document's charts need numbers in its own language (1.000, not 1,000),
 and the installed vega-cli cannot apply a locale: its -f and -t read nothing
 before 6.4.0, so the charts would print in English and the build exit 0.
-Upgrade it: npm i -g vega-cli@latest`)
+Upgrade it: npm i -g vega-cli@latest`))
 	})
 	return probeErr
 }

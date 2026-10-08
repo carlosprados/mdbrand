@@ -9,6 +9,7 @@ import (
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/data"
 	"github.com/carlosprados/mdbrand/internal/doc"
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/carlosprados/mdbrand/internal/tex"
@@ -150,8 +151,8 @@ func (p *prepared) fill(inputs *[]string) error {
 	}
 	if len(figs) > 0 {
 		if missing := run.Missing(figTools(figs)...); len(missing) > 0 {
-			return fmt.Errorf("this document has diagrams but these are missing: %s\n  run: mdbrand doctor",
-				strings.Join(missing, ", "))
+			return exit.AsEnvironment(fmt.Errorf("this document has diagrams but these are missing: %s\n  run: mdbrand doctor",
+				strings.Join(missing, ", ")))
 		}
 	}
 	for _, f := range figs {

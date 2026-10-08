@@ -33,7 +33,7 @@ cannot be placed inside that band is reported as an error with the fix.
 
   mdbrand diagrams informe.md            every diagram in the document
   mdbrand diagrams arq.d2 --out figs/    render one and keep the PDF`,
-		Args: cobra.MinimumNArgs(1),
+		Args: usageArgs(cobra.MinimumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			work, err := os.MkdirTemp("", "mdbrand-diagrams-")
 			if err != nil {

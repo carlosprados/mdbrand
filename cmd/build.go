@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/carlosprados/mdbrand/internal/build"
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/watch"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -150,8 +151,11 @@ rename, so a viewer that reloads on change (zathura, evince) never reads half a
 file. Ctrl-C stops it.
 
     mdbrand build informe.md --watch`,
-		Args: cobra.ExactArgs(1),
+		Args: usageArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if _, err := os.Stat(args[0]); err != nil {
+				return exit.AsUsage(err)
+			}
 			o.Input = args[0]
 			o.BrandsDir = brandsDir()
 			o.DefaultBrand = viper.GetString("brand")

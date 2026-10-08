@@ -241,6 +241,16 @@ document: `mdbrand build informe.md --style note -o /tmp/borrador.pdf`.
 
 `mdbrand <command> --help` is the complete manual for that command.
 
+The exit status says who has to act, so a script or an agent knows the next
+step before it reads the message:
+
+| Status | Meaning | Next step |
+|---|---|---|
+| 0 | Built | — |
+| 1 | The document or its bundle would make a defective PDF | Read the message: it names the fix |
+| 2 | The command line is wrong: a flag, an argument, a file that is not there, an unknown command | Check the command |
+| 3 | The machine lacks something the document asks for: a tool, a font, a bundle | `mdbrand doctor` |
+
 ## Use
 
 ### One document, no flags

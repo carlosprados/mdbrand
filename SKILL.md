@@ -383,6 +383,11 @@ and then call the document finished.
 
 ## When a build looks wrong
 
+The exit status says who acts: **1** fix the document or bundle (the message
+names how); **2** fix the command line; **3** the machine lacks a tool, font
+or bundle — run `mdbrand doctor` and give the user its install command rather
+than editing the document around it.
+
 `--work ./out` keeps the generated `preamble.tex`, `before.tex`, `after.tex`,
 the rewritten Markdown, every figure and the full XeLaTeX log. Read the log
 before theorising.

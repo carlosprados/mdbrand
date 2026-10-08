@@ -4,9 +4,12 @@
 package run
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/carlosprados/mdbrand/internal/exit"
 )
 
 // Missing reports the tools from names that are not on PATH.
@@ -33,7 +36,7 @@ func Cmd(dir, bin string, args ...string) (string, error) {
 	c.Dir = dir
 	out, err := c.CombinedOutput()
 	if err != nil {
-		return string(out), fmt.Errorf("%s %s: %w\n%s", bin, strings.Join(args, " "), err, tail(string(out), 25))
+		return string(out), absent(fmt.Errorf("%s %s: %w\n%s", bin, strings.Join(args, " "), err, tail(string(out), 25)))
 	}
 	return string(out), nil
 }
@@ -48,9 +51,18 @@ func Stdout(dir, bin string, args ...string) ([]byte, error) {
 	c.Stderr = &stderr
 	out, err := c.Output()
 	if err != nil {
-		return nil, fmt.Errorf("%s %s: %w\n%s", bin, strings.Join(args, " "), err, tail(stderr.String(), 25))
+		return nil, absent(fmt.Errorf("%s %s: %w\n%s", bin, strings.Join(args, " "), err, tail(stderr.String(), 25)))
 	}
 	return out, nil
+}
+
+// absent marks a failure to find the tool at all as the machine's, not the
+// document's: the fix is installing it.
+func absent(err error) error {
+	if errors.Is(err, exec.ErrNotFound) {
+		return exit.AsEnvironment(err)
+	}
+	return err
 }
 
 // Quiet runs bin and discards output unless it fails.

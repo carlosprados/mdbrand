@@ -33,8 +33,11 @@ func skillDir() (string, error) {
 
 func skillCmd() *cobra.Command {
 	c := &cobra.Command{
-		Use:   "skill",
-		Short: "Install the agent skill that teaches an AI to drive mdbrand",
+		Use:                        "skill",
+		Short:                      "Install the agent skill that teaches an AI to drive mdbrand",
+		Args:                       cobra.ArbitraryArgs,
+		SuggestionsMinimumDistance: 2,
+		RunE:                       groupRun,
 		Long: `mdbrand ships with a skill document for coding agents (Claude Code and
 anything else that reads a skills directory). It states the front matter, the
 diagram rules and the traps, so an agent uses the CLI correctly instead of
