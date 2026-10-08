@@ -620,6 +620,16 @@ mdbrand: 1 slide(s) run past the bottom of the frame, over the footer or off the
     "Demasiadas viñetas"                      23.6 mm too tall
 ```
 
+When the slide holds one figure, the error gives the width that makes room —
+the figure's height and its labels shrink with its width — or says that no
+width keeps the labels legible and the text needs a slide of its own:
+
+```
+    "A diagram under its argument"            13.4 mm too tall
+        its figure "Where a job goes" (fig00.d2) is 48 mm tall and the slide has room for 35:
+        put width=71mm on its block — its labels stay at 9.4pt
+```
+
 A deck is not a page, so `--to docx` refuses `style: slides`.
 
 The bundle's colours, type and logo make the deck. A `slides` section, all of
