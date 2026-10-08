@@ -533,7 +533,9 @@ mdbrand:
 `confidential` prints in every style, in the primary: on the cover and in the
 footer of every page in a `report`, under the title and in every footer in a
 `note`, and under the date in a `letter`, whose first page has no footer. A
-label too long to sit left of the page number stops the build.
+label too long to sit left of the page number stops the build. A `.docx` built
+alone cannot be measured, since Word sets it in the reader's fonts, so there
+a label over about 45 characters is a warning.
 
 ### Word and Google Docs
 

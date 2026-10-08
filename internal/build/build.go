@@ -154,6 +154,7 @@ func pipeline(o Options, inputs *[]string) (*Report, error) {
 	if err := p.fill(inputs); err != nil {
 		return nil, err
 	}
+	p.pdfToo = slices.Contains(formats, "pdf")
 	for _, f := range formats {
 		out, err := outputPath(o, f, len(formats))
 		if err != nil {

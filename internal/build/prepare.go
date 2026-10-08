@@ -31,6 +31,9 @@ type prepared struct {
 	body    string
 	figs    []*doc.Fig
 	results []*fig.Result
+	// pdfToo is set when the PDF is built as well, and measures what the
+	// .docx can only estimate.
+	pdfToo bool
 }
 
 // close removes the work directory unless it was asked to be kept.

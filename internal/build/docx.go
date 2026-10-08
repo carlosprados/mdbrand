@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/docx"
@@ -29,6 +30,12 @@ func renderDOCX(p *prepared, out string, inputs *[]string) error {
 	look, err := docxLook(p)
 	if err != nil {
 		return err
+	}
+
+	if n, room := utf8.RuneCountInString(look.Confidential), look.ConfidentialRoom(); n > room && !p.pdfToo {
+		rep.Warnings = append(rep.Warnings, fmt.Sprintf(
+			"mdbrand.confidential has %d characters; the .docx footer fits about %d beside the page number. "+
+				"That is an estimate, since Word sets it in the reader's fonts: shorten the label, or build the PDF too, which measures it", n, room))
 	}
 
 	body := p.body
