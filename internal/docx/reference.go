@@ -147,7 +147,7 @@ func styles(s string, l Look) string {
 		s = strings.Replace(s, "</w:styles>", sourceCodeStyle(l.Mono)+"</w:styles>", 1)
 	}
 	if !strings.Contains(s, `w:styleId="`+AccentStyle+`"`) {
-		s = strings.Replace(s, "</w:styles>", accentStyle(l.Primary)+"</w:styles>", 1)
+		s = strings.Replace(s, "</w:styles>", accentStyle(l.accent())+"</w:styles>", 1)
 	}
 	return s
 }

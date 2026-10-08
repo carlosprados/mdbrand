@@ -91,6 +91,12 @@ it, or open an issue for the knob you need:
 	if !tex.ValidStyle(style) {
 		return nil, fmt.Errorf("unknown style %q: pick one of %s", style, strings.Join(tex.Styles, ", "))
 	}
+	if style == tex.Slides {
+		if probs, _ := b.CheckSlides(); len(probs) > 0 {
+			return nil, fmt.Errorf("brand %q has problems that would break this deck:\n  - %s\n  see: mdbrand brand validate %s",
+				b.Name, strings.Join(probs, "\n  - "), b.Name)
+		}
+	}
 
 	work, keep, err := workDir(o.WorkDir)
 	if err != nil {
@@ -123,7 +129,7 @@ func workDir(asked string) (string, bool, error) {
 // typeset: figures extracted, data printed, words counted, figures rendered.
 func (p *prepared) fill(inputs *[]string) error {
 	o, d := p.o, p.d
-	textWidth, err := tex.TextWidthMM(p.b)
+	figBrand, textWidth, err := tex.FigureBox(p.b, p.style)
 	if err != nil {
 		return err
 	}
@@ -153,7 +159,7 @@ func (p *prepared) fill(inputs *[]string) error {
 			*inputs = append(*inputs, fig.DataRefs(f)...)
 		}
 		o.logf("  fig %s", filepath.Base(f.SrcPath))
-		res, ferr := fig.Render(f, p.b, p.work, textWidth, Datasets(p.store, d.Meta.Lang))
+		res, ferr := fig.Render(f, figBrand, p.work, textWidth, Datasets(p.store, d.Meta.Lang))
 		if ferr != nil {
 			return ferr
 		}

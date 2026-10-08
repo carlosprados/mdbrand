@@ -40,7 +40,7 @@ func Repair(b []byte, f Fix) ([]byte, []string, error) {
 		doc = fillTOC(doc)
 	}
 	doc = dropPictureDescr(doc)
-	doc = styledRuns(doc, AccentStyle, f.Look.Primary)
+	doc = styledRuns(doc, AccentStyle, f.Look.accent())
 	doc = styledRuns(doc, "Hyperlink", f.Look.Link)
 	p.set("word/document.xml", doc)
 	if n := p.get("word/numbering.xml"); n != "" {

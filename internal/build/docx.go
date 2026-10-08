@@ -113,7 +113,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		return err
 	}
 
-	filter, err := writeSpanFilter(work)
+	filter, err := writeSpanFilter(work, b)
 	if err != nil {
 		return err
 	}
@@ -143,6 +143,12 @@ nothing else would have told you. Fix the key or add the entry.`,
 	}
 	if err := spanProblems(pandocOut); err != nil {
 		return err
+	}
+	if !p.pdfToo {
+		// Built beside the PDF, the PDF has already said it.
+		if err := accentContrast(b, pandocOut, false, rep); err != nil {
+			return err
+		}
 	}
 
 	raw, err := os.ReadFile(filepath.Join(work, stem+".pandoc.docx"))
@@ -183,7 +189,7 @@ func docxLook(p *prepared) (docx.Look, error) {
 	}
 	return docx.Look{
 		Body: office.Body, Display: office.Display, Mono: office.Mono,
-		Primary: b.Colors.Primary, Text: b.Colors.Text, Rule: b.Colors.Rule, Link: b.Colors.Link,
+		Primary: b.Colors.Primary, Text: b.Colors.Text, Rule: b.Colors.Rule, Link: b.Colors.Link, Accent: b.Colors.Accent,
 		PaperWMM: tex.PaperWidthMM(b.Page.PaperSize), PaperHMM: tex.PaperHeightMM(b.Page.PaperSize),
 		MarginMM: margin, LineStretch: b.Page.LineStretch,
 		LogoHeaderWMM: header, RunningTitle: p.d.Meta.RunningTitle(), Confidential: p.d.Meta.Options.Confidential,

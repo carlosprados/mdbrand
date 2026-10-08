@@ -1,8 +1,9 @@
 -- spans.lua, run by pandoc for both outputs.
 --
--- [text]{.accent} is set in the brand's primary colour: \textcolor in LaTeX,
+-- [text]{.accent} is set in the brand's accent colour: \textcolor in LaTeX,
 -- the Accent character style in a .docx (Repair colours its runs directly as
--- well). Any other way of asking for a colour is reported, not converted:
+-- well). Each one is reported as MDBRAND-ACCENT, so the build measures the
+-- colour against the page only when a document prints words in it. Any other way of asking for a colour is reported, not converted:
 -- pandoc drops color=, colour= and style= on every writer this tool uses, so
 -- the words would simply print black. mdbrand reads the report from stderr
 -- and stops the build, naming .accent.
@@ -28,6 +29,7 @@ function Span(el)
   if not el.classes:includes("accent") then
     return nil
   end
+  io.stderr:write("MDBRAND-ACCENT\n")
   if FORMAT == "docx" then
     el.attributes["custom-style"] = "Accent"
     return el

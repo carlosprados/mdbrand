@@ -137,24 +137,57 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64, ds 
 	case !found:
 		res.Note = "no font-size found in the SVG; legibility not checked"
 	case res.TextPt < b.Diagrams.MinTextPt:
-		return res, fmt.Errorf(`%s would print its smallest label at %.1fpt, below the %.1fpt floor.
-  It is %.0f×%.0f mm on the page. Four fixes, in order of preference:
-   1. lower the scale: scale=0.33 on the fence. mdbrand raises the source font
-      size by the same factor, so what shrinks is the layout whitespace and the
-      text comes back to reading size. (Vega-Lite takes no scale; raise the
-      sizes in the spec: "config": {"axis": {"labelFontSize": 14}})
-   2. try the other layout engine, in the .d2 itself:
-        vars: { d2-config: { layout-engine: elk } }
-      ELK often packs a graph tighter than dagre, at the cost of routing the
-      edges differently — look at the result before keeping it;
-   3. split the figure along a distinction that matters anyway;
-   4. shorten the labels so the layout is less wide`,
-			filepath.Base(f.SrcPath), res.TextPt, b.Diagrams.MinTextPt, res.WidthMM, res.HeightMM)
+		tall := b.Diagrams.MaxHeightMM > 0 && res.HeightMM >= b.Diagrams.MaxHeightMM-0.5
+		held := ""
+		if tall {
+			held = fmt.Sprintf(", held there by the %.0f mm height limit", b.Diagrams.MaxHeightMM)
+		}
+		return res, fmt.Errorf("%s would print its smallest label at %.1fpt, below the %.1fpt floor.\n"+
+			"  It is %.0f×%.0f mm on the page%s. In order of preference:\n%s",
+			filepath.Base(f.SrcPath), res.TextPt, b.Diagrams.MinTextPt, res.WidthMM, res.HeightMM,
+			held, illegibleFixes(f.Kind, tall))
 	case res.HeightMM > b.Diagrams.MaxHeightMM && f.WidthMM() > 0:
 		res.Note = fmt.Sprintf("%.0f mm tall with an explicit width= — over the %.0f mm guide",
 			res.HeightMM, b.Diagrams.MaxHeightMM)
 	}
 	return res, nil
+}
+
+// illegibleFixes is the advice for a figure whose labels fall under the
+// floor, by what the figure is and by what held it back. A figure held by
+// the height limit — the usual one on a 16:9 slide — needs to be wider than
+// tall, and shrinking its whitespace does nothing for that; one held by the
+// width needs packing. Vega-Lite has neither a scale nor a layout engine.
+func illegibleFixes(kind string, tall bool) string {
+	switch {
+	case kind == "d2" && tall:
+		return `   1. lay it out wider than tall: direction: right at the root of the .d2
+      (inside a container d2 ignores it);
+   2. split the figure along a distinction that matters anyway;
+   3. shorten the labels`
+	case kind == "d2":
+		return `   1. lower the scale: scale=0.33 on the fence. mdbrand raises the source font
+      size by the same factor, so what shrinks is the layout whitespace and the
+      text comes back to reading size;
+   2. drop the labels on the edges you can: a single one has widened a
+      dagre layout enough to take its labels from 12pt to under 8pt;
+   3. try the other layout engine, in the .d2 itself:
+        vars: { d2-config: { layout-engine: elk } }
+      ELK often packs a graph tighter than dagre, at the cost of routing the
+      edges differently — look at the result before keeping it;
+   4. split the figure along a distinction that matters anyway, or shorten
+      the labels so the layout is less wide`
+	case tall:
+		return `   1. make the chart wider than tall: lower "height" and raise "width" in the
+      spec, so the frame's height stops being the limit;
+   2. raise the label sizes in the spec:
+        "config": {"axis": {"labelFontSize": 14, "titleFontSize": 14}}`
+	default:
+		return `   1. raise the label sizes in the spec:
+        "config": {"axis": {"labelFontSize": 14, "titleFontSize": 14},
+                   "legend": {"labelFontSize": 14}}
+   2. plot fewer categories, or shorten their names`
+	}
 }
 
 func renderD2(f *doc.Fig, b *brand.Brand, out string) error {
@@ -291,4 +324,10 @@ func minFontSize(src string) (float64, bool) {
 func (r *Result) Markdown() string {
 	caption := r.Fig.Caption
 	return fmt.Sprintf("![%s](%s){width=%.1fmm}", caption, filepath.Base(r.PDF), r.WidthMM)
+}
+
+// MarkdownBox is Markdown with the height written out as well, for a writer
+// that would otherwise fit the figure to a box of its own.
+func (r *Result) MarkdownBox() string {
+	return fmt.Sprintf("![%s](%s){width=%.1fmm height=%.1fmm}", r.Fig.Caption, filepath.Base(r.PDF), r.WidthMM, r.HeightMM)
 }

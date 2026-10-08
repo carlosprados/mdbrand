@@ -17,7 +17,7 @@ import (
 )
 
 func diagramsCmd() *cobra.Command {
-	var brandName, outDir string
+	var brandName, outDir, styleFlag string
 
 	c := &cobra.Command{
 		Use:   "diagrams <document.md | diagram.d2 | chart.vl.json>...",
@@ -34,17 +34,6 @@ cannot be placed inside that band is reported as an error with the fix.
   mdbrand diagrams arq.d2 --out figs/    render one and keep the PDF`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if brandName == "" {
-				brandName = viper.GetString("brand")
-			}
-			b, err := brand.Load(brandsDir(), brandName)
-			if err != nil {
-				return err
-			}
-			textWidth, err := tex.TextWidthMM(b)
-			if err != nil {
-				return err
-			}
 			work, err := os.MkdirTemp("", "mdbrand-diagrams-")
 			if err != nil {
 				return err
@@ -52,6 +41,7 @@ cannot be placed inside that band is reported as an error with the fix.
 			defer os.RemoveAll(work)
 
 			var figs []*doc.Fig
+			docBrand, docStyle := "", ""
 			// A chart may name its data; that needs the document it came from.
 			sets := map[*doc.Fig]fig.Datasets{}
 			for _, a := range args {
@@ -60,6 +50,12 @@ cannot be placed inside that band is reported as an error with the fix.
 					d, err := doc.Read(a)
 					if err != nil {
 						return err
+					}
+					if docBrand == "" {
+						docBrand = d.Meta.Options.Brand
+					}
+					if docStyle == "" {
+						docStyle = d.Meta.Options.Style
 					}
 					_, fs, err := d.ExtractFigs(work)
 					if err != nil {
@@ -89,12 +85,28 @@ cannot be placed inside that band is reported as an error with the fix.
 				return fmt.Errorf("no diagram sources found")
 			}
 
+			// The same precedence as build: a document declaring brand: none
+			// was measured with the configured bundle's page and band.
+			b, err := brand.Load(brandsDir(), build.Pick(brandName, docBrand, viper.GetString("brand")))
+			if err != nil {
+				return err
+			}
+			// A slide's measure, band and height are not the page's.
+			style := build.Pick(styleFlag, docStyle, viper.GetString("style"), "report")
+			if !tex.ValidStyle(style) {
+				return fmt.Errorf("unknown style %q: pick one of %s", style, strings.Join(tex.Styles, ", "))
+			}
+			fb, textWidth, err := tex.FigureBox(b, style)
+			if err != nil {
+				return err
+			}
+
 			out := cmd.OutOrStdout()
-			fmt.Fprintf(out, "brand %s · measure %.1f mm · text band %.1f–%.1f pt · max height %.0f mm\n\n",
-				b.Name, textWidth, b.Diagrams.MinTextPt, b.Diagrams.MaxTextPt, b.Diagrams.MaxHeightMM)
+			fmt.Fprintf(out, "brand %s · style %s · measure %.1f mm · text band %.1f–%.1f pt · max height %.0f mm\n\n",
+				b.Name, style, textWidth, fb.Diagrams.MinTextPt, fb.Diagrams.MaxTextPt, fb.Diagrams.MaxHeightMM)
 			bad := 0
 			for _, f := range figs {
-				res, err := fig.Render(f, b, work, textWidth, sets[f])
+				res, err := fig.Render(f, fb, work, textWidth, sets[f])
 				if err != nil {
 					bad++
 					fmt.Fprintf(out, "%-26s FAIL\n%v\n\n", filepath.Base(f.SrcPath), err)
@@ -123,7 +135,8 @@ cannot be placed inside that band is reported as an error with the fix.
 			return nil
 		},
 	}
-	c.Flags().StringVar(&brandName, "brand", "", "brand bundle whose page numbers to use")
+	c.Flags().StringVar(&brandName, "brand", "", "brand bundle whose page numbers to use; overrides the front matter")
 	c.Flags().StringVar(&outDir, "out", "", "also write the rendered PDFs here")
+	c.Flags().StringVar(&styleFlag, "style", "", "style whose measure to use (slides differs from the page); overrides the front matter")
 	return c
 }

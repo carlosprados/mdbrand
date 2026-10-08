@@ -44,6 +44,11 @@ legibility band (min_text_pt..max_text_pt in the brand bundle) without growing
 taller than max_height_mm. If a diagram cannot satisfy that, the build stops and
 says what to change — it does not ship an illegible figure.
 
+With style slides the document is a 16:9 beamer deck: # opens a section, ##
+is a slide. Figures are sized for the frame instead (140 mm wide, 48 mm tall,
+the bundle's slides.diagrams band, 8.5-14pt by default), and a slide whose
+content runs past the bottom of its frame stops the build, named by its title.
+
 A chart's "data": {"url": "data/x.csv"} resolves against the document, or
 against the spec's own file when it is linked. A missing file or a remote URL
 stops the build: vl2svg alone would draw an empty chart and exit 0.
@@ -187,7 +192,7 @@ file. Ctrl-C stops it.
 	c.Flags().StringVarP(&o.Output, "out", "o", "", "output file (default: alongside the input); with several formats, each takes its own extension")
 	c.Flags().StringSliceVar(&o.Formats, "to", nil, "pdf | docx | pdf,docx; overrides the front matter's formats (default pdf)")
 	c.Flags().StringVar(&o.BrandName, "brand", "", "brand bundle to use; overrides the front matter")
-	c.Flags().StringVar(&o.Style, "style", "", "report | note | letter; overrides the front matter")
+	c.Flags().StringVar(&o.Style, "style", "", "report | note | letter | slides; overrides the front matter")
 	c.Flags().StringVar(&o.WordCount, "wordcount", "", "ib | all: the {{words}} criterion; replaces the front matter's entirely")
 	c.Flags().StringVar(&o.WorkDir, "work", "", "keep intermediates here (LaTeX, figures, log) for debugging")
 	c.Flags().BoolVar(&o.AllowHoles, "allow-missing-glyphs", false, "build even if the font lacks glyphs the text uses")

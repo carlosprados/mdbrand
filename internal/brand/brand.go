@@ -35,6 +35,7 @@ type Brand struct {
 	Fonts    Fonts    `yaml:"fonts"`
 	Page     Page     `yaml:"page"`
 	Diagrams Diagrams `yaml:"diagrams"`
+	Slides   Slides   `yaml:"slides"`
 	Footer   string   `yaml:"footer"`
 
 	Dir string `yaml:"-"` // resolved bundle directory
@@ -46,6 +47,10 @@ type Colors struct {
 	Text    string `yaml:"text"`    // cover and header type
 	Rule    string `yaml:"rule"`    // hairlines
 	Link    string `yaml:"link"`    // links; the primary when unset
+	// Accent is the colour of [words]{.accent}: type, where the primary is
+	// usually drawn as rules. A light primary — an orange — makes rules that
+	// read and words that do not, so a bundle may set the words apart.
+	Accent string `yaml:"accent"`
 }
 
 type Fonts struct {
@@ -200,6 +205,9 @@ func (b *Brand) applyDefaults() {
 	if b.Colors.Link == "" {
 		b.Colors.Link = b.Colors.Primary
 	}
+	if b.Colors.Accent == "" {
+		b.Colors.Accent = b.Colors.Primary
+	}
 	if b.Fonts.Body == "" {
 		b.Fonts.Body = "Inter"
 	}
@@ -246,6 +254,7 @@ func (b *Brand) applyDefaults() {
 	if b.Diagrams.MaxHeightMM == 0 {
 		b.Diagrams.MaxHeightMM = 150
 	}
+	b.Slides.applyDefaults()
 }
 
 // ErrNoBrandsDir is what a named bundle meets when no brands directory is set,
@@ -263,7 +272,14 @@ func Load(brandsDir, name string) (*Brand, error) {
 	if brandsDir == "" {
 		return nil, fmt.Errorf("brand %q: %w", name, ErrNoBrandsDir)
 	}
-	dir := filepath.Join(brandsDir, name)
+	// Absolute from here on. Every path in a bundle resolves against its
+	// directory, and the tools that read them run with the work directory as
+	// their cwd: `--brands-dir testdata/brands` handed rsvg-convert a logo
+	// path relative to a directory it was not in, and the build died there.
+	dir, err := filepath.Abs(filepath.Join(brandsDir, name))
+	if err != nil {
+		return nil, err
+	}
 	f := filepath.Join(dir, "brand.yaml")
 	raw, err := os.ReadFile(f)
 	if err != nil {
@@ -500,6 +516,45 @@ func (b *Brand) DisplayFontHint() string {
 
 var hexRe = regexp.MustCompile(`^[0-9A-Fa-f]{6}$`)
 
+// checkArtwork is what every mark a bundle names goes through: the traps below
+// (a bitmap in an SVG coat, the data:img/ MIME type, <foreignObject>) cost
+// exactly as much on the second mark, or a slide's, as on the first.
+func checkArtwork(label, logo string, problems, warnings *[]string) {
+	add := func(dst *[]string, f string, a ...any) { *dst = append(*dst, fmt.Sprintf(f, a...)) }
+	st, err := os.Stat(logo)
+	if err != nil {
+		add(problems, "%s: %s: %v", label, logo, err)
+		return
+	}
+	switch strings.ToLower(filepath.Ext(logo)) {
+	case ".pdf", ".png":
+		// Directly embeddable by xelatex.
+	case ".svg":
+		raw, err := os.ReadFile(logo)
+		if err != nil {
+			add(problems, "%s: %v", label, err)
+			return
+		}
+		s := string(raw)
+		if strings.Contains(s, "<image") {
+			add(warnings, "%s: %s embeds a raster <image> — it is a bitmap in an SVG coat, "+
+				"so it will look soft on a cover. Get the vector original.", label, filepath.Base(logo))
+		}
+		if strings.Contains(s, "data:img/") {
+			add(problems, "%s: %s uses the invalid MIME type data:img/... (it must be data:image/...); "+
+				"rsvg-convert renders nothing and fails silently", label, filepath.Base(logo))
+		}
+		if strings.Contains(s, "<foreignObject") {
+			add(problems, "%s: %s contains <foreignObject>; rsvg-convert drops it without a word", label, filepath.Base(logo))
+		}
+	default:
+		add(problems, "%s: %s: unsupported extension (use .svg, .pdf or .png)", label, filepath.Base(logo))
+	}
+	if st.Size() < 300 {
+		add(warnings, "%s: %s is only %d bytes — suspiciously small for artwork", label, filepath.Base(logo), st.Size())
+	}
+}
+
 // Check validates a bundle and returns human-readable problems and warnings.
 // It knows the two traps that cost real time: an SVG that is only a wrapper
 // around a small bitmap, and text kept as <foreignObject>, which rsvg-convert
@@ -512,50 +567,14 @@ func (b *Brand) Check() (problems, warnings []string) {
 	}
 	for label, v := range map[string]string{
 		"colors.primary": b.Colors.Primary, "colors.text": b.Colors.Text, "colors.rule": b.Colors.Rule,
-		"colors.link": b.Colors.Link,
+		"colors.link": b.Colors.Link, "colors.accent": b.Colors.Accent,
 	} {
 		if !hexRe.MatchString(v) {
 			add(&problems, "%s: %q is not a 6-digit hex without '#'", label, v)
 		}
 	}
 
-	// Both logos go through the same checks: the traps below (a bitmap in an
-	// SVG coat, the data:img/ MIME type, <foreignObject>) cost exactly as much
-	// on the second mark as on the first.
-	checkLogo := func(label, logo string) {
-		st, err := os.Stat(logo)
-		if err != nil {
-			add(&problems, "%s: %s: %v", label, logo, err)
-			return
-		}
-		switch strings.ToLower(filepath.Ext(logo)) {
-		case ".pdf", ".png":
-			// Directly embeddable by xelatex.
-		case ".svg":
-			raw, err := os.ReadFile(logo)
-			if err != nil {
-				add(&problems, "%s: %v", label, err)
-				return
-			}
-			s := string(raw)
-			if strings.Contains(s, "<image") {
-				add(&warnings, "%s: %s embeds a raster <image> — it is a bitmap in an SVG coat, "+
-					"so it will look soft on a cover. Get the vector original.", label, filepath.Base(logo))
-			}
-			if strings.Contains(s, "data:img/") {
-				add(&problems, "%s: %s uses the invalid MIME type data:img/... (it must be data:image/...); "+
-					"rsvg-convert renders nothing and fails silently", label, filepath.Base(logo))
-			}
-			if strings.Contains(s, "<foreignObject") {
-				add(&problems, "%s: %s contains <foreignObject>; rsvg-convert drops it without a word", label, filepath.Base(logo))
-			}
-		default:
-			add(&problems, "%s: %s: unsupported extension (use .svg, .pdf or .png)", label, filepath.Base(logo))
-		}
-		if st.Size() < 300 {
-			add(&warnings, "%s: %s is only %d bytes — suspiciously small for artwork", label, filepath.Base(logo), st.Size())
-		}
-	}
+	checkLogo := func(label, logo string) { checkArtwork(label, logo, &problems, &warnings) }
 
 	if logo := b.LogoPath(); logo == "" {
 		add(&warnings, "logo: none declared — cover and header will carry type only")
@@ -624,6 +643,8 @@ colors:
   text: "3A3A3A"      # cover and header type
   rule: "C8CCCE"      # hairlines
   # link: "1565C0"    # optional; links, the primary when unset
+  # accent: "AE6413"  # optional; [words]{.accent}, the primary when unset.
+  #                   # Words need 4.5:1 on white, which a light primary misses
 
 fonts:
   body: Inter         # fontconfig family; must cover the glyphs you type

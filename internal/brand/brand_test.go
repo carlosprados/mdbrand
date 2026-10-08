@@ -298,3 +298,23 @@ func TestLinkColourFallsBackToThePrimary(t *testing.T) {
 		t.Errorf("a '#' in colors.link passed validation: %v", problems)
 	}
 }
+
+// A relative --brands-dir reached rsvg-convert as a relative logo path, which
+// it resolved against the work directory it runs in: no logo, no build.
+func TestLoadMakesTheBundleDirAbsolute(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "brands", "b"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "brands", "b", "brand.yaml"), []byte("name: b\nlogo: logo.svg\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(root)
+	b, err := Load("brands", "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !filepath.IsAbs(b.Dir) || !filepath.IsAbs(b.LogoPath()) {
+		t.Errorf("Dir %q, logo %q: both must be absolute", b.Dir, b.LogoPath())
+	}
+}

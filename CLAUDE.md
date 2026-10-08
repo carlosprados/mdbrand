@@ -15,14 +15,17 @@ and rediscovering the same traps. So the traps are behaviour, not documentation:
 **a build that would produce a defective PDF must fail, naming the fix.** Adding
 a knob that lets a defect through is the wrong direction.
 
-Non-goals: a general pandoc wrapper, HTML or slide output, a template language
-for users. It renders documents that look like the ones in `examples/`.
+Non-goals: a general pandoc wrapper, HTML output, a .pptx, slide layouts of
+the author's own, a template language for users. It renders documents that look
+like the ones in `examples/`, and decks that look like `testdata/slides.md`.
 
 The PDF is the product. `--to docx` writes the same document for readers who
 need Word or Google Docs, and it is strictly additive: nothing on the PDF's path
 may change for it. A change near `internal/build` proves that by building every
 fixture before and after and diffing the generated `.tex`, Markdown and the
-PDFs' text — byte for byte.
+PDFs' text — byte for byte. `style: slides` is held to the same rule: a deck
+for technical talks, on the PDF's own path, where the page's output does not
+move by a byte. The preamble pieces both share live in `partials.tex.tmpl`.
 
 ## Layout
 
@@ -35,7 +38,8 @@ internal/doc/            front matter, and extracting figures from the body
 internal/data/           data/ files and the {{data…}} placeholders
 internal/mdtext/         where Markdown prose ends and code or math begins
 internal/fig/            diagram source -> SVG -> PDF, and the print sizing maths
-internal/tex/            templates/*.tmpl + escaping + page arithmetic
+internal/tex/            templates/*.tmpl + escaping + page arithmetic;
+                         slides.tex.tmpl is the deck's preamble, beside the page's
 internal/docx/           reference.docx from the brand, cover and letterhead
                          as OOXML, repairs over pandoc's .docx; a pure leaf
 internal/build/          the pipeline: prepare.go is what every output format
@@ -100,7 +104,11 @@ Do not relax one without understanding what it cost.
    default brands directory came out relative, and `config init`, `skill
    install` and `brand new` wrote into the working directory while
    `brand.Load` read a local `acme/` as the bundle. Each now refuses by name.
-   → `internal/paths/paths_test.go`, `cmd/home_test.go`.
+   And a relative `--brands-dir` reached `rsvg-convert`, which runs in the
+   work directory, as a logo path that led nowhere: `brand.Load` makes the
+   bundle's directory absolute.
+   → `internal/paths/paths_test.go`, `cmd/home_test.go`,
+   `internal/brand/brand_test.go`.
 9. **Never write through a symlink.** `skill install` uses `os.Lstat`: in a
    checkout the installed skill is a symlink to this repository's `SKILL.md`.
 10. **Licensed fonts and client logos never enter a repository that can be read
@@ -190,10 +198,34 @@ Do not relax one without understanding what it cost.
 
 17. **A colour pandoc would drop is refused.** `color=`, `colour=` and
     `style=` vanish on both writers, so the words printed black and the build
-    exited 0. `[words]{.accent}` is the one colour, the brand's primary,
-    through `internal/build/spans.lua` for both outputs; the filter reports
-    everything else on stderr and the build stops naming `.accent`.
-    → `internal/build/build_test.go`, `traps/span-colour.md`.
+    exited 0. `[words]{.accent}` is the one colour, the brand's
+    `colors.accent` (its primary by default), through
+    `internal/build/spans.lua` for both outputs; the filter reports everything
+    else on stderr and the build stops naming `.accent`. It also reports each
+    accent it sets, and only then is the colour measured against white: Amplía's
+    orange is 2.4:1 as words. Under 4.5:1 a deck stops and a page warns — pale
+    accents have always printed, and a document that built must still build —
+    both naming the darker shade of the same hue that passes. The filter names
+    `brandAccent` only when the bundle declares one, so a bundle without it
+    keeps its `.tex` byte for byte.
+    → `internal/build/build_test.go`, `internal/build/slides_test.go`,
+    `traps/span-colour.md`, `traps/accent-pale.md`.
+
+18. **A slide that does not fit stops the build, by its title.** beamer sets
+    the excess over the footer or off the page and exits 0; the log's
+    `Overfull \vbox … at line N` points at the frame's `\end{frame}`, the
+    title is read from its `\begin{frame}`, and the cover slides — which are
+    not frame environments — are named as such rather than as the slide
+    before them. Figures on a slide are sized for the frame (140 × 48 mm,
+    8.5–14 pt) and written with both width and height, because pandoc's
+    beamer writer otherwise adds `keepaspectratio` and shrinks a tall one in
+    silence. Display faces take `Ligatures=TeX` there, since pandoc writes a
+    frame title's em dash as `---`; the caption package, which pandoc loads
+    for any table, numbered every caption until the deck set its label
+    format itself. A cover ground is held to WCAG contrast: 4.5:1 for its
+    type, 3:1 for each fill of an SVG logo.
+    → `internal/build/slides_test.go`, `internal/brand/slides_test.go`,
+    `internal/tex/tex_test.go`, `testdata/slides.md`, `traps/slide-*.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

@@ -19,7 +19,39 @@ import (
 var files embed.FS
 
 // Styles are the document shapes mdbrand knows.
-var Styles = []string{"report", "note", "letter"}
+var Styles = []string{"report", "note", "letter", "slides"}
+
+// Slides is the style that is a deck rather than a page: beamer, not article.
+const Slides = "slides"
+
+// A deck is beamer's 16:9 frame, the shape every projector and screen now
+// has. It is not the bundle's to change: the legibility band below is
+// calibrated to it.
+const (
+	SlideWidthMM  = 160.0
+	SlideHeightMM = 90.0
+	// SlideMarginMM is the side margin, so the measure is 140mm.
+	SlideMarginMM = 10.0
+	// SlideFigureMaxHeightMM is what is left of the frame's height under a
+	// title, above the footer and beside a caption. Measured: a 55mm figure
+	// with both overflowed the frame by 4.5mm.
+	SlideFigureMaxHeightMM = 48.0
+)
+
+// FigureBox is the room a figure has in a style, and the brand as the figure
+// sizing sees it there: on a slide the measure is the frame's, and the band
+// and height are the slide's, never the page's.
+func FigureBox(b *brand.Brand, style string) (*brand.Brand, float64, error) {
+	if style != Slides {
+		w, err := TextWidthMM(b)
+		return b, w, err
+	}
+	fb := *b
+	fb.Diagrams.MinTextPt = b.Slides.Diagrams.MinTextPt
+	fb.Diagrams.MaxTextPt = b.Slides.Diagrams.MaxTextPt
+	fb.Diagrams.MaxHeightMM = SlideFigureMaxHeightMM
+	return &fb, SlideWidthMM - 2*SlideMarginMM, nil
+}
 
 // ValidStyle reports whether s is a known style.
 func ValidStyle(s string) bool {
@@ -66,6 +98,11 @@ type Data struct {
 	DisplayBoldDir    string
 	DisplayBold       string
 
+	// Slides only.
+	SlideLogoFile string // the mark on the title and section slides
+	SlideArtFile  string // bled to their right edge; "" when there is none
+	SlideMarginMM float64
+
 	FallbackFont  string         // fonts.fallback; "" when there is nothing to redirect
 	FallbackChars []FallbackChar // the characters redirected to it
 
@@ -107,9 +144,11 @@ func Escape(s string) string {
 	return b.String()
 }
 
-// Render renders one embedded template by name ("preamble", "before", "after").
+// Render renders one embedded template by name ("preamble", "before", "after",
+// "slides"), with the fragments in partials.tex.tmpl available to it.
 func Render(name string, d *Data) (string, error) {
-	t, err := template.New(name+".tex.tmpl").Funcs(funcs).ParseFS(files, "templates/"+name+".tex.tmpl")
+	t, err := template.New(name+".tex.tmpl").Funcs(funcs).ParseFS(files,
+		"templates/"+name+".tex.tmpl", "templates/partials.tex.tmpl")
 	if err != nil {
 		return "", err
 	}

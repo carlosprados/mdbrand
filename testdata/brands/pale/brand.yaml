@@ -1,0 +1,9 @@
+# For traps/accent-pale.md: a light orange primary, 3.1:1 on white, and no
+# colors.accent, so accented words print in it.
+name: pale
+colors:
+  primary: "E8710A"
+  text: "3A3F44"
+  rule: "C0C0C0"
+fonts:
+  body: DejaVu Sans

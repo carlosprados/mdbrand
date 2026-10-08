@@ -33,10 +33,8 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 		return err
 	}
 
-	body := p.body
-	for i, f := range p.figs {
-		body = strings.Replace(body, f.Placeholder, p.results[i].Markdown(), 1)
-	}
+	slides := p.style == tex.Slides
+	body := p.pdfBody()
 
 	fallbackFont, fallbackChars, err := fallback(b, body, d.Meta)
 	if err != nil {
@@ -68,6 +66,11 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if s := d.Meta.Options.Signature; s != "" {
 		data.SignatureLines = strings.Split(s, "\n")
 	}
+	if slides {
+		if err := slideFiles(b, work, data); err != nil {
+			return err
+		}
+	}
 	if res, ok := b.ResolveDisplay(); ok {
 		data.DisplayFont = true
 		data.DisplayRegular, data.DisplayRegularDir = res.RegularFile, res.RegularDir
@@ -82,7 +85,11 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	}
 
 	for _, frag := range []string{"preamble", "before", "after"} {
-		s, err := tex.Render(frag, data)
+		name := frag
+		if slides && frag == "preamble" {
+			name = "slides"
+		}
+		s, err := tex.Render(name, data)
 		if err != nil {
 			return err
 		}
@@ -122,6 +129,9 @@ else would have told you. Fix the key or add the entry.`,
 	if err := spanProblems(pandocOut); err != nil {
 		return err
 	}
+	if err := accentContrast(b, pandocOut, slides, rep); err != nil {
+		return err
+	}
 
 	texPath := filepath.Join(work, stem+".tex")
 	texSrc, err := os.ReadFile(texPath)
@@ -149,6 +159,15 @@ else would have told you. Fix the key or add the entry.`,
 	if err := judgeLog(sc, o, rep); err != nil {
 		return err
 	}
+	if slides {
+		typeset, err := os.ReadFile(texPath)
+		if err != nil {
+			return err
+		}
+		if err := judgeFrames(sc.Frames, string(typeset)); err != nil {
+			return err
+		}
+	}
 	if err := checkTextLayer(work, stem+".pdf", md.String(), rep); err != nil {
 		return err
 	}
@@ -156,10 +175,43 @@ else would have told you. Fix the key or add the entry.`,
 	return nil
 }
 
+// pdfBody is the body with each figure's placeholder replaced by its include.
+func (p *prepared) pdfBody() string {
+	body := p.body
+	for i, f := range p.figs {
+		md := p.results[i].Markdown()
+		if p.style == tex.Slides {
+			// Both sides: given a width alone, pandoc's beamer writer adds
+			// height=\textheight,keepaspectratio, and a figure taller than the
+			// frame would shrink — labels and all — without a word.
+			md = p.results[i].MarkdownBox()
+		}
+		body = strings.Replace(body, f.Placeholder, md, 1)
+	}
+	return body
+}
+
+// slideFiles lands what only a deck draws in the work directory: the mark
+// for the cover slides when the bundle has a variant, and its artwork.
+func slideFiles(b *brand.Brand, work string, data *tex.Data) error {
+	data.SlideMarginMM = tex.SlideMarginMM
+	var err error
+	if b.Slides.Logo != "" {
+		if data.SlideLogoFile, err = prepareLogoFile(b, work, b.SlideLogoPath(), "logo-slide"); err != nil {
+			return err
+		}
+	}
+	data.SlideArtFile, err = prepareLogoFile(b, work, b.SlideArtPath(), "slide-art")
+	return err
+}
+
 // pandocArgs is the command line that turns the rewritten Markdown into LaTeX:
 // the brand's fragments, its page geometry and its body face.
 func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 	o, d, b, rep := p.o, p.d, p.b, p.rep
+	if p.style == tex.Slides {
+		return slideArgs(p, stem, inputs)
+	}
 
 	// The header's height depends on the shape of the logo that goes in it, so
 	// it is measured rather than assumed. See tex.HeaderHeightMM.
@@ -182,7 +234,7 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		return nil, err
 	}
 	geometry := fmt.Sprintf("margin=%s,headheight=%s,headsep=%s", b.Page.Margin, headHeight, b.Page.HeadSep)
-	filter, err := writeSpanFilter(p.work)
+	filter, err := writeSpanFilter(p.work, p.b)
 	if err != nil {
 		return nil, err
 	}
@@ -195,20 +247,68 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		"-V", "papersize=" + b.Page.PaperSize,
 		"-V", "geometry=" + geometry,
 		"-V", "linestretch=" + strconv.FormatFloat(b.Page.LineStretch, 'f', -1, 64),
-		// Without colorlinks pandoc's template sets hidelinks: a link worked and
-		// printed as body text, so no reader knew it was there. Variables and not
-		// a \hypersetup of our own, because the template's comes after the
-		// preamble and would undo it. The contents and citations stay in the
-		// text colour, footnote marks too (hyperfootnotes=false, in the
-		// preamble); links in the brand's link colour, as the .docx has them.
-		"-V", "colorlinks",
-		"-V", "urlcolor=brandLink", "-V", "linkcolor=brandLink", "-V", "filecolor=brandLink",
-		"-V", "citecolor=brandText", "-V", "toccolor=brandText",
 	}
+	args = append(args, linkVars...)
 
-	// The body font, if the machine can actually supply it. An absent family
-	// dies inside fontspec with an error naming XeLaTeX's font machinery and
-	// not the bundle, so it is settled here instead.
+	args, err = bodyFontArgs(b, rep, args)
+	if err != nil {
+		return nil, err
+	}
+	cites, err := citeArgs(d, o.Input, inputs)
+	if err != nil {
+		return nil, err
+	}
+	return append(args, cites...), nil
+}
+
+// linkVars colour the links. Without colorlinks pandoc's template sets
+// hidelinks: a link worked and printed as body text, so no reader knew it was
+// there. Variables and not a \hypersetup of our own, because the template's
+// comes after the preamble and would undo it. The contents and citations stay
+// in the text colour, footnote marks too (hyperfootnotes=false, in the
+// preamble); links in the brand's link colour, as the .docx has them.
+var linkVars = []string{
+	"-V", "colorlinks",
+	"-V", "urlcolor=brandLink", "-V", "linkcolor=brandLink", "-V", "filecolor=brandLink",
+	"-V", "citecolor=brandText", "-V", "toccolor=brandText",
+}
+
+// slideArgs is pandocArgs for a deck: beamer at 16:9, a frame per level-two
+// heading, and none of the page's geometry.
+func slideArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
+	o, d, b, rep := p.o, p.d, p.b, p.rep
+	filter, err := writeSpanFilter(p.work, p.b)
+	if err != nil {
+		return nil, err
+	}
+	args := []string{
+		stem + ".md", "-s", "-t", "beamer", "-o", stem + ".tex", filter,
+		// Fixed, not inferred: pandoc's own guess moves with the document's
+		// shape, and a deck whose one long section held no subheading would
+		// turn every paragraph into its own slide.
+		"--slide-level=2",
+		"--include-in-header=preamble.tex",
+		"--include-before-body=before.tex",
+		"--include-after-body=after.tex",
+		"--resource-path=" + p.work + ":" + filepath.Dir(mustAbs(o.Input)),
+		"-V", "aspectratio=169",
+	}
+	args = append(args, linkVars...)
+	args, err = bodyFontArgs(b, rep, args)
+	if err != nil {
+		return nil, err
+	}
+	cites, err := citeArgs(d, o.Input, inputs)
+	if err != nil {
+		return nil, err
+	}
+	return append(args, cites...), nil
+}
+
+// bodyFontArgs adds the body font, if the machine can actually supply it. An
+// absent family dies inside fontspec with an error naming XeLaTeX's font
+// machinery and not the bundle, so it is settled here instead.
+func bodyFontArgs(b *brand.Brand, rep *Report, args []string) ([]string, error) {
 	switch {
 	case b.BodyFontInstalled():
 		// mainfontoptions, not a \setmainfont of our own: pandoc's template
@@ -229,12 +329,7 @@ The document would not be the one the bundle describes, so this stops here
 rather than letting XeLaTeX substitute a face nobody chose. Install the family,
 or change fonts.body in the bundle to one this machine has.`, b.Name, b.Fonts.Body)
 	}
-
-	cites, err := citeArgs(d, o.Input, inputs)
-	if err != nil {
-		return nil, err
-	}
-	return append(args, cites...), nil
+	return args, nil
 }
 
 // noContextualAlternates turns off a face's calt. Inter's swaps ( ) [ ] { }
@@ -403,7 +498,18 @@ var (
 	confRe = regexp.MustCompile(`MDBRAND-CONFIDENTIAL-TOOWIDE over=([0-9.]+)pt`)
 	// And when the running title would run under the header's logo.
 	titleRe = regexp.MustCompile(`MDBRAND-TITLE-TOOWIDE over=([0-9.]+)pt`)
+	// A slide whose content runs past the bottom of its frame. beamer prints
+	// the rest over the footer, or off the page, and says so only here. The
+	// line is the frame's \end{frame} in the .tex, fragile frames included.
+	frameRe = regexp.MustCompile(`Overfull \\vbox \(([0-9.]+)pt too high\) detected at line (\d+)`)
 )
+
+// frameOver is one slide that does not fit: by how much, and where its frame
+// ends in the .tex, which is how its title is found.
+type frameOver struct {
+	Pt   float64
+	Line int
+}
 
 // overfull is one line the measure could not hold: how far past it went, and
 // enough of its text to find it in the Markdown. The count on its own is a
@@ -431,6 +537,7 @@ type scan struct {
 	HeadShortPt float64
 	ConfOverPt  float64
 	TitleOverPt float64
+	Frames      []frameOver
 }
 
 // scanLog pulls the things that matter out of a xelatex log.
@@ -497,8 +604,14 @@ func scanLog(log string) scan {
 	if m := titleRe.FindStringSubmatch(log); m != nil {
 		titleOverPt, _ = strconv.ParseFloat(m[1], 64)
 	}
+	var frames []frameOver
+	for _, m := range frameRe.FindAllStringSubmatch(log, -1) {
+		pt, _ := strconv.ParseFloat(m[1], 64)
+		line, _ := strconv.Atoi(m[2])
+		frames = append(frames, frameOver{Pt: pt, Line: line})
+	}
 	return scan{Holes: holes, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
-		ConfOverPt: confOverPt, TitleOverPt: titleOverPt}
+		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames}
 }
 
 // offendingText reassembles the line XeLaTeX prints just below an Overfull

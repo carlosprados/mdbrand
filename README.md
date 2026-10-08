@@ -25,11 +25,15 @@ The same document also builds as a Word file, `--to docx`, for the readers who
 need one — Google Docs included. The PDF stays the reference; the `.docx` keeps
 as much of it as Word can hold.
 
+And with `style: slides` the same Markdown, bundle and figures make a 16:9
+deck for a technical talk: `#` opens a section, `##` is a slide, and a slide
+that does not fit stops the build by its title. See [Slides](#slides).
+
 While you write, `mdbrand build informe.md --watch` rebuilds on every save, and
 `{{words}}` anywhere in the document prints its word count, by the
 International Baccalaureate's rules unless you choose others. The pages above
 come from the two documents in [`examples/`](examples/), built with no bundle
-at all.
+at all; `examples/deck.md` is the deck.
 
 ## Why it exists
 
@@ -48,6 +52,7 @@ same traps. They are now the tool's behaviour, not something to remember:
 | A chart whose data file cannot be opened: `vl2svg` warns, draws empty axes and exits 0 — and it looks for a fenced chart's `data/x.csv` in a temporary directory | Every `data.url` resolved against the document before rendering; a missing file or a remote URL stops the build by name |
 | A short table split by a page break: caption, header and one row at the foot of a page, the rest alone on the next | No break leaves fewer than three rows on either side, so a table of five rows or fewer moves whole; in Spanish it is a *Tabla*, not babel's *Cuadro* |
 | A dark-themed diagram landing on white paper because the SVG asked the reader's OS | Both d2 themes pinned light; no dark-mode rules injected into Vega output |
+| A slide with more on it than fits: beamer sets the rest over the footer or off the page, and exits 0 | `style: slides` reads the log and stops, naming each slide by its title and how many millimetres too tall it is |
 
 A build that would hand over a defective PDF stops instead, and says what to
 change:
@@ -495,13 +500,21 @@ ends up printed in the middle of a sentence.
 The deadline is [non-negotiable]{.accent}, and the rest is detail.
 ```
 
-`.accent` sets the words in the bundle's `colors.primary`, in the PDF and the
+`.accent` sets the words in the bundle's `colors.accent` — its primary, unless
+the bundle names a colour for words — in the PDF and the
 `.docx` alike — in the `.docx` as an *Accent* character style, with the colour
 also on each run, because Google Docs drops character styles when it imports.
 The palette is the brand's, not the author's: there is no hex colour. A span
 with `color=`, `colour=` or `style=` stops the build, and so does a
 `::: {.accent}` block, because pandoc drops those attributes on both outputs
 and the words would print black without a word of warning.
+
+**An accent is type, and type has to be read.** A primary is often drawn as
+rules and bullets, where a light orange is fine; set as words on white it can
+fall to 2.4:1. When a document uses `.accent`, its colour is measured against
+the page: under 4.5:1 a page warns and a deck stops, and both name a darker
+shade of the same hue that passes, for `colors.accent`. The primary stays as it
+is for everything else.
 
 Links are set in the bundle's `colors.link`, in both outputs, so a reader can
 see what is clickable; the contents, citations and footnote marks keep the
@@ -516,6 +529,7 @@ for text.
 | `report` | Cover page with logo, orange rule, title, subtitle, author and date; running header with logo from page 2; optional table of contents |
 | `note` | No cover: title block at the top of page 1, header from page 1. For internal notes |
 | `letter` | Letterhead, recipient block, place and date, subject, greeting; signature appended after the body |
+| `slides` | A 16:9 deck, 160 × 90 mm: title slide, a cover slide per section, a footer with the logo, the title and the slide number. See [Slides](#slides) |
 
 `letter` takes extra front matter:
 
@@ -536,6 +550,82 @@ footer of every page in a `report`, under the title and in every footer in a
 label too long to sit left of the page number stops the build. A `.docx` built
 alone cannot be measured, since Word sets it in the reader's fonts, so there
 a label over about 45 characters is a warning.
+
+### Slides
+
+![Four slides of examples/deck.md: the title slide, a diagram, a chart and two columns](assets/readme/slides.png)
+
+```yaml
+mdbrand:
+  style: slides
+```
+
+The same Markdown makes a deck, set by beamer through the same XeLaTeX run, so
+the missing-glyph check, the text layer, `{{data…}}`, `{{words}}`,
+`[words]{.accent}` and the figures all work as on the page. Its shape:
+
+- `#` opens a section, which gets a cover slide of its own; `##` is one slide.
+  Text under a `#` with no `##` becomes a slide titled by the section.
+- Columns and speaker notes are pandoc's:
+
+  ```markdown
+  :::: columns
+  ::: column
+  The argument
+  :::
+  ::: column
+  The example
+  :::
+  ::::
+
+  ::: notes
+  Never on the slide.
+  :::
+  ```
+
+- The title slide carries `title`, `subtitle`, `author`, `date`, `reference`,
+  `confidential` and the bundle's `footer`; `confidential` repeats in every
+  slide's footer, beside `short_title`.
+
+**Figures are sized for the frame, not the page**: 140 mm wide, 48 mm tall at
+most, and a legibility band of 8.5–14 pt. The floor is the 18 pt that a slide
+needs to be read across a room, on beamer's frame, which is shown at about
+twice the size of a 13.33 in PowerPoint slide. So a diagram for a slide is
+wide and low: `direction: right`, few edge labels, which widen a d2 layout
+more than anything else. 48 mm leaves room for the title and a caption and no
+more; a figure with a paragraph above it is the usual slide that does not fit.
+
+**A slide that does not fit stops the build**, by title and by how much:
+
+```
+mdbrand: 1 slide(s) run past the bottom of the frame, over the footer or off the page:
+    "Demasiadas viñetas"                      23.6 mm too tall
+```
+
+A deck is not a page, so `--to docx` refuses `style: slides`.
+
+The bundle's colours, type and logo make the deck. A `slides` section, all of
+it optional, adds what only a deck has:
+
+```yaml
+slides:
+  background: "222629"    # the title and section slides' ground; white without it
+  foreground: "F2EDF5"    # the type on it: held to 4.5:1 against the ground
+  logo: logo-dark.svg     # a variant of the mark for that ground; else the logo
+  art: waves.svg          # bled to the right edge of the title and section slides
+  logo_width: 12mm        # in every slide's footer
+  logo_width_cover: 34mm  # on the title slide
+  diagrams:
+    min_text_pt: 8.5
+    max_text_pt: 14
+```
+
+A projector in a lit room washes out what a monitor shows, so contrast is
+measured, not trusted: a `foreground` under 4.5:1 against the `background`
+stops a deck, and so does an SVG logo with any fill under 3:1 against it —
+`slides.logo` exists for that mark. A raster logo cannot be measured and earns
+a warning. A fault in this section stops only decks; `mdbrand brand validate`
+shows it for every bundle.
 
 ### Word and Google Docs
 
@@ -712,6 +802,7 @@ colors:
   text: "5D6266"               # cover and header type
   rule: "C8CCCE"               # hairlines
   link: "1565C0"               # optional; links — the primary when unset
+  accent: "AE6413"             # optional; [words]{.accent} — the primary when unset
 
 fonts:
   body: Inter                  # fontconfig family
@@ -744,6 +835,11 @@ diagrams:
   min_text_pt: 8
   max_text_pt: 12
   max_height_mm: 150
+
+slides:                        # optional; only style slides reads it — see Slides
+  background: "222629"
+  foreground: "F2EDF5"
+  art: waves.svg
 
 footer: ""                     # optional line under the cover rule
 ```
@@ -822,13 +918,23 @@ mdbrand already turns contextual alternates off, which is what fixed Inter's
 `(SD1)`; a face that still does it needs replacing in the bundle, and an issue
 with the document.
 
+**`slide(s) run past the bottom of the frame`** — a slide holds more than a
+16:9 frame does, and beamer would print the rest over the footer or off the
+page. Split it with another `##` heading, cut it, or give its figure less
+height: in a deck a figure takes up to 48 mm on its own, so one with a
+paragraph above it is the usual culprit.
+
 **`colour(s) asked for in a way that neither the PDF nor the .docx can print`**
 — a `color=` or `style=` attribute, which pandoc drops in silence. Write
 `[words]{.accent}`.
 
 **`would print its smallest label at 6.2pt`** — the figure cannot be placed
-legibly. Raise the font size in the source and lower the scale by the same
-factor, or split it.
+legibly. The message says what held it back and the fixes for that: a figure
+stopped by the height limit — the usual one on a slide — wants laying out wider
+than tall (`direction: right`); one stopped by the width wants a lower
+`scale=`, fewer edge labels, ELK, or splitting. A Vega-Lite chart wants larger
+label sizes in its spec. Do not declare a d2 `font-size` to force it: that
+takes the sizing away from mdbrand.
 
 **`renders a <foreignObject>`** — a d2 `|md|` block. Keep labels short and put
 the prose in the document.
