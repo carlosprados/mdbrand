@@ -9,6 +9,7 @@ import (
 type Meta struct {
 	Title, Subtitle, Author, Date string
 	Reference, Confidential       string
+	BrandFooter                   string // the bundle's line at the foot of the cover
 	To                            []string
 	Place, Greeting, Signature    string
 	TOC                           bool
@@ -69,27 +70,33 @@ func cover(m Meta, l Look) string {
 	if m.Subtitle != "" {
 		x.WriteString(para(pPr(0, 120, 0, "", "", "", false), run(l.Display, l.Text, 13, false, m.Subtitle)))
 	}
-	for _, s := range []string{m.Reference, m.Confidential} {
-		if s != "" {
-			x.WriteString(para(pPr(120, 0, 0, "", "", "", false), run(l.Display, l.Primary, SmallPt, true, s)))
-		}
+	if m.Reference != "" {
+		x.WriteString(para(pPr(120, 0, 0, "", "", "", false), run(l.Display, l.Text, 10, false, m.Reference)))
 	}
-	// Author and date at the foot, the first of them under a hairline.
-	var foot []string
-	for _, s := range []string{m.Author, m.Date} {
-		if s != "" {
+	// The foot, as the PDF sets it: author and date under a hairline, then the
+	// confidentiality label in the primary, then the bundle's own line.
+	type line struct {
+		text, color string
+		gapMM       float64
+	}
+	var foot []line
+	for _, s := range []line{
+		{m.Author, l.Text, 0}, {m.Date, l.Text, 1.2},
+		{m.Confidential, l.Primary, 2.5}, {m.BrandFooter, l.Text, 2.5},
+	} {
+		if s.text != "" {
 			foot = append(foot, s)
 		}
 	}
 	if len(foot) == 0 {
-		foot = []string{""}
+		foot = []line{{"", l.Text, 0}}
 	}
 	for i, s := range foot {
-		ppr := pPr(0, 0, 0, "", "", "", false)
+		ppr := pPr(twips(s.gapMM), 0, 0, "", "", "", false)
 		if i == 0 {
 			ppr = pPr(twips(80), 0, 0, "", l.Rule, "top", false)
 		}
-		r := run(l.Display, l.Text, SmallPt, false, s)
+		r := run(l.Display, s.color, SmallPt, false, s.text)
 		if i == len(foot)-1 {
 			r += pageBreak
 		}
@@ -165,6 +172,14 @@ func letterhead(m Meta, l Look) string {
 	}
 	if dateLine != "" {
 		x.WriteString(para(pPr(480, 0, 0, "", "", "", false), run(l.Display, l.Text, SmallPt, false, dateLine)))
+	}
+	// A letter has no footer in the .docx, so this is the label's one place.
+	if m.Confidential != "" {
+		before := 60
+		if dateLine == "" {
+			before = 480
+		}
+		x.WriteString(para(pPr(before, 0, 0, "", "", "", false), run(l.Display, l.Primary, SmallPt, false, m.Confidential)))
 	}
 	if m.Title != "" {
 		x.WriteString(para(pPr(480, 0, 0, "", "", "", false), run(l.Display, l.Text, 11, true, m.Title)))

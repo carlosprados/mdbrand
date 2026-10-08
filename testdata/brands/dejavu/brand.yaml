@@ -1,0 +1,15 @@
+# A bundle set entirely in DejaVu, which every fontconfig install carries, so
+# the .docx's glyph checks run on any machine, CI included. It exists for
+# traps/display-glyph.md: DejaVu Sans has no CJK.
+name: dejavu
+display_name: DejaVu
+colors:
+  primary: "1A5FB4"
+  text: "1B1B1B"
+  rule: "C0C0C0"
+fonts:
+  body: DejaVu Sans
+  office:
+    body: DejaVu Sans
+    display: DejaVu Sans
+    mono: DejaVu Sans Mono

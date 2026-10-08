@@ -11,6 +11,11 @@
 \definecolor{brandText}{HTML}{ {{- .Brand.Colors.Text -}} }
 \definecolor{brandRule}{HTML}{ {{- .Brand.Colors.Rule -}} }
 \definecolor{brandLink}{HTML}{ {{- .Brand.Colors.Link -}} }
+% With colorlinks on, hyperref paints a footnote mark in the link colour too,
+% and a bare coloured "1" reads as an accent. The note is at the foot of the
+% same page, so the jump is worth less than the mark looking like text.
+% Passed here because pandoc loads hyperref after this preamble.
+\PassOptionsToPackage{hyperfootnotes=false}{hyperref}
 
 % Tables: a full-size table in a 10pt document overflows the measure, and the
 % overflow is silent. footnotesize plus a little air is the shape that works.
@@ -100,6 +105,20 @@
   \fancyfoot[L]{\brandConfidential}%
 {{- end}}
   \renewcommand{\headrulewidth}{0.4pt}%
+}
+% The running title gets the whole \headwidth from fancyhdr and runs under the
+% logo, or wraps to a second line, without a word in the log. Measured in one
+% line against the logo's real box (an image, or the brand's name set as text)
+% plus 2mm; mdbrand stops the build on the marker and names short_title. 4mm
+% refused a title that read cleanly 2.3mm from the mark.
+\newsavebox\mdbrandHeadTitleBox
+\newsavebox\mdbrandHeadLogoBox
+\AtBeginDocument{%
+  \sbox\mdbrandHeadTitleBox{\brandDisplay\fontsize{8.5}{10}\selectfont\brandRunningTitle}%
+  \sbox\mdbrandHeadLogoBox{\brandLogo{ {{- .HeaderLogoWidth -}} }}%
+  \ifdim\dimexpr\wd\mdbrandHeadTitleBox+\wd\mdbrandHeadLogoBox+2mm\relax>\textwidth
+    \typeout{MDBRAND-TITLE-TOOWIDE over=\the\dimexpr\wd\mdbrandHeadTitleBox+\wd\mdbrandHeadLogoBox+2mm-\textwidth\relax}%
+  \fi
 }
 
 % Figures placed by mdbrand are already sized in millimetres; centre them and

@@ -44,6 +44,18 @@ type Look struct {
 // TextWidthMM is the measure between the margins.
 func (l Look) TextWidthMM() float64 { return l.PaperWMM - 2*l.MarginMM }
 
+// ConfidentialRoom is roughly how many characters of the confidentiality label
+// fit left of the centred page number. A .docx is set in the reader's fonts,
+// so nothing here can measure it: 0.6em a character is a generous average for
+// a sans, and the label clears half a three-digit number and 4mm, as the
+// PDF's does.
+func (l Look) ConfidentialRoom() int {
+	const mmPerPt = 25.4 / 72
+	digit := 0.55 * TinyPt * mmPerPt
+	room := l.TextWidthMM()/2 - 1.5*digit - 4
+	return int(room / (0.6 * TinyPt * mmPerPt))
+}
+
 // Sizes, in points. The body matches the PDF's article class at 10pt; the
 // rest follow its \small and \footnotesize steps.
 const (

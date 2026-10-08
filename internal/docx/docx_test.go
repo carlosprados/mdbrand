@@ -271,3 +271,13 @@ func TestStyledRunsAreColouredDirectly(t *testing.T) {
 		t.Errorf("out of schema order: %s", bad)
 	}
 }
+
+// The estimate must stay at or under what the PDF measures for the same page:
+// about 45 characters of a sans at A4 with 22mm margins. Above it, a label the
+// PDF refuses would pass the .docx without a word.
+func TestConfidentialRoomOnA4(t *testing.T) {
+	l := Look{PaperWMM: 210, MarginMM: 22}
+	if got := l.ConfidentialRoom(); got < 40 || got > 45 {
+		t.Errorf("room on A4 at 22mm = %d characters, want 40..45", got)
+	}
+}

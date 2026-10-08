@@ -246,9 +246,14 @@ mdbrand:
   brand: amplia
   style: report          # report | note | letter
   reference: "Oferta AS-2164-26"
-  confidential: "Confidencial"   # cover and the footer of every page
+  confidential: "Confidencial"   # every style; see below for where it prints
+  short_title: "Oferta Acme"     # optional; the running header, when the title is too long for it
 ---
 ```
+
+Everything under `mdbrand:` is checked: a key no option reads stops the build,
+naming the option it was probably meant to be. The rest of the front matter is
+pandoc's and passes through untouched.
 
 ```sh
 mdbrand new informe.md --title "…" --toc   # scaffold, front matter already right
@@ -499,9 +504,10 @@ with `color=`, `colour=` or `style=` stops the build, and so does a
 and the words would print black without a word of warning.
 
 Links are set in the bundle's `colors.link`, in both outputs, so a reader can
-see what is clickable; the contents and citations keep the text colour. A
-bundle without `colors.link` prints links in its primary, where they read as
-accents — and a light primary, an orange say, is also too pale for text.
+see what is clickable; the contents, citations and footnote marks keep the
+text colour. A bundle without `colors.link` prints links in its primary, where
+they read as accents — and a light primary, an orange say, is also too pale
+for text.
 
 ### Styles
 
@@ -523,6 +529,13 @@ mdbrand:
     Carlos Javier Prados Hijón
     Amplía Soluciones S.L.
 ```
+
+`confidential` prints in every style, in the primary: on the cover and in the
+footer of every page in a `report`, under the title and in every footer in a
+`note`, and under the date in a `letter`, whose first page has no footer. A
+label too long to sit left of the page number stops the build. A `.docx` built
+alone cannot be measured, since Word sets it in the reader's fonts, so there
+a label over about 45 characters is a warning.
 
 ### Word and Google Docs
 

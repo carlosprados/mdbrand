@@ -10,7 +10,9 @@ bibliography: refs.bib
 mdbrand:
   brand: none
   style: report
+  reference: "Ref. MDB-0001"
   confidential: "Confidential & internal"
+  short_title: "Torture, short"
 ---
 
 # What this is
@@ -142,6 +144,10 @@ A link to [the repository](https://github.com/carlosprados/mdbrand) and one
 back to [the code blocks](#code-blocks). Both worked and printed as body text,
 because pandoc's template hides links unless told otherwise: nobody reading the
 page could tell they were there.
+
+A footnote mark beside them must not look like one.[^mark]
+
+[^mark]: colorlinks painted this mark in the link colour.
 
 # Citations
 

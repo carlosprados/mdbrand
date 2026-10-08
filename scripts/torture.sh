@@ -58,6 +58,9 @@ if [ -f "$log" ]; then
 	grep -qF 'urlcolor={brandLink}' "$work/torture/torture.tex" \
 		&& ok "links are coloured, not hidden" \
 		|| bad "the .tex does not colour links — pandoc's hidelinks is back"
+	grep -qF 'hyperfootnotes=false' "$work/torture/torture.tex" \
+		&& ok "footnote marks keep the text colour" \
+		|| bad "footnote marks are painted as links"
 else
 	bad "no XeLaTeX log at $log"
 fi
@@ -110,6 +113,19 @@ if command -v pdftotext >/dev/null; then
 	printf '%s' "$flat" | grep -qF "(SD1) and (Fox Business, 2026) and [ABC]" \
 		&& ok "brackets beside capitals copy as themselves" \
 		|| bad "brackets beside capitals do not survive text extraction"
+
+	# The cover, top to bottom: reference under the subtitle, then author and
+	# date at the foot, then the label. The .docx is held to the same order.
+	pdftotext -f 1 -l 1 "$work/torture.pdf" - 2>/dev/null | tr -s '[:space:]' ' ' \
+		| grep -qF "Ref. MDB-0001 mdbrand September 2026 Confidential & internal" \
+		&& ok "the cover sets reference, author, date and label in order" \
+		|| bad "the cover's reference, author, date and label are out of order"
+
+	# The running header prints short_title; the cover keeps the full title.
+	last="$(pdftotext -f "$pages" -l "$pages" "$work/torture.pdf" - 2>/dev/null)"
+	printf '%s' "$last" | grep -qF "Torture, short" \
+		&& ok "the running header prints short_title" \
+		|| bad "the running header does not print short_title"
 
 	# The cover's confidentiality label repeats in every footer: the last page
 	# is the one furthest from the cover, so it is the witness.
@@ -231,7 +247,9 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	pages="$(pdfinfo "$work/letter.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
 	[ "${pages:-0}" -eq 1 ] && ok "one page" || bad "the letter takes ${pages:-no} pages, want 1"
 	text="$(pdftotext "$work/letter.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
-	for phrase in "ACME Industrial S.A." "Madrid, 3 de octubre de 2026" "Estimados señores:" "Ana Ruiz Sánchez"; do
+	# The letterhead page has no footer: the label lived nowhere on a
+	# one-page letter.
+	for phrase in "ACME Industrial S.A." "Madrid, 3 de octubre de 2026" "Confidencial" "Estimados señores:" "Ana Ruiz Sánchez"; do
 		printf '%s' "$text" | grep -qF -- "$phrase" && ok "prints \"$phrase\"" || bad "the letter lacks \"$phrase\""
 	done
 fi
@@ -312,7 +330,15 @@ if command -v soffice >/dev/null && command -v pdffonts >/dev/null && command -v
 		|| bad "data.docx: the Sedes table is split across a page break"
 	pages="$(pdfinfo "$work/lo/letter.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
 	[ "${pages:-0}" -eq 1 ] && ok "letter.docx: one page" || bad "letter.docx takes ${pages:-no} pages, want 1"
+	pdftotext "$work/lo/letter.pdf" - 2>/dev/null | grep -qF "Confidencial" \
+		&& ok "letter.docx: the confidentiality label prints" \
+		|| bad "letter.docx: the confidentiality label is nowhere in the letter"
 	text="$(pdftotext "$work/lo/torture.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	# The .docx cover put reference and label together under the subtitle, in
+	# bold primary; the PDF sets the label at the foot.
+	printf '%s' "$text" | grep -qF "Ref. MDB-0001 mdbrand September 2026 Confidential & internal" \
+		&& ok "torture.docx: the cover follows the PDF's order" \
+		|| bad "torture.docx: the cover's reference, author, date and label are out of the PDF's order"
 	pages="$(pdfinfo "$work/lo/torture.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
 	pdftotext -f "$pages" -l "$pages" "$work/lo/torture.pdf" - 2>/dev/null | grep -qF "Confidential & internal" \
 		&& ok "torture.docx: the confidentiality label prints in the last page's footer" \
@@ -345,7 +371,11 @@ traps=(
 	"pdf-picture.md|fail|a .docx cannot hold one|--to docx --brand none"
 	"span-colour.md|fail|[words]{.accent}"
 	"span-colour.md|fail|[words]{.accent}|--to docx --brand none"
+	"display-glyph.md|fail|display face (fonts.office.display), has no glyph|--to docx --brands-dir $root/testdata/brands"
 	"confidential-too-long.md|fail|too wide for the footer"
+	"confidential-too-long.md|ok|the .docx footer fits about|--to docx --brand none"
+	"title-too-long.md|fail|Set mdbrand.short_title"
+	"unknown-option.md|fail|did you mean confidential?"
 )
 
 echo
@@ -369,6 +399,18 @@ for t in "${traps[@]}"; do
 		printf '%s\n' "$out" | sed 's/^/        /'
 	fi
 done
+
+# A format that fails publishes nothing, not even the formats before it: a new
+# PDF beside the last build's .docx is a pair that no longer matches.
+mkdir -p "$work/atomic"
+cp -r "$root/testdata/traps/pdf-picture.md" "$root/testdata/traps/pictures" "$work/atomic/"
+if "$bin" build "$work/atomic/pdf-picture.md" --to pdf,docx --brand none >/dev/null 2>&1; then
+	bad "pdf-picture.md --to pdf,docx: exit 0, want the build to stop"
+elif [ -e "$work/atomic/pdf-picture.pdf" ]; then
+	bad "pdf-picture.md --to pdf,docx failed on the .docx but published the PDF"
+else
+	ok "pdf-picture.md --to pdf,docx publishes nothing when the .docx fails"
+fi
 
 echo
 if [ $failures -eq 0 ]; then

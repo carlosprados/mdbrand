@@ -48,10 +48,14 @@ mdbrand:
   brand: amplia                   # bundle name; `none` for unbranded
   style: report                   # report | note | letter
   reference: "Oferta AS-2164-26"  # report, optional
-  confidential: "Confidencial"    # report, optional; cover and every page footer
+  confidential: "Confidencial"    # optional; report: cover + footers, note: title + footers, letter: under the date
+  short_title: "Oferta Acme"      # optional; the running header's title. A title too long to sit beside the logo stops the build naming it
   formats: [pdf, docx]            # optional; default pdf. --to overrides
 ---
 ```
+
+A key under `mdbrand:` that no option reads stops the build with a "did you
+mean" — a misspelt option used to be dropped in silence.
 
 - `report` — cover with logo, header with logo from page 2, optional ToC.
 - `note` — no cover; title block plus header from page 1. Internal notes.
