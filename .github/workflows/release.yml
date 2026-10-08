@@ -20,7 +20,7 @@ jobs:
   # cut from a commit CI never saw, and this is the check that a published
   # binary still produces a correct PDF.
   document:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # Every tag, and the version stamped as a release stamps it: a bundle's
       # requires: is compared with it, and an unstamped build is "dev", which
@@ -42,7 +42,7 @@ jobs:
 
   release:
     needs: document
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
