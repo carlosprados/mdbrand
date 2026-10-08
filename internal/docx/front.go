@@ -166,6 +166,14 @@ func letterhead(m Meta, l Look) string {
 	if dateLine != "" {
 		x.WriteString(para(pPr(480, 0, 0, "", "", "", false), run(l.Display, l.Text, SmallPt, false, dateLine)))
 	}
+	// A letter has no footer in the .docx, so this is the label's one place.
+	if m.Confidential != "" {
+		before := 60
+		if dateLine == "" {
+			before = 480
+		}
+		x.WriteString(para(pPr(before, 0, 0, "", "", "", false), run(l.Display, l.Primary, SmallPt, false, m.Confidential)))
+	}
 	if m.Title != "" {
 		x.WriteString(para(pPr(480, 0, 0, "", "", "", false), run(l.Display, l.Text, 11, true, m.Title)))
 	}

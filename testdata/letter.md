@@ -6,6 +6,7 @@ lang: es-ES
 mdbrand:
   brand: none
   style: letter
+  confidential: "Confidencial"
   to:
     - "ACME Industrial S.A."
     - "Calle Mayor, 1"

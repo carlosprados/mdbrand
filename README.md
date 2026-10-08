@@ -246,7 +246,7 @@ mdbrand:
   brand: amplia
   style: report          # report | note | letter
   reference: "Oferta AS-2164-26"
-  confidential: "Confidencial"   # cover and the footer of every page
+  confidential: "Confidencial"   # every style; see below for where it prints
 ---
 ```
 
@@ -524,6 +524,11 @@ mdbrand:
     Carlos Javier Prados Hijón
     Amplía Soluciones S.L.
 ```
+
+`confidential` prints in every style, in the primary: on the cover and in the
+footer of every page in a `report`, under the title and in every footer in a
+`note`, and under the date in a `letter`, whose first page has no footer. A
+label too long to sit left of the page number stops the build.
 
 ### Word and Google Docs
 

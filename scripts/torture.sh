@@ -234,7 +234,9 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	pages="$(pdfinfo "$work/letter.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
 	[ "${pages:-0}" -eq 1 ] && ok "one page" || bad "the letter takes ${pages:-no} pages, want 1"
 	text="$(pdftotext "$work/letter.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
-	for phrase in "ACME Industrial S.A." "Madrid, 3 de octubre de 2026" "Estimados señores:" "Ana Ruiz Sánchez"; do
+	# The letterhead page has no footer: the label lived nowhere on a
+	# one-page letter.
+	for phrase in "ACME Industrial S.A." "Madrid, 3 de octubre de 2026" "Confidencial" "Estimados señores:" "Ana Ruiz Sánchez"; do
 		printf '%s' "$text" | grep -qF -- "$phrase" && ok "prints \"$phrase\"" || bad "the letter lacks \"$phrase\""
 	done
 fi
@@ -315,6 +317,9 @@ if command -v soffice >/dev/null && command -v pdffonts >/dev/null && command -v
 		|| bad "data.docx: the Sedes table is split across a page break"
 	pages="$(pdfinfo "$work/lo/letter.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
 	[ "${pages:-0}" -eq 1 ] && ok "letter.docx: one page" || bad "letter.docx takes ${pages:-no} pages, want 1"
+	pdftotext "$work/lo/letter.pdf" - 2>/dev/null | grep -qF "Confidencial" \
+		&& ok "letter.docx: the confidentiality label prints" \
+		|| bad "letter.docx: the confidentiality label is nowhere in the letter"
 	text="$(pdftotext "$work/lo/torture.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
 	pages="$(pdfinfo "$work/lo/torture.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
 	pdftotext -f "$pages" -l "$pages" "$work/lo/torture.pdf" - 2>/dev/null | grep -qF "Confidential & internal" \

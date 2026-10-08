@@ -67,6 +67,11 @@
 {{- end}}
 {\brandDisplay\fontsize{10}{14}\selectfont\color{brandText}
 {{- if .Place}}{{texEscape .Place}}{{if .Date}}, {{end}}{{end}}{{if .Date}}{{texEscape .Date}}{{end}}\par}
+% The letterhead page has no footer, so a one-page letter would carry the label
+% nowhere: it goes under the date.
+{{if .Confidential -}}
+\vspace{1.5mm}{\brandDisplay\fontsize{10}{14}\selectfont\color{brandPrimary}{{texEscape .Confidential}}\par}
+{{- end}}
 \vspace{10mm}
 {{if .Title -}}
 {\brandDisplayBold\fontsize{12}{16}\selectfont\color{brandText}{{texEscape .Title}}\par}
