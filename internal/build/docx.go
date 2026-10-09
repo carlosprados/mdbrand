@@ -120,7 +120,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	args := []string{
 		mdName, "-o", stem + ".pandoc.docx", filter,
 		"--reference-doc=reference.docx",
-		"--resource-path=" + work + ":" + filepath.Dir(mustAbs(o.Input)),
+		resourcePath(work, o.Input),
 		// The table of contents is the cover's to place, after the cover.
 		"-M", "toc=false",
 	}

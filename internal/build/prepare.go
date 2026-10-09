@@ -173,3 +173,10 @@ func (p *prepared) fill(inputs *[]string) error {
 	p.body, p.figs = body, figs
 	return nil
 }
+
+// resourcePath is pandoc's --resource-path value. pandoc splits it on the
+// platform's list separator, and on Windows that is ';': a hard-coded ':' also
+// cut every drive letter off its path, so C:\doc became "C" and "\doc".
+func resourcePath(work, input string) string {
+	return "--resource-path=" + work + string(os.PathListSeparator) + filepath.Dir(mustAbs(input))
+}
