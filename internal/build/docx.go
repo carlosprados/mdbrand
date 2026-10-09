@@ -12,6 +12,7 @@ import (
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/docx"
+	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/imgsize"
 	"github.com/carlosprados/mdbrand/internal/mdtext"
 	"github.com/carlosprados/mdbrand/internal/run"
@@ -208,6 +209,9 @@ func docxLogoFile(src, work, stem string) (string, error) {
 	case ".png":
 		return name, copyFile(src, filepath.Join(work, name))
 	case ".svg":
+		if err := fig.RefuseMasksIn(src, "logo "+filepath.Base(src)); err != nil {
+			return "", err
+		}
 		// Wide enough for the cover at print resolution.
 		return name, run.Quiet(work, "rsvg-convert", "-w", "1200", "--keep-aspect-ratio", "-o", name, src)
 	default:

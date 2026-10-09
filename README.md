@@ -52,6 +52,7 @@ same traps. They are now the tool's behaviour, not something to remember:
 | `pdflatex` chokes on the Unicode these documents are full of | XeLaTeX always; the engine is not a flag |
 | A font without the glyph prints **nothing**, and only the LaTeX log knows (`DejaVu Serif` has no `☐` or `⏱`; Latin Modern no `↔` or `≈`) | mdbrand runs XeLaTeX itself, reads the log, and **fails** naming each missing character and font |
 | A d2 `\|md\|` block becomes a `<foreignObject>` and `rsvg-convert` drops it silently | Detected before rendering; the build stops and says why |
+| `rsvg-convert` 2.40, the usual Windows build, prints an SVG `<mask>` (every labelled d2 connection) as a black box | The build stops naming the version and the fix; `mdbrand doctor` marks it `TOO OLD` |
 | d2's own PDF export downloads a Playwright driver from URLs that 404 | Never used: source → SVG → `rsvg-convert` → PDF |
 | `vl2pdf` writes points equal to the spec's pixels, so charts come out 33% off the SVG route | Same SVG route for both, so 1px = 0.75pt everywhere |
 | A diagram scaled to fit takes its text down with it — under ~5 cm tall on A4 nothing is readable | Every figure is placed inside a legibility band and the build fails, with the fix, if it cannot be |
@@ -174,6 +175,11 @@ npm i -g vega-cli@latest vega-lite       # https://vega.github.io/vega-lite/ (ve
 # rsvg-convert: MSYS2 -> pacman -S mingw-w64-x86_64-librsvg
 #   MSYS2: https://www.msys2.org  ·  librsvg: https://gitlab.gnome.org/GNOME/librsvg
 ```
+
+Take `rsvg-convert` from MSYS2, not the 2.40 build most other Windows installs
+carry: 2.40 prints every SVG `<mask>` as a black box, and d2 masks each
+labelled connection. A build stops on it, and `mdbrand doctor` marks it
+`TOO OLD`.
 
 A bundle written on Linux usually travels unchanged: `fonts.display.path` is a
 list of candidates, relative ones resolve inside the bundle, and absolute ones

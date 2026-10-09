@@ -340,7 +340,9 @@ install command and the project's page.
 
 - Always: [pandoc](https://pandoc.org), XeLaTeX from
   [TeX Live](https://tug.org/texlive/) (beamer and pgf for decks), and
-  [rsvg-convert](https://gitlab.gnome.org/GNOME/librsvg).
+  [rsvg-convert](https://gitlab.gnome.org/GNOME/librsvg), 2.41 or later: 2.40,
+  the usual Windows build, prints d2's masks as black boxes and the build stops
+  (exit 3). On Windows take MSYS2's: `pacman -S mingw-w64-x86_64-librsvg`.
 - Documents with figures: [d2](https://d2lang.com) for diagrams;
   [vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) and
   vega-lite for charts — 6.4.0 or later in a decimal-comma language.

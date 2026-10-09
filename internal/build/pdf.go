@@ -13,6 +13,7 @@ import (
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/doc"
 	"github.com/carlosprados/mdbrand/internal/exit"
+	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/imgsize"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/carlosprados/mdbrand/internal/tex"
@@ -454,6 +455,9 @@ func prepareLogoFile(b *brand.Brand, work, src, stem string) (string, error) {
 		// rsvg-convert runs with the work directory as its cwd, so it is given
 		// the bare name: handing it the joined path made `--work ./out` write to
 		// out/out/ and fail, because the path was resolved twice.
+		if err := fig.RefuseMasksIn(src, "logo "+filepath.Base(src)); err != nil {
+			return "", err
+		}
 		out := filepath.Join(work, stem+".pdf")
 		if err := run.Quiet(work, "rsvg-convert", "-f", "pdf", "-o", stem+".pdf", src); err != nil {
 			return "", err

@@ -93,6 +93,9 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64, ds 
   In d2 this comes from a |md| … | block. Keep diagram labels short and put the
   prose in the document body`, filepath.Base(f.SrcPath))
 	}
+	if err := RefuseMasks(src, filepath.Base(f.SrcPath)); err != nil {
+		return nil, err
+	}
 
 	natW, natH, unit, err := svgSize(src)
 	if err != nil {
