@@ -523,6 +523,33 @@ else
 	ok "pdf-picture.md --to pdf,docx publishes nothing when the .docx fails"
 fi
 
+# rsvg-convert 2.40 cannot be installed here, so one that reports 2.40.20 is put
+# first on the PATH, passing every real conversion through. Exit 3: the fix is
+# the machine's, not the document's.
+mkdir -p "$work/rsvg-old"
+real_rsvg="$(command -v rsvg-convert)"
+cat >"$work/rsvg-old/rsvg-convert" <<SHIM
+#!/bin/sh
+[ "\$1" = --version ] && { echo "rsvg-convert version 2.40.20"; exit 0; }
+exec "$real_rsvg" "\$@"
+SHIM
+chmod +x "$work/rsvg-old/rsvg-convert"
+out="$(PATH="$work/rsvg-old:$PATH" "$bin" build "$root/testdata/traps/rsvg-old.md" -o "$work/rsvg-old.pdf" 2>&1)"
+status=$?
+if [ $status -eq 3 ] && printf '%s\n' "$out" | grep -qF "mingw-w64-x86_64-librsvg"; then
+	ok "rsvg-old.md stops with exit 3 under rsvg-convert 2.40, naming MSYS2's librsvg"
+else
+	bad "rsvg-old.md under rsvg-convert 2.40: exit $status. It said:"
+	printf '%s\n' "$out" | sed 's/^/        /'
+fi
+# doctor exits non-zero here, by design: read its output before grepping it.
+out="$(PATH="$work/rsvg-old:$PATH" "$bin" doctor 2>&1)"
+if printf '%s\n' "$out" | grep -qF "TOO OLD rsvg-convert"; then
+	ok "doctor marks rsvg-convert 2.40 TOO OLD"
+else
+	bad "doctor does not mark rsvg-convert 2.40 TOO OLD"
+fi
+
 echo
 if [ $failures -eq 0 ]; then
 	echo "all clear"
