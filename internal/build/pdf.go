@@ -74,8 +74,11 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	}
 	if res, ok := b.ResolveDisplay(); ok {
 		data.DisplayFont = true
-		data.DisplayRegular, data.DisplayRegularDir = res.RegularFile, res.RegularDir
-		data.DisplayBold, data.DisplayBoldDir = res.BoldFile, res.BoldDir
+		// fontspec's Path= is TeX source: a Windows path with backslashes breaks
+		// it (\, and \] are control symbols), so hand it forward slashes, which
+		// TeX accepts on every platform. The trailing separator is kept.
+		data.DisplayRegular, data.DisplayRegularDir = res.RegularFile, filepath.ToSlash(res.RegularDir)
+		data.DisplayBold, data.DisplayBoldDir = res.BoldFile, filepath.ToSlash(res.BoldDir)
 		if res.BoldIsRegular {
 			rep.Warnings = append(rep.Warnings, fmt.Sprintf(
 				"display font: %s not found, so titles use %s",
