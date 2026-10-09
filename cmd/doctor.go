@@ -9,6 +9,7 @@ import (
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/exit"
+	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/spf13/cobra"
 )
@@ -17,6 +18,7 @@ type check struct {
 	name, hint string
 	required   bool
 	ok         bool
+	old        bool // installed, but a version that prints defects
 	detail     string
 }
 
@@ -55,6 +57,7 @@ func toolChecks() []check {
 	bin("pandoc", "apt install pandoc  ·  https://pandoc.org/installing.html", true)
 	bin("xelatex", "apt install texlive-xetex  ·  https://tug.org/texlive/", true)
 	bin("rsvg-convert", "apt install librsvg2-bin  ·  https://gitlab.gnome.org/GNOME/librsvg", true)
+	rsvgVersion(&checks[len(checks)-1])
 	bin("d2", "curl -fsSL https://d2lang.com/install.sh | sh -s --  ·  https://d2lang.com/tour/install", false)
 	bin("vl2svg", "npm i -g vega-cli@latest vega-lite  ·  https://vega.github.io/vega-lite/", false)
 	// A chart in a language with a decimal comma goes through these two:
@@ -63,6 +66,24 @@ func toolChecks() []check {
 	bin("vg2svg", "npm i -g vega-cli@latest (6.4.0 or later)  ·  https://vega.github.io/vega/usage/#cli", false)
 	bin("pdftotext", "apt install poppler-utils (brew install poppler)  ·  https://poppler.freedesktop.org/", false)
 	return checks
+}
+
+// rsvgVersion appends the version to an installed rsvg-convert and fails one
+// that draws every SVG <mask> as a black box: the 2.40 Windows installs carry.
+func rsvgVersion(c *check) {
+	if !c.ok {
+		return
+	}
+	out, err := fig.RsvgVersion()
+	major, minor, ok := fig.ParseRsvgVersion(out)
+	if err != nil || !ok {
+		return
+	}
+	c.detail += fmt.Sprintf(" (%d.%d)", major, minor)
+	if !fig.RsvgDrawsMasks(major, minor) {
+		c.ok, c.old = false, true
+		c.hint = fmt.Sprintf("%d.%d prints d2's masks as black boxes; ", major, minor) + fig.RsvgFix
+	}
 }
 
 // latexChecks are the LaTeX files a build loads. A missing .sty is a build
@@ -108,9 +129,12 @@ func printChecks(out io.Writer, checks []check) int {
 	for _, c := range checks {
 		mark, label := "ok  ", ""
 		if !c.ok {
-			if c.required {
+			switch {
+			case c.old:
+				mark, fails = "TOO OLD", fails+1
+			case c.required:
 				mark, fails = "MISSING", fails+1
-			} else {
+			default:
 				mark = "absent"
 			}
 			label = "   -> " + c.hint
