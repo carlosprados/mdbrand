@@ -51,12 +51,17 @@ lint:
 # gofmt, vet, lint and the unit tests
 check: fmt vet lint test
 
-# Uses the unbranded default bundle, so it proves the tool works on a clean
-# machine with no brand set up.
-
-# Build examples/demo.md with --brand none
+# Writes every example out of the binary, as an agent would get it, and builds
+# it there. They all say brand: none, so this proves the tool works on a clean
+# machine with no bundle set up, and an example that stops building fails CI.
 example: build
-    ./{{bin}} build examples/demo.md --brand none -o examples/demo.pdf
+    #!/usr/bin/env bash
+    set -euo pipefail
+    out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT
+    for name in $(./{{bin}} example | awk '/^[a-z]+  /{print $1}'); do
+        ./{{bin}} example "$name" "$out/$name" >/dev/null
+        ./{{bin}} build "$out/$name/$name.md" -q
+    done
 
 # The unit tests cover the arithmetic; this covers the artifact, which is where
 # every defect this tool has shipped actually lived. Needs the full toolchain.
@@ -74,4 +79,4 @@ shots: build
 
 # Remove the binary and the built example
 clean:
-    rm -f {{bin}} examples/demo.pdf
+    rm -f {{bin}} examples/*/*.pdf examples/*/*.docx

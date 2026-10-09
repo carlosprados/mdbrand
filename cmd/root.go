@@ -50,8 +50,11 @@ The brand lives in a bundle outside this tool — a directory with a brand.yaml,
 a logo and colours — so the same document can be published under a different
 identity by changing one word.
 
+  mdbrand example                      worked examples to start from: report, note, letter,
+                                       data, essay, talk with speaker notes
+  mdbrand example carta                write one out, then build it
   mdbrand build report.md              build using the document's own front matter
-  mdbrand new report.md                scaffold a document with the front matter filled in
+  mdbrand new report.md                a bare scaffold, when no example is near
   mdbrand doctor                       check the toolchain and say how to fix it
   mdbrand brand list                   what bundles are installed
   mdbrand brand validate amplia        diagnose a bundle before it bites
@@ -89,7 +92,7 @@ Front matter drives everything, so a build needs no flags:
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return exit.AsUsage(err) })
 	cobra.OnInitialize(initConfig)
 
-	root.AddCommand(buildCmd(), newCmd(), doctorCmd(), brandCmd(), diagramsCmd(), dataCmd(), skillCmd(), configCmd(), versionCmd())
+	root.AddCommand(buildCmd(), newCmd(), exampleCmd(), doctorCmd(), brandCmd(), diagramsCmd(), dataCmd(), skillCmd(), configCmd(), versionCmd())
 	return root
 }
 

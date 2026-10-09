@@ -4,6 +4,7 @@ subtitle: "Monografía · {{words}} palabras"
 author: "mdbrand"
 date: "Septiembre de 2026"
 lang: es-ES
+bibliography: refs.bib            # resolved against this file; turns citations on
 mdbrand:
   brand: none
   style: report
@@ -19,7 +20,7 @@ compilación la vuelve a contar.[^criterio]
 Constrúyelo con:
 
 ```sh
-mdbrand build examples/ensayo.md --watch
+mdbrand build ensayo.md --watch
 ```
 
 Con `--watch`, cada vez que guardes el fichero se vuelve a generar el PDF, y la
@@ -28,8 +29,9 @@ cifra de la portada cambia con el texto.
 # Desarrollo
 
 Un plano técnico no es una fotografía. Es un lenguaje con su gramática: cotas,
-vistas, secciones y símbolos normalizados que un ingeniero lee de un vistazo y
-que una máquina tiene que aprender a interpretar.
+vistas, secciones y símbolos normalizados que un ingeniero lee de un vistazo
+[@ching2015, p. 12] y que una máquina tiene que aprender a interpretar, como
+aprende a reconocer imágenes [@lecun2015].
 
 > Un dibujo es un argumento: dice qué se va a construir y por qué así.
 
@@ -50,6 +52,15 @@ la prosa: párrafos, listas, títulos, citas textuales y notas con contenido.
 Si el texto crece, la portada lo dice sin que nadie tenga que recontar. Si el
 límite es de 4.000 palabras, conviene dejar margen: dos procesadores de texto
 nunca cuentan exactamente igual.
+
+Las citas tampoco cuentan: `[@ching2015, p. 12]` se resuelve contra
+`refs.bib`, y una clave que no esté en él para el build en vez de imprimir
+`(clave?)` en mitad de una frase.
+
+# Referencias {.nocount}
+
+::: {#refs}
+:::
 
 # Apéndice {.nocount}
 

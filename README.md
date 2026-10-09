@@ -1,9 +1,15 @@
 # mdbrand
 
-Markdown in, branded A4 PDF out, in one command — or, with `style: slides`, a
-branded 16:9 deck for a technical talk.
+Markdown in, branded A4 PDF out, in one command — reports, notes and letters,
+or, with `style: slides`, a branded 16:9 deck for a technical talk and its
+speaker notes.
 
-![The demo's cover and first page, and the essay's cover with its word count](assets/readme/pages.png)
+It is built to be driven by an AI agent first — Claude Code writes the
+Markdown, mdbrand turns it into the document and refuses, naming the fix,
+whatever would print wrong — and by people as well. Its help text, its agent
+skill and its worked examples ship inside the binary.
+
+![The report example's cover and first page, and the essay's cover with its word count](assets/readme/pages.png)
 
 ```console
 $ mdbrand build informe.md
@@ -33,8 +39,8 @@ that does not fit stops the build by its title. See [Slides](#slides).
 While you write, `mdbrand build informe.md --watch` rebuilds on every save, and
 `{{words}}` anywhere in the document prints its word count, by the
 International Baccalaureate's rules unless you choose others. The pages above
-come from the two documents in [`examples/`](examples/), built with no bundle
-at all; `examples/deck.md` is the deck.
+come from two of the worked examples, built with no bundle at all; start any
+document from the nearest one with `mdbrand example`.
 
 ## Why it exists
 
@@ -209,25 +215,39 @@ pdftoppm -f 1 -l 1 -r 110 -png informe.pdf page   # page-1.png
 When you have an identity of your own, one word switches the document over:
 `brand: none` becomes `brand: amplia`. Nothing else in the document changes.
 
-Three worked examples live in [`examples/`](examples/), and all build on a bare
-machine:
+### Worked examples
 
-| File | What it shows |
-|---|---|
-| [`demo.md`](examples/demo.md) | A `report` with a table of contents, an inline D2 diagram and a Vega-Lite chart sized for paper, code blocks and a table |
-| [`ensayo.md`](examples/ensayo.md) | An essay with a word limit: `{{words}}` on the cover, an appendix left out of the count with `{.nocount}` |
-| [`deck.md`](examples/deck.md) | A `slides` deck: title and section slides, a diagram and a chart sized for the frame, two columns and speaker notes |
+Six worked examples travel inside the binary, one for each kind of document,
+and every one builds on a bare machine. Start from the nearest instead of an
+empty file:
 
 ```sh
-mdbrand build examples/ensayo.md --watch    # and edit it: the cover keeps count
+mdbrand example                  # list them
+mdbrand example carta            # write carta.md here
+mdbrand example datos ./oferta   # write datos.md and its data/ into ./oferta
+mdbrand build carta.md
+```
+
+| Example | For | What it shows |
+|---|---|---|
+| [`informe`](examples/informe/informe.md) | A report or proposal | `report`: cover with reference and confidential label, table of contents, D2 diagram, chart, table, code |
+| [`nota`](examples/nota/nota.md) | An internal note, also for Word or Google Docs | `note` with `formats: [pdf, docx]`: title block, header from page 1, a diagram and a table in both |
+| [`carta`](examples/carta/carta.md) | A formal letter | `letter`: letterhead, recipient, place and date, subject, greeting, signature |
+| [`datos`](examples/datos/datos.md) | Numbers kept in data files | `{{data…}}` values, `table` blocks filtered, sorted, totalled and transposed, a CSV linked whole, a chart reading the same data |
+| [`ensayo`](examples/ensayo/ensayo.md) | An essay with a word limit | `{{words}}` on the cover, `{.nocount}` sections, a bibliography and citations |
+| [`charla`](examples/charla/charla.md) | A talk | `slides` with `formats: [pdf, notes]`: sections, figures for the frame, columns, pauses, incremental lists, speaker notes |
+
+```sh
+mdbrand example ensayo && mdbrand build ensayo.md --watch   # edit it: the cover keeps count
 ```
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `mdbrand build <doc.md>` | Build the PDF. `-o` output path · `--brand` · `--style` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `-w`/`--watch` rebuild on every save · `--wordcount ib\|all` · `--allow-missing-glyphs` |
-| `mdbrand new <doc.md>` | Scaffold a document that already builds. `--title` · `--subtitle` · `--author` · `--brand` · `--style` · `--toc` |
+| `mdbrand build <doc.md>` | Build the PDF. `--to pdf,docx,notes` which outputs · `-o` output path · `--brand` · `--style` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `-w`/`--watch` rebuild on every save · `--wordcount ib\|all` · `--allow-missing-glyphs` |
+| `mdbrand example [name] [dir]` | List the worked examples, or write one out to start from. `--show` prints it instead |
+| `mdbrand new <doc.md>` | Scaffold a bare document that already builds. `--title` · `--subtitle` · `--author` · `--brand` · `--style` · `--toc` |
 | `mdbrand diagrams <doc.md>` | Figure sizes and smallest label size, without building, with the document's brand and style (a slide's frame is not a page). `--brand` · `--style` override them · `--out <dir>` also keeps the rendered PDFs |
 | `mdbrand data <doc.md> [path]` | The data files a document can print, with their shape; or what one path names |
 | `mdbrand doctor` | Check the toolchain — beamer for decks, vega-cli 6.4.0 for charts in a decimal-comma language included — and the installed bundles; prints the install command for anything missing |
@@ -318,7 +338,7 @@ Every build counts the words and prints the number on its result line.
 the cover or in the header), or in a figure caption — grouped the way the
 document's `lang` writes thousands: `4.512` for `es`, `4,512` for `en`.
 
-A whole essay, the way [`examples/ensayo.md`](examples/ensayo.md) does it:
+A whole essay, the way the [`ensayo`](examples/ensayo/ensayo.md) example does it:
 
 ```markdown
 ---
@@ -575,7 +595,7 @@ a label over about 45 characters is a warning.
 
 ### Slides
 
-![Four slides of examples/deck.md: the title slide, a diagram, a chart and two columns](assets/readme/slides.png)
+![Four slides of the charla example: the title slide, a diagram, a chart and two columns](assets/readme/slides.png)
 
 ```yaml
 mdbrand:
@@ -769,7 +789,8 @@ the grid a tint of the rule, several series a palette that starts with the
 primary, and its text the body face when it is installed. A d2 diagram fills
 its shapes with tints of the primary, deeper for containers, and draws edges
 and labels in the text colour; the tints stop where that text would fall under
-4.5:1. Whatever a spec's own `config`, an `encoding`'s `color`, a `style.fill`
+4.5:1. Its labels keep fontconfig's default sans: d2 reads only TrueType
+files, and brand faces are mostly OpenType. Whatever a spec's own `config`, an `encoding`'s `color`, a `style.fill`
 or the source's own `theme-overrides` sets is left alone: only what the author
 did not choose comes from the bundle. Sizes are unchanged, so is the
 legibility arithmetic. The palette can be fixed in the bundle:
@@ -1103,8 +1124,18 @@ figure's size by a millimetre when its sizing improves.
 
 ## For agents
 
-`mdbrand --help` and `mdbrand <command> --help` are written to be the whole
-manual: an agent can drive the tool from help output without reading this file.
+mdbrand is meant to be driven by an agent first. Everything an agent needs is
+in the binary, so it works the same on any machine:
+
+- **`mdbrand <command> --help`** is the whole manual; an agent can drive the
+  tool from help output without reading this file.
+- **`mdbrand example`** hands it a document that already builds for each kind
+  of task — report, note, letter, data, essay, talk — to adapt rather than
+  write from nothing.
+- **The exit status** says who acts: 1 the document, 2 the command line, 3 the
+  machine (see [Commands](#commands)).
+- **Every defect stops the build naming the fix**, so the agent's loop is:
+  build, apply the fix the message names, build again, then look at the pages.
 
 There is also an agent skill — [`SKILL.md`](SKILL.md) — which states the front
 matter, the diagram rules and the traps, so an assistant uses the CLI instead of
@@ -1132,7 +1163,7 @@ The tasks live in a [Justfile](Justfile); `just` on its own lists them.
 just build      # the binary, versioned from git describe
 just check      # gofmt, go vet, golangci-lint and the unit tests
 just torture    # builds testdata/ and reads the PDFs and logs that come out
-just example    # builds examples/demo.md with no bundle configured
+just example    # writes every example out of the binary and builds it, with no bundle
 just shots      # regenerates the pictures in this README from the examples
 just install    # into ~/.local/bin, or $PREFIX/bin
 ```
