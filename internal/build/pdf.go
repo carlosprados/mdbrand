@@ -247,7 +247,7 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		"--include-in-header=preamble.tex",
 		"--include-before-body=before.tex",
 		"--include-after-body=after.tex",
-		"--resource-path=" + p.work + ":" + filepath.Dir(mustAbs(o.Input)),
+		resourcePath(p.work, o.Input),
 		"-V", "papersize=" + b.Page.PaperSize,
 		"-V", "geometry=" + geometry,
 		"-V", "linestretch=" + strconv.FormatFloat(b.Page.LineStretch, 'f', -1, 64),
@@ -294,7 +294,7 @@ func slideArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		"--include-in-header=preamble.tex",
 		"--include-before-body=before.tex",
 		"--include-after-body=after.tex",
-		"--resource-path=" + p.work + ":" + filepath.Dir(mustAbs(o.Input)),
+		resourcePath(p.work, o.Input),
 		"-V", "aspectratio=169",
 	}
 	args = append(args, linkVars...)
