@@ -95,6 +95,13 @@ own directory.
 
 ![Side file with an import](diagrams/main.d2)
 
+A side file carrying the recursive glob lines the README once asked for, with
+a trailing comment and a quoted colour on them. mdbrand rewrites each one level
+by level in its copy, on the same line, so the author's size holds and the
+brand's theme block compiles beside it.
+
+![Side file with the old glob lines](diagrams/old-globs.d2)
+
 A Vega-Lite chart, to keep the other render route honest. Its data is a file
 beside the document: the fenced source is copied into the work directory, and
 vl2svg resolving the url from there drew an empty chart and exited 0.

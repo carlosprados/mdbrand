@@ -828,10 +828,12 @@ globs to a copy of the source before compiling it, sized from the bundle's
 you taking the decision back.
 
 If you have `.d2` files carrying the two glob lines the old instructions asked
-for, they keep working. Be aware of what they cost, though: `**.style.font-size`
-also matches the keys inside a `vars` block, so d2 refuses the file with
-`"style" needs a value` — an error that names the glob and not the cause. Delete
-the lines and `vars` works.
+for, they keep working, at the size they declare. `**.style.font-size` also
+matches the keys inside a `vars` block — the brand's colours arrive in one — so
+mdbrand rewrites each `**.` line level by level (`*.`, `*.*.`, …) in its copy,
+on the same line. A `**.` glob that opens a `{` block cannot be rewritten that
+way and stops the build by line number. Deleting the lines is still the better
+fix: then mdbrand sizes the labels to the brand's band.
 
 **Containers group, they do not reshape.** In d2 v0.7.1 a `direction:` inside a
 container is ignored by dagre and ELK alike — measured, both engines — so a

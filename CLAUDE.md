@@ -265,7 +265,10 @@ Do not relax one without understanding what it cost.
     short; the d2 tints stop where the text colour on the deepest would fall
     under 4.5:1. The chart font is the body face only when fontconfig has it.
     Charts change width by a millimetre because Vega measures text in that
-    face; the labels' point size does not move.
+    face; the labels' point size does not move. An author's `**.` glob reaches
+    the appended `vars` block and d2 refuses the file, so the copy rewrites
+    each such line level by level on the same line (luchando.org's essays
+    stopped building over it).
     → `internal/fig/theme_test.go`, the figure-colour checks on `testdata/slides.md`.
 
 22. **A style the face lacks stops the build.** Dosis has no italic: every

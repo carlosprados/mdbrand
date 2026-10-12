@@ -65,11 +65,12 @@ else
 	bad "no XeLaTeX log at $log"
 fi
 
-# Four figures, by three routes and four source shapes: a fence using vars, a
-# side file that imports another, a Vega-Lite spec, and an SVG already rendered.
+# Five figures, by three routes and five source shapes: a fence using vars, a
+# side file that imports another, one carrying the old ** glob lines, a
+# Vega-Lite spec, and an SVG already rendered.
 # The summary line, not the progress one: each figure is announced twice.
 n="$(printf '%s\n' "$out" | grep -c '^  fig .*mm')"
-[ "$n" -eq 4 ] && ok "four figures rendered" || bad "$n figure(s) rendered, want 4"
+[ "$n" -eq 5 ] && ok "five figures rendered" || bad "$n figure(s) rendered, want 5"
 
 if command -v pdfinfo >/dev/null; then
 	pages="$(pdfinfo "$work/torture.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
@@ -87,10 +88,10 @@ if command -v pdftotext >/dev/null; then
 	missing=""
 	# The colon is in the pattern on purpose: it used to come back as U+EE47,
 	# Inter's case form, which was the text-layer defect showing.
-	for caption in "Figure 1:" "Figure 2:" "Figure 3:" "Figure 4:"; do
+	for caption in "Figure 1:" "Figure 2:" "Figure 3:" "Figure 4:" "Figure 5:" "Figure 6:"; do
 		printf '%s' "$text" | grep -qF "$caption" || missing="$missing $caption"
 	done
-	[ -z "$missing" ] && ok "all four figures placed in the PDF" \
+	[ -z "$missing" ] && ok "all six figures placed in the PDF" \
 		|| bad "the PDF has no$missing — rendered, but never placed"
 
 	# The chart's labels come only from its CSV: an empty chart has axes and
