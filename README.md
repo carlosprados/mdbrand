@@ -59,6 +59,7 @@ same traps. They are now the tool's behaviour, not something to remember:
 | A vector logo that is really a 120×51 px PNG in an SVG coat, or artwork outside the `viewBox` that converts to a blank page | `mdbrand brand validate` diagnoses both |
 | A chart whose data file cannot be opened: `vl2svg` warns, draws empty axes and exits 0 — and it looks for a fenced chart's `data/x.csv` in a temporary directory | Every `data.url` resolved against the document before rendering; a missing file or a remote URL stops the build by name |
 | A short table split by a page break: caption, header and one row at the foot of a page, the rest alone on the next | No break leaves fewer than three rows on either side, so a table of five rows or fewer moves whole; in Spanish it is a *Tabla*, not babel's *Cuadro* |
+| A table row taller than a page: 433 words of a 1,200-word cell printed, the rest and the next row gone, exit 0 | The build stops naming the page; a row cannot break, so the text goes into more rows or the body |
 | A dark-themed diagram landing on white paper because the SVG asked the reader's OS | Both d2 themes pinned light; no dark-mode rules injected into Vega output |
 | A slide with more on it than fits: beamer sets the rest over the footer or off the page, and exits 0 | `style: slides` reads the log and stops, naming each slide by its title and how many millimetres too tall it is |
 
@@ -1037,6 +1038,11 @@ link that leads nowhere, in the PDF and the .docx. The message names the
 nearest anchor that exists. Fix the link, or give the heading the anchor you
 meant: `# Set-up {#setup}`. A raw `\ref{…}` or `\cite{…}` to a label or key
 nothing defines stops the build as well; it would print `??` or `[?]`.
+
+**`a table row is taller than a page`** — a row cannot break across pages, so
+LaTeX sets it anyway and cuts it at the foot: the rest of the cell and every
+row after it never print. Split the text over several rows, or move it into
+the body and leave a short summary in the cell.
 
 **`the font has no face for a style the document uses`** — the body face has no
 italic, bold or small caps, so those words would print in its regular face:

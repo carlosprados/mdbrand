@@ -98,7 +98,8 @@ that is not there stops the build by name instead of shipping a PDF full of
 [@key?]. A [@key] in a document with neither stops it too: pandoc would print
 it as written. So does a link to an anchor nothing carries — [x](#setup) beside
 a heading "Set-up", whose anchor is #set-up — named with the nearest that
-exists, and a raw \ref or \cite that would print "??".
+exists, and a raw \ref or \cite that would print "??". A table row taller than a
+page stops it too: a row cannot break, and LaTeX would cut it at the foot.
 
 mdbrand owns the preamble, so a document that sets header-includes,
 include-before or include-after is refused rather than built without them:

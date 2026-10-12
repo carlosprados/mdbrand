@@ -520,6 +520,7 @@ traps=(
 	"dead-anchor.md|fail|#setup — did you mean #set-up?"
 	"dead-anchor.md|fail|#setup — did you mean #set-up?|--to docx --brand none"
 	"undefined-ref.md|fail|\\ref{tab:costes}"
+	"table-row-tall.md|fail|taller than a page"
 	"confidential-too-long.md|fail|too wide for the footer"
 	"confidential-too-long.md|ok|the .docx footer fits about|--to docx --brand none"
 	"title-too-long.md|fail|Set mdbrand.short_title"

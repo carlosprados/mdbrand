@@ -166,7 +166,8 @@ to a url when a table shows the same numbers.
 
 Every table, data or hand-written, is kept together (no page break leaves fewer
 than three rows on a side) and labelled *Tabla* in Spanish. Do not add
-`\needspace` or raw LaTeX for either.
+`\needspace` or raw LaTeX for either. A row cannot break across pages, so one
+taller than the page fails the build: keep long prose out of cells.
 
 ## Citations
 
