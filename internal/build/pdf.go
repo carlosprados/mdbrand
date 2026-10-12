@@ -158,6 +158,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 
 	logRaw, _ := os.ReadFile(filepath.Join(work, stem+".log"))
 	sc := scanLog(string(logRaw))
+	sc.HeadSepPt = headSepPt(b)
 	if err := judgeLog(sc, o, rep); err != nil {
 		return err
 	}
@@ -380,11 +381,8 @@ it never print — and only this log knew. Split the cell's text over several
 rows, or move the long text out of the table into the body and keep a short
 summary in the cell`, strings.Join(sc.TallRows, ", "))
 	}
-	if sc.HeadShortPt > 0 {
-		return fmt.Errorf(`the running header is %.1fpt taller than its box, so its logo prints
-across the first line of text on every page — and only the XeLaTeX log knew.
-Raise page.headheight by at least %.0fpt in the brand bundle, or lower
-page.logo_width_header so the mark is shorter.`, sc.HeadShortPt, math.Ceil(sc.HeadShortPt))
+	if err := judgeHeader(sc, rep); err != nil {
+		return err
 	}
 	if sc.ConfOverPt > 0 {
 		return fmt.Errorf(`mdbrand.confidential is %.1fpt too wide for the footer: it repeats on
@@ -423,6 +421,38 @@ title block keep the full title`, sc.TitleOverPt)
 		rep.Warnings = append(rep.Warnings, w.String())
 	}
 	return nil
+}
+
+// judgeHeader weighs a header taller than its box. fancyhdr 4 grows the box
+// downwards into headsep, the gap above the text: past it, the logo prints
+// across the first lines of every page; short of it, the header only sits
+// closer to the text than the bundle drew it.
+func judgeHeader(sc scan, rep *Report) error {
+	if sc.HeadShortPt <= 0 {
+		return nil
+	}
+	if sc.HeadShortPt > sc.HeadSepPt {
+		return fmt.Errorf(`the running header is %.1fpt taller than its box, past the %.0fpt gap above
+the text, so its logo prints across the first lines of every page — and only
+the XeLaTeX log knew. Raise page.headheight by at least %.0fpt in the brand
+bundle, or lower page.logo_width_header so the mark is shorter. mdbrand sizes
+the box from the logo itself when it can read its size: SVG and PNG always,
+a PDF only when its page size is not compressed out of reach`,
+			sc.HeadShortPt, sc.HeadSepPt, math.Ceil(sc.HeadShortPt))
+	}
+	rep.Warnings = append(rep.Warnings, fmt.Sprintf(
+		"the running header is %.1fpt taller than its box, and sits that much closer to the text: raise page.headheight by %.0fpt in the brand bundle",
+		sc.HeadShortPt, math.Ceil(sc.HeadShortPt)))
+	return nil
+}
+
+// headSepPt is the gap between the header and the text, in points.
+func headSepPt(b *brand.Brand) float64 {
+	mm, err := tex.ParseLenMM(b.Page.HeadSep)
+	if err != nil {
+		return 0
+	}
+	return mm / mmPerPt
 }
 
 // fallback decides which characters go to fonts.fallback: those the document
@@ -519,7 +549,10 @@ var (
 	// measured, a headheight declared taller than this code can foresee — the
 	// mark prints across the first line of every page, and fancyhdr says so
 	// only here.
-	headRe  = regexp.MustCompile(`Package fancyhdr Warning: \\headheight is too small \(([0-9.]+)pt too short\)`)
+	// fancyhdr 4 says "too small (22.0pt): … Make it at least 186.1pt", with
+	// the continuation on the next line; before 4, "(14.5pt too short)". The
+	// check matched only the old form and never fired on a current TeX Live.
+	headRe  = regexp.MustCompile(`\\headheight is too small \(([0-9.]+)pt(?: too short\)|\):\s*\(fancyhdr\)\s+Make it at least ([0-9.]+)pt)`)
 	pagesRe = regexp.MustCompile(`Output written on .*? \((\d+) pages?`)
 	// What the preamble's code-block fitter reports when even \footnotesize
 	// leaves the block past the measure. LaTeX is the only place that can count
@@ -604,6 +637,7 @@ type scan struct {
 	Wide        []wideCode
 	Pages       int
 	HeadShortPt float64
+	HeadSepPt   float64 // set from the bundle, not the log: the room the header may take
 	ConfOverPt  float64
 	TitleOverPt float64
 	Frames      []frameOver
@@ -689,9 +723,12 @@ func scanLog(log string) scan {
 	}
 	// The largest shortfall: the log repeats the warning once per page.
 	for _, m := range headRe.FindAllStringSubmatch(log, -1) {
-		if v, err := strconv.ParseFloat(m[1], 64); err == nil && v > headShortPt {
-			headShortPt = v
+		v, _ := strconv.ParseFloat(m[1], 64)
+		if m[2] != "" {
+			least, _ := strconv.ParseFloat(m[2], 64)
+			v = least - v
 		}
+		headShortPt = max(headShortPt, v)
 	}
 	var confOverPt float64
 	if m := confRe.FindStringSubmatch(log); m != nil {

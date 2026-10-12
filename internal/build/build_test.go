@@ -1,6 +1,7 @@
 package build
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -123,6 +124,14 @@ Output written on doc.pdf (2 pages, 12345 bytes).`
 	}
 	if sc.HeadShortPt != 23.17 {
 		t.Errorf("headShortPt = %v, want 23.17 (the largest)", sc.HeadShortPt)
+	}
+
+	// fancyhdr 4.x, as a real log prints it: the shortfall is the difference.
+	modern := "Package fancyhdr Warning: \\headheight is too small (22.0pt): \n" +
+		"(fancyhdr)                Make it at least 186.09987pt, for example:\n" +
+		"(fancyhdr)                \\setlength{\\headheight}{186.09987pt}.\n"
+	if short := scanLog(modern).HeadShortPt; math.Abs(short-164.09987) > 1e-6 {
+		t.Errorf("fancyhdr 4.x: headShortPt = %v, want 164.09987", short)
 	}
 
 	if short := scanLog("Output written on doc.pdf (1 page, 10 bytes).").HeadShortPt; short != 0 {
@@ -393,5 +402,17 @@ func TestOffPaperFindsWordsCutAtTheSheet(t *testing.T) {
 	got := strings.Join(offPaper(bbox), "|")
 	if got != `page 2: "https://a.com/?x=1&y=2"|page 2: "left"` {
 		t.Errorf("off paper = %s", got)
+	}
+}
+
+// Short of headsep the header only sits closer to the text: a warning. Past
+// it, the logo prints over the text: the build stops.
+func TestJudgeHeaderFailsOnlyPastTheGap(t *testing.T) {
+	var rep Report
+	if err := judgeHeader(scan{HeadShortPt: 1.9, HeadSepPt: 13}, &rep); err != nil || len(rep.Warnings) != 1 {
+		t.Errorf("1.9pt into a 13pt gap: err %v, warnings %q", err, rep.Warnings)
+	}
+	if err := judgeHeader(scan{HeadShortPt: 164.1, HeadSepPt: 13}, &rep); err == nil {
+		t.Error("164pt past a 13pt gap built")
 	}
 }

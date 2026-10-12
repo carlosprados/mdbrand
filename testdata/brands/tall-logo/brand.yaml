@@ -1,0 +1,17 @@
+# A tall mark in a PDF whose page size mdbrand cannot read (cairo writes it
+# into a compressed object stream), so the header height stays at the bundle's
+# guess. It exists for traps/header-too-short.md: fancyhdr's
+# own warning is then the only witness to the logo over the first line.
+name: tall-logo
+display_name: Tall logo
+logo: logo.pdf
+colors:
+  primary: "1A5FB4"
+  text: "1B1B1B"
+  rule: "C0C0C0"
+fonts:
+  body: DejaVu Sans
+  office:
+    body: DejaVu Sans
+    display: DejaVu Sans
+    mono: DejaVu Sans Mono
