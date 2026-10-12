@@ -492,6 +492,7 @@ traps=(
 	"span-colour.md|fail|[words]{.accent}"
 	"span-colour.md|fail|[words]{.accent}|--to docx --brand none"
 	"display-glyph.md|fail|display face (fonts.office.display), has no glyph|--to docx --brands-dir $root/testdata/brands"
+	"missing-style.md|fail|DejaVuSans: small caps|--brands-dir $root/testdata/brands"
 	"confidential-too-long.md|fail|too wide for the footer"
 	"confidential-too-long.md|ok|the .docx footer fits about|--to docx --brand none"
 	"title-too-long.md|fail|Set mdbrand.short_title"

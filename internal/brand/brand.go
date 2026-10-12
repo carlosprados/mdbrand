@@ -66,6 +66,12 @@ type Fonts struct {
 	// body lacks AND the fallback has are redirected to it; anything else
 	// missing still stops the build, so this cannot hide a missing glyph.
 	Fallback string `yaml:"fallback"`
+	// Synthesize lets XeTeX draw the styles the body face does not have —
+	// italic as a slanted regular, bold as a thickened one — instead of the
+	// build stopping on them. Dosis has no italic at all, so without this
+	// every *emphasis* in a wolfops document printed upright and said nothing.
+	// It is the bundle's call because it changes how the brand looks.
+	Synthesize []string `yaml:"synthesize"`
 	// Office names the faces a .docx asks for. A .docx carries no fonts: the
 	// reader's Word or Google Docs sets it in what it has, and substitutes for
 	// what it lacks without saying so. So these are chosen for the reader's
@@ -320,8 +326,37 @@ func Load(brandsDir, name string) (*Brand, error) {
 	if b.Name == "" {
 		b.Name = name
 	}
+	if err := b.checkSynthesize(); err != nil {
+		return nil, fmt.Errorf("%w\n  in %s", err, f)
+	}
 	b.applyDefaults()
 	return &b, nil
+}
+
+// fakeOptions maps each style fonts.synthesize may name to the fontspec option
+// that draws it. fontspec applies them only where the face lacks the style.
+var fakeOptions = map[string]string{"italic": "AutoFakeSlant", "bold": "AutoFakeBold"}
+
+// checkSynthesize refuses a style it cannot draw: a misspelt one would do
+// nothing, and the build would then stop on the very style it was meant for.
+func (b *Brand) checkSynthesize() error {
+	for _, s := range b.Fonts.Synthesize {
+		if _, ok := fakeOptions[s]; !ok {
+			return fmt.Errorf(`fonts.synthesize: %q is not a style XeTeX can draw; the choices are italic
+and bold (small caps cannot be synthesized)`, s)
+		}
+	}
+	return nil
+}
+
+// BodyFontOptions are the fontspec options for the body face, after the ones
+// every face gets.
+func (b *Brand) BodyFontOptions(base string) string {
+	opts := []string{base}
+	for _, s := range b.Fonts.Synthesize {
+		opts = append(opts, fakeOptions[s])
+	}
+	return strings.Join(opts, ",")
 }
 
 // List returns the bundle names found in brandsDir.

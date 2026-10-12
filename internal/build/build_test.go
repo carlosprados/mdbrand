@@ -218,6 +218,28 @@ Missing character: There is no ☐ (U+2610) in font Inter Regular/OT:script=latn
 	}
 }
 
+// Dosis has no italic and no small caps: NFSS set both in the regular, and the
+// warning is the only witness. The lines are a real xelatex log's. A swap that
+// keeps the style (bx for b, sl for it) and a size substitution are not defects.
+func TestScanLogFindsStylesSetInTheRegular(t *testing.T) {
+	log := "LaTeX Font Warning: Font shape `TU/Dosis(0)/m/it' undefined\n" +
+		"(Font)              using `TU/Dosis(0)/m/n' instead on input line 317.\n\n" +
+		"LaTeX Font Warning: Font shape `TU/Dosis(0)/m/sc' undefined\n" +
+		"(Font)              using `TU/Dosis(0)/m/n' instead on input line 318.\n\n" +
+		"LaTeX Font Warning: Font shape `TU/Dosis(0)/m/it' undefined\n" +
+		"(Font)              using `TU/Dosis(0)/m/n' instead on input line 402.\n\n" +
+		"LaTeX Font Warning: Font shape `TU/PTSerifCaption(0)/b/n' undefined\n" +
+		"(Font)              using `TU/PTSerifCaption(0)/m/n' instead on input line 9.\n\n" +
+		"LaTeX Font Warning: Font shape `TU/lmr/bx/it' undefined\n" +
+		"(Font)              using `TU/lmr/b/sl' instead on input line 12.\n\n" +
+		"LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <10> not available\n"
+	got := scanLog(log).Shapes
+	want := []string{"Dosis: italic", "Dosis: small caps", "PTSerifCaption: bold"}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Errorf("shapes = %q, want %q", got, want)
+	}
+}
+
 // Formats follow the precedence every setting does, default to pdf, and an
 // unknown name stops the build instead of writing nothing for it.
 func TestPickFormats(t *testing.T) {

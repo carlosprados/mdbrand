@@ -268,6 +268,19 @@ Do not relax one without understanding what it cost.
     face; the labels' point size does not move.
     → `internal/fig/theme_test.go`, the figure-colour checks on `testdata/slides.md`.
 
+22. **A style the face lacks stops the build.** Dosis has no italic: every
+    `*emphasis*` in a wolfops document printed upright, exit 0, and the only
+    witness was NFSS's `Font shape … undefined … using … instead`. That
+    warning is read, and a substitution that loses italic, bold or small caps
+    fails naming family and style; one that keeps the style (bx for b, sl for
+    it) does not. `fonts.synthesize: [italic, bold]` is the bundle's way out —
+    fontspec's AutoFakeSlant/AutoFakeBold, which act only where the face has
+    no such style — because a slanted regular changes how the brand looks and
+    that is its author's call. fontspec resolves a missing bold italic to the
+    upright bold and says nothing, so that one case still passes.
+    → `internal/build/build_test.go`, `internal/brand/brand_test.go`,
+    `traps/missing-style.md`.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.

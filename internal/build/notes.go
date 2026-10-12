@@ -68,13 +68,14 @@ func renderNotes(p *prepared, out string) error {
 	log := string(logRaw)
 	// The deck's own log has judged the slides; the notes run sets them
 	// again for the thumbnails, so only what the notes add is read here.
-	if err := judgeLog(scan{Holes: scanLog(log).Holes}, o, rep); err != nil {
+	sc := scanLog(log)
+	if err := judgeLog(scan{Holes: sc.Holes, Shapes: sc.Shapes}, o, rep); err != nil {
 		return err
 	}
 	if err := judgeNotes(log, string(deck)); err != nil {
 		return err
 	}
-	rep.Outputs = append(rep.Outputs, Output{Format: "notes", Path: out, Pages: scanLog(log).Pages, built: filepath.Join(work, name+".pdf")})
+	rep.Outputs = append(rep.Outputs, Output{Format: "notes", Path: out, Pages: sc.Pages, built: filepath.Join(work, name+".pdf")})
 	return nil
 }
 

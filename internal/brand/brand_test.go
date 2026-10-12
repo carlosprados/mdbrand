@@ -318,3 +318,38 @@ func TestLoadMakesTheBundleDirAbsolute(t *testing.T) {
 		t.Errorf("Dir %q, logo %q: both must be absolute", b.Dir, b.LogoPath())
 	}
 }
+
+// fonts.synthesize turns into fontspec's fake-style options for the body face,
+// and a style it cannot draw stops the load: a misspelt "italics" would do
+// nothing, and the build would then stop on the italic it was meant for.
+func TestSynthesizeMapsToFontspecAndRefusesTheRest(t *testing.T) {
+	root := t.TempDir()
+	write := func(yaml string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Join(root, "b"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "b", "brand.yaml"), []byte(yaml), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	write("name: b\nfonts:\n  body: MdbrandTestFace\n  synthesize: [italic, bold]\n")
+	b, err := Load(root, "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := b.BodyFontOptions("RawFeature=-calt"); got != "RawFeature=-calt,AutoFakeSlant,AutoFakeBold" {
+		t.Errorf("options = %q", got)
+	}
+	if got := Default().BodyFontOptions("RawFeature=-calt"); got != "RawFeature=-calt" {
+		t.Errorf("a bundle without synthesize must keep its options as they were: %q", got)
+	}
+
+	for _, bad := range []string{"italics", "smallcaps"} {
+		write("name: b\nfonts:\n  body: MdbrandTestFace\n  synthesize: [" + bad + "]\n")
+		if _, err := Load(root, "b"); err == nil || !strings.Contains(err.Error(), "the choices are italic") {
+			t.Errorf("synthesize: [%s] loaded, err = %v", bad, err)
+		}
+	}
+}

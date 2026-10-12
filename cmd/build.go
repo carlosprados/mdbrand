@@ -69,6 +69,8 @@ A document whose text uses a glyph the font lacks also stops the build: those
 characters print as nothing and only the XeLaTeX log would ever know. A bundle
 may name fonts.fallback (Noto Sans Symbols2, say): the characters the body face
 lacks and that face has are set in it, and anything neither covers still stops.
+So does a style the face lacks — italic, bold or small caps set in the regular —
+unless the bundle's fonts.synthesize: [italic] (or [bold]) lets XeTeX draw it.
 
 The finished PDF is read back with pdftotext (poppler), and a private-use
 character in its text layer that the source does not hold stops the build: the
