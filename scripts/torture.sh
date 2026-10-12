@@ -171,10 +171,12 @@ if [ $status -ne 0 ]; then
 	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
 elif command -v pdftotext >/dev/null; then
 	text="$(pdftotext "$work/toc.pdf" - 2>/dev/null)"
-	printf '%s\n' "$text" | grep -qF '10.10.10. Subsubsección 10' \
+	# The trailing dot is spanish.ldf's: without texlive-lang-spanish, as on
+	# CI, babel's generic Spanish writes "10.10.10" and no dot.
+	printf '%s\n' "$text" | grep -qE '^10\.10\.10\.? Subsubsecci' \
 		&& ok "the contents reach the third level" \
-		|| bad "the contents have no 10.10.10 entry"
-	touching="$(printf '%s\n' "$text" | grep -E '^[0-9]+(\.[0-9]+)*\.[^ .0-9]' | cut -c1-30)"
+		|| bad "the contents have no 10.10.10 entry: $(printf '%s\n' "$text" | grep -E '^10\.' | cut -c1-30 | tr '\n' '|')"
+	touching="$(printf '%s\n' "$text" | grep -E '^[0-9]+(\.[0-9]+)*\.?[[:alpha:]]' | cut -c1-30)"
 	[ -z "$touching" ] && ok "every contents number clears its title" \
 		|| bad "contents numbers against their titles: $(printf '%s' "$touching" | tr '\n' '|')"
 else
