@@ -9,13 +9,16 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/paths"
+	"github.com/carlosprados/mdbrand/internal/suggest"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 // Version is set at build time: -ldflags "-X github.com/carlosprados/mdbrand/cmd.Version=v0.2.0"
@@ -82,6 +85,14 @@ Front matter drives everything, so a build needs no flags:
 		Args:                       cobra.ArbitraryArgs,
 		SuggestionsMinimumDistance: 2, // what cobra sets for its own message
 		RunE:                       groupRun,
+		// cobra.OnInitialize cannot fail, so a config problem waits here.
+		// version prints whatever the configuration says.
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if cmd.Name() == "version" {
+				return nil
+			}
+			return configErr
+		},
 	}
 
 	root.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default $XDG_CONFIG_HOME/mdbrand/config.yaml)")
@@ -116,7 +127,48 @@ func initConfig() {
 			viper.AddConfigPath(dir)
 		}
 	}
-	_ = viper.ReadInConfig() // absent config is the normal case, not an error
+	configErr = readConfig()
+}
+
+// configErr is what reading the configuration found wrong, for the command
+// that runs to report.
+var configErr error
+
+// configKeys are the settings a config file may hold.
+var configKeys = []string{"brands_dir", "brand", "style", "wordcount", "formats"}
+
+// readConfig reads the config file. Absent from its default place is the
+// normal case. Anything else stops: a file that does not parse, a --config
+// that leads nowhere, or a key misspelt is read as no configuration at all,
+// and every document without a brand: of its own builds unbranded, exit 0.
+func readConfig() error {
+	err := viper.ReadInConfig()
+	var notFound viper.ConfigFileNotFoundError
+	switch {
+	case errors.As(err, &notFound):
+		return nil
+	case err != nil && cfgFile != "" && errors.Is(err, os.ErrNotExist):
+		return exit.AsUsage(fmt.Errorf("--config %s: there is no such file", cfgFile))
+	case err != nil:
+		return exit.AsUsage(fmt.Errorf("the config file %s cannot be read: %w\n"+
+			"  Fix it — every document without a brand: of its own would build without one", viper.ConfigFileUsed(), err))
+	}
+	raw, err := os.ReadFile(viper.ConfigFileUsed())
+	if err != nil {
+		return exit.AsUsage(err)
+	}
+	var top map[string]any
+	_ = yaml.Unmarshal(raw, &top) // viper has just parsed it
+	for k := range top {
+		if !slices.Contains(configKeys, k) {
+			msg := fmt.Sprintf("the config file %s has a key mdbrand does not know: %s", viper.ConfigFileUsed(), k)
+			if near := suggest.Closest(k, configKeys); near != "" {
+				msg += " — did you mean " + near + "?"
+			}
+			return exit.AsUsage(fmt.Errorf("%s\n  The keys are %s", msg, strings.Join(configKeys, ", ")))
+		}
+	}
+	return nil
 }
 
 // configDir is where mdbrand keeps its settings. With neither XDG_CONFIG_HOME
@@ -171,7 +223,11 @@ func configCmd() *cobra.Command {
 		Short: "Show where mdbrand reads its settings from",
 		Args:  usageArgs(cobra.NoArgs),
 		Long: `Settings resolve in this order, later wins:
-  built-in default  ->  config file  ->  MDBRAND_* environment  ->  flag`,
+  built-in default  ->  config file  ->  MDBRAND_* environment  ->  flag
+
+The keys are brands_dir, brand, style, wordcount and formats. No config file is
+the normal case; one that does not parse, a --config that leads nowhere, or an
+unknown key stops every command with exit 2.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
 			fmt.Fprintf(out, "config file : %s\n", orNone(viper.ConfigFileUsed()))

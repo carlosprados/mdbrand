@@ -1023,6 +1023,12 @@ Resolution order, later wins: built-in default → config file → `MDBRAND_*`
 environment → flag. So `MDBRAND_BRANDS_DIR=/tmp/brands mdbrand build x.md`
 works, and so does `--brands-dir`.
 
+No file is the normal case. A file that is there and cannot be read stops every
+command with exit 2 — YAML that does not parse, a `--config` that leads nowhere,
+a key that is not one of the five above (`brnad:` names `brand`) — because read
+as no configuration, it would build every document without a `brand:` of its
+own unbranded.
+
 With no home directory (some containers and CI runners) and no
 `XDG_CONFIG_HOME`, there is no configuration file and no default brands
 directory. `--brand none` builds as ever; a named brand needs `--brands-dir` or
