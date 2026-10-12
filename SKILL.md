@@ -315,6 +315,10 @@ converts to a blank page, a display font whose path moved, colours that are not
   font without `☐` prints nothing at all. Fix the text, change `fonts.body`, or
   declare a `fonts.fallback` that covers it. `--allow-missing-glyphs` only when
   the holes are truly wanted.
+- **A link to an anchor nothing carries fails the build**, naming the nearest
+  that exists: a heading's anchor is its text in lower case with hyphens
+  (`# Set-up` is `#set-up`), or give it one: `# Set-up {#setup}`. A raw
+  `\ref{…}` or `\cite{…}` to nothing fails too — it would print `??`.
 - **A style the body face lacks fails the build** — italic, bold or small caps
   that would print in the regular face. For italic or bold the bundle declares
   `fonts.synthesize: [italic]` (or `[bold]`), or changes `fonts.body`; small

@@ -59,3 +59,42 @@ function Div(el)
   end
   return nil
 end
+
+-- A link to an anchor no element carries prints as text that goes nowhere:
+-- [the setup](#setup) beside a heading "Set-up", whose id is set-up. Every
+-- identifier pandoc assigned is gathered, and each #target without one is
+-- reported with the identifiers that exist, so the build can name the nearest.
+function Pandoc(doc)
+  local ids, targets = {}, {}
+  local function note(el)
+    if el.identifier and el.identifier ~= "" then
+      ids[el.identifier] = true
+    end
+  end
+  doc:walk({
+    Header = note, Div = note, Span = note, Code = note, CodeBlock = note,
+    Image = note, Table = note, Figure = note,
+    Link = function(el)
+      note(el)
+      if el.target:sub(1, 1) == "#" and #el.target > 1 then
+        table.insert(targets, el.target:sub(2))
+      end
+    end,
+  })
+  local missing = false
+  for _, t in ipairs(targets) do
+    if not ids[t] then
+      io.stderr:write("MDBRAND-ANCHOR " .. t .. "\n")
+      missing = true
+    end
+  end
+  if missing then
+    local known = {}
+    for id in pairs(ids) do
+      table.insert(known, id)
+    end
+    table.sort(known)
+    io.stderr:write("MDBRAND-IDS " .. table.concat(known, " ") .. "\n")
+  end
+  return nil
+end

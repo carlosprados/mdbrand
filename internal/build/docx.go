@@ -138,7 +138,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err := citationProblems(d.Meta, pandocOut, "document"); err != nil {
 		return err
 	}
-	if err := spanProblems(pandocOut); err != nil {
+	if err := filterProblems(pandocOut); err != nil {
 		return err
 	}
 	if !p.pdfToo {

@@ -1031,6 +1031,13 @@ coverage with the text and sets in the fallback only what the body lacks, so a
 character neither face has still stops the build. `--allow-missing-glyphs`
 proceeds anyway.
 
+**`link(s) to an anchor nothing in the document carries`** — `[the setup](#setup)`
+beside a heading `# Set-up`, whose anchor is `#set-up`: the words print as a
+link that leads nowhere, in the PDF and the .docx. The message names the
+nearest anchor that exists. Fix the link, or give the heading the anchor you
+meant: `# Set-up {#setup}`. A raw `\ref{…}` or `\cite{…}` to a label or key
+nothing defines stops the build as well; it would print `??` or `[?]`.
+
 **`the font has no face for a style the document uses`** — the body face has no
 italic, bold or small caps, so those words would print in its regular face:
 emphasis that reads as plain text. Dosis has no italic at all. For italic or

@@ -96,7 +96,9 @@ what turns them on (or the entries themselves, under references:):
 Those paths resolve against the document, not the working directory, and one
 that is not there stops the build by name instead of shipping a PDF full of
 [@key?]. A [@key] in a document with neither stops it too: pandoc would print
-it as written.
+it as written. So does a link to an anchor nothing carries — [x](#setup) beside
+a heading "Set-up", whose anchor is #set-up — named with the nearest that
+exists, and a raw \ref or \cite that would print "??".
 
 mdbrand owns the preamble, so a document that sets header-includes,
 include-before or include-after is refused rather than built without them:

@@ -128,7 +128,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if err := citationProblems(d.Meta, pandocOut, "PDF"); err != nil {
 		return err
 	}
-	if err := spanProblems(pandocOut); err != nil {
+	if err := filterProblems(pandocOut); err != nil {
 		return err
 	}
 	if err := accentContrast(b, pandocOut, slides, rep); err != nil {
@@ -364,6 +364,15 @@ or choose a body face that has it. Small caps cannot be drawn: drop the
 [words]{.smallcaps}, or choose a face with them (OpenType smcp)`,
 			strings.Join(sc.Shapes, "\n  "))
 	}
+	if len(sc.Undefined) > 0 {
+		return fmt.Errorf(`%d reference(s) in raw LaTeX to something nothing defines, printed as "??"
+or "[?]" in the PDF, and only this log knew:
+  %s
+Define the label (\label{…} beside what it names) or fix the name. In Markdown,
+link to a heading by its anchor instead — [the setup](#set-up) — and cite with
+[@key] and a bibliography:, which mdbrand checks for both outputs`,
+			len(sc.Undefined), strings.Join(sc.Undefined, "\n  "))
+	}
 	if sc.HeadShortPt > 0 {
 		return fmt.Errorf(`the running header is %.1fpt taller than its box, so its logo prints
 across the first line of text on every page — and only the XeLaTeX log knew.
@@ -521,6 +530,10 @@ var (
 	// A style the face does not have, set in the one it does: Dosis has no
 	// italic, so *emphasis* printed upright, and NFSS says so only here.
 	shapeRe = regexp.MustCompile("LaTeX Font Warning: Font shape `([^']+)' undefined\\s*\\(Font\\)\\s+using `([^']+)' instead")
+	// A \ref or \cite written in raw LaTeX to a label or key nothing defines:
+	// it prints "??" or "[?]", and the last pass's log is the only witness.
+	// Links in Markdown are checked before this, by spans.lua.
+	undefRe = regexp.MustCompile("(Reference|Citation|Hyper reference) `([^']+)' on page \\S+\\s+undefined")
 	// fontspec's family names carry an instance counter: Dosis(0).
 	instanceRe = regexp.MustCompile(`\(\d+\)$`)
 )
@@ -576,6 +589,7 @@ type wideCode struct {
 type scan struct {
 	Holes       []string
 	Shapes      []string // "Dosis: italic", one per family and style lost
+	Undefined   []string // `\ref{tab:x}`, one per label or key never defined
 	Over        []overfull
 	Wide        []wideCode
 	Pages       int
@@ -628,6 +642,15 @@ func scanLog(log string) scan {
 		}
 	}
 	sort.Strings(shapes)
+	var undefined []string
+	for _, m := range undefRe.FindAllStringSubmatch(log, -1) {
+		cmd := map[string]string{"Reference": `\ref`, "Citation": `\cite`, "Hyper reference": `\hyperref`}[m[1]]
+		key := cmd + "{" + m[2] + "}"
+		if !seen[key] {
+			seen[key] = true
+			undefined = append(undefined, key)
+		}
+	}
 	lines := strings.Split(log, "\n")
 	for i, ln := range lines {
 		m := overRe.FindStringSubmatch(ln)
@@ -667,7 +690,7 @@ func scanLog(log string) scan {
 		line, _ := strconv.Atoi(m[2])
 		frames = append(frames, frameOver{Pt: pt, Line: line})
 	}
-	return scan{Holes: holes, Shapes: shapes, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
+	return scan{Holes: holes, Shapes: shapes, Undefined: undefined, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
 		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames}
 }
 
