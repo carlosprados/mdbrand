@@ -370,3 +370,12 @@ func TestScanLogFindsUndefinedReferences(t *testing.T) {
 		t.Errorf("undefined = %q", got)
 	}
 }
+
+// A row cut at the foot is reported once per page by the preamble; a second
+// pass repeats it, and the page must not be listed twice.
+func TestScanLogFindsRowsCutAtTheFoot(t *testing.T) {
+	log := "MDBRAND-ROW-TOOTALL 2\n[2]\nMDBRAND-ROW-TOOTALL 2\nMDBRAND-ROW-TOOTALL iv\n"
+	if got := strings.Join(scanLog(log).TallRows, "|"); got != "2|iv" {
+		t.Errorf("tall rows = %q", got)
+	}
+}

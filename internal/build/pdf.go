@@ -373,6 +373,13 @@ link to a heading by its anchor instead — [the setup](#set-up) — and cite wi
 [@key] and a bibliography:, which mdbrand checks for both outputs`,
 			len(sc.Undefined), strings.Join(sc.Undefined, "\n  "))
 	}
+	if len(sc.TallRows) > 0 {
+		return fmt.Errorf(`a table row is taller than a page (page %s), and a row cannot break across
+pages: the PDF cuts it at the foot, so the rest of the cell and every row after
+it never print — and only this log knew. Split the cell's text over several
+rows, or move the long text out of the table into the body and keep a short
+summary in the cell`, strings.Join(sc.TallRows, ", "))
+	}
 	if sc.HeadShortPt > 0 {
 		return fmt.Errorf(`the running header is %.1fpt taller than its box, so its logo prints
 across the first line of text on every page — and only the XeLaTeX log knew.
@@ -534,6 +541,8 @@ var (
 	// it prints "??" or "[?]", and the last pass's log is the only witness.
 	// Links in Markdown are checked before this, by spans.lua.
 	undefRe = regexp.MustCompile("(Reference|Citation|Hyper reference) `([^']+)' on page \\S+\\s+undefined")
+	// The preamble's report of a table row cut at the foot of a page.
+	tallRowRe = regexp.MustCompile(`MDBRAND-ROW-TOOTALL (\S+)`)
 	// fontspec's family names carry an instance counter: Dosis(0).
 	instanceRe = regexp.MustCompile(`\(\d+\)$`)
 )
@@ -590,6 +599,7 @@ type scan struct {
 	Holes       []string
 	Shapes      []string // "Dosis: italic", one per family and style lost
 	Undefined   []string // `\ref{tab:x}`, one per label or key never defined
+	TallRows    []string // pages where a table row ran past the foot
 	Over        []overfull
 	Wide        []wideCode
 	Pages       int
@@ -651,6 +661,13 @@ func scanLog(log string) scan {
 			undefined = append(undefined, key)
 		}
 	}
+	var tallRows []string
+	for _, m := range tallRowRe.FindAllStringSubmatch(log, -1) {
+		if !seen["row "+m[1]] {
+			seen["row "+m[1]] = true
+			tallRows = append(tallRows, m[1])
+		}
+	}
 	lines := strings.Split(log, "\n")
 	for i, ln := range lines {
 		m := overRe.FindStringSubmatch(ln)
@@ -690,7 +707,7 @@ func scanLog(log string) scan {
 		line, _ := strconv.Atoi(m[2])
 		frames = append(frames, frameOver{Pt: pt, Line: line})
 	}
-	return scan{Holes: holes, Shapes: shapes, Undefined: undefined, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
+	return scan{Holes: holes, Shapes: shapes, Undefined: undefined, TallRows: tallRows, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
 		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames}
 }
 

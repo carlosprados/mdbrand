@@ -168,7 +168,12 @@ Do not relax one without understanding what it cost.
     one place both hand-written and data tables pass. In Spanish, tables are
     *Tabla*: babel's default *Cuadro* is appended over in the preamble,
     because pandoc loads babel before it and `es-tabla` cannot be passed.
-    → `internal/tex/tables_test.go`, and the page checks on `testdata/data.md`.
+    A row cannot break at all: one taller than the page was cut at its foot,
+    the rest of the cell and the rows after it gone, exit 0. longtable's
+    output routine reads `\badness`, which TeX leaves at 1000000 for a page
+    that overflows, and reports it to the log.
+    → `internal/tex/tables_test.go`, the page checks on `testdata/data.md`,
+    and `traps/table-row-tall.md`.
 
 15. **A .docx asks only for the faces the bundle declares, and uses only what
     Google Docs keeps.** A .docx carries no fonts, so `fonts.office` is

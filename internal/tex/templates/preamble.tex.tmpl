@@ -18,6 +18,18 @@
 % overflow is silent. footnotesize plus a little air is the shape that works.
 \AtBeginEnvironment{longtable}{\footnotesize}
 \renewcommand{\arraystretch}{1.25}
+% A row cannot break across pages, so one taller than the page is set anyway
+% and cut at its foot: the rest of the cell and every row after it vanish, and
+% the log says nothing. TeX leaves \badness at 1000000 when it packs a page
+% that overflows, so longtable's output routine reports it for mdbrand to stop.
+\makeatletter
+\AtBeginDocument{%
+  \@ifundefined{LT@output}{}{%
+    \let\mdbrand@LToutput\LT@output
+    \def\LT@output{%
+      \ifnum\badness>\@M \typeout{MDBRAND-ROW-TOOTALL \thepage}\fi
+      \mdbrand@LToutput}}}
+\makeatother
 
 {{if .DisplayFont -}}
 % Display font referenced by path: a commercially licensed face is never copied
