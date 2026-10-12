@@ -26,6 +26,7 @@ fonts.office
 fonts.office.body
 fonts.office.display
 fonts.office.mono
+fonts.synthesize
 footer
 logo
 logo_secondary

@@ -910,6 +910,7 @@ colors:
 fonts:
   body: Inter                  # fontconfig family
   fallback: Noto Sans Symbols2 # optional; only for the characters body lacks
+  synthesize: [italic]         # optional; draw a style body lacks (italic, bold)
   display:                     # optional; cover and header only
     family: Gotham
     regular: Gotham-Light.otf
@@ -1024,6 +1025,13 @@ covers it, or name a `fonts.fallback` that does: mdbrand compares the two faces'
 coverage with the text and sets in the fallback only what the body lacks, so a
 character neither face has still stops the build. `--allow-missing-glyphs`
 proceeds anyway.
+
+**`the font has no face for a style the document uses`** — the body face has no
+italic, bold or small caps, so those words would print in its regular face:
+emphasis that reads as plain text. Dosis has no italic at all. For italic or
+bold, declare `fonts.synthesize: [italic]` (or `[bold]`) in the bundle and XeTeX
+draws the style from the regular, or choose a `fonts.body` that has it. Small
+caps cannot be drawn: drop the `[words]{.smallcaps}` or choose a face with them.
 
 **`its text layer holds private-use characters`** — the page prints right, but
 what copy-paste, search or a plagiarism checker reads is garbage at the places

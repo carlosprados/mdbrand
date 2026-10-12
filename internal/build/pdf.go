@@ -320,7 +320,7 @@ func bodyFontArgs(b *brand.Brand, rep *Report, args []string) ([]string, error) 
 		// mainfontoptions, not a \setmainfont of our own: pandoc's template
 		// loads the face twice, the second time through \babelfont, and that
 		// one would load it again without the option.
-		args = append(args, "-V", "mainfont="+b.Fonts.Body, "-V", "mainfontoptions="+noContextualAlternates)
+		args = append(args, "-V", "mainfont="+b.Fonts.Body, "-V", "mainfontoptions="+b.BodyFontOptions(noContextualAlternates))
 	case b.IsDefault():
 		// No mainfont at all: pandoc's template loads lmodern, so the document
 		// sets in Latin Modern, which every TeX Live has. The built-in bundle
@@ -356,6 +356,17 @@ would print as nothing at all and only this log would know:
 Fix the text (a ballpoint tick beats a missing ☐ anyway) or pick a font that
 covers it; override with --allow-missing-glyphs if you truly want the holes`,
 			len(sc.Holes), strings.Join(sc.Holes, "\n  "))
+	}
+	if len(sc.Shapes) > 0 {
+		return fmt.Errorf(`the font has no face for a style the document uses, so XeLaTeX set those
+words in the regular face — emphasis that prints as plain text, and only this
+log knew:
+  %s
+For italic or bold in the bundle's fonts.body, declare fonts.synthesize:
+[italic] (or [bold]) in the bundle, and XeTeX draws the style from the regular,
+or choose a body face that has it. Small caps cannot be drawn: drop the
+[words]{.smallcaps}, or choose a face with them (OpenType smcp)`,
+			strings.Join(sc.Shapes, "\n  "))
 	}
 	if sc.HeadShortPt > 0 {
 		return fmt.Errorf(`the running header is %.1fpt taller than its box, so its logo prints
@@ -511,7 +522,35 @@ var (
 	// the rest over the footer, or off the page, and says so only here. The
 	// line is the frame's \end{frame} in the .tex, fragile frames included.
 	frameRe = regexp.MustCompile(`Overfull \\vbox \(([0-9.]+)pt too high\) detected at line (\d+)`)
+	// A style the face does not have, set in the one it does: Dosis has no
+	// italic, so *emphasis* printed upright, and NFSS says so only here.
+	shapeRe = regexp.MustCompile("LaTeX Font Warning: Font shape `([^']+)' undefined\\s*\\(Font\\)\\s+using `([^']+)' instead")
+	// fontspec's family names carry an instance counter: Dosis(0).
+	instanceRe = regexp.MustCompile(`\(\d+\)$`)
 )
+
+// lostStyles says which styles a substitution threw away, from NFSS's
+// encoding/family/series/shape: m/it set as m/n lost the italic. A swap that
+// keeps the style — bx for b, sl for it — is a different cut of the same
+// thing, not a defect.
+func lostStyles(want, got string) (family string, lost []string) {
+	w, g := strings.Split(want, "/"), strings.Split(got, "/")
+	if len(w) != 4 || len(g) != 4 {
+		return "", nil
+	}
+	family = instanceRe.ReplaceAllString(w[1], "")
+	slanted := func(shape string) bool { return strings.Contains(shape, "it") || strings.Contains(shape, "sl") }
+	if strings.Contains(w[2], "b") && !strings.Contains(g[2], "b") {
+		lost = append(lost, "bold")
+	}
+	if slanted(w[3]) && !slanted(g[3]) {
+		lost = append(lost, "italic")
+	}
+	if strings.Contains(w[3], "sc") && !strings.Contains(g[3], "sc") {
+		lost = append(lost, "small caps")
+	}
+	return family, lost
+}
 
 // frameOver is one slide that does not fit: by how much, and where its frame
 // ends in the .tex, which is how its title is found.
@@ -540,6 +579,7 @@ type wideCode struct {
 // scan is what a xelatex log is worth reading for.
 type scan struct {
 	Holes       []string
+	Shapes      []string // "Dosis: italic", one per family and style lost
 	Over        []overfull
 	Wide        []wideCode
 	Pages       int
@@ -580,6 +620,18 @@ func scanLog(log string) scan {
 		}
 	}
 	sort.Strings(holes)
+	var shapes []string
+	for _, m := range shapeRe.FindAllStringSubmatch(log, -1) {
+		family, lost := lostStyles(m[1], m[2])
+		for _, style := range lost {
+			key := family + ": " + style
+			if !seen[key] {
+				seen[key] = true
+				shapes = append(shapes, key)
+			}
+		}
+	}
+	sort.Strings(shapes)
 	lines := strings.Split(log, "\n")
 	for i, ln := range lines {
 		m := overRe.FindStringSubmatch(ln)
@@ -619,7 +671,7 @@ func scanLog(log string) scan {
 		line, _ := strconv.Atoi(m[2])
 		frames = append(frames, frameOver{Pt: pt, Line: line})
 	}
-	return scan{Holes: holes, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
+	return scan{Holes: holes, Shapes: shapes, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
 		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames}
 }
 

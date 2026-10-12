@@ -296,7 +296,7 @@ converts to a blank page, a display font whose path moved, colours that are not
   with that bundle, by its dotted path and the nearest real key: fix the key,
   never delete `requires:` to get past it.
 - Tune `colors` (primary, accent, link, text, rule), `fonts.body`,
-  `fonts.display`, `fonts.fallback`, `fonts.office`, `page.margin`,
+  `fonts.display`, `fonts.fallback`, `fonts.synthesize`, `fonts.office`, `page.margin`,
   `page.linestretch`, `page.logo_width_*` and the `diagrams` numbers.
 - `logo_secondary:` adds a second mark on the cover only (co-branding).
 - **Do not set `page.headheight`.** mdbrand sizes the header from the logo's
@@ -312,6 +312,10 @@ converts to a blank page, a display font whose path moved, colours that are not
   font without `☐` prints nothing at all. Fix the text, change `fonts.body`, or
   declare a `fonts.fallback` that covers it. `--allow-missing-glyphs` only when
   the holes are truly wanted.
+- **A style the body face lacks fails the build** — italic, bold or small caps
+  that would print in the regular face. For italic or bold the bundle declares
+  `fonts.synthesize: [italic]` (or `[bold]`), or changes `fonts.body`; small
+  caps cannot be drawn, so drop `[words]{.smallcaps}` or change the face.
 - **The text layer must read as the text.** A PDF that prints "(SD1)" and
   copies as private-use characters fails the build: plagiarism checkers and
   screen readers read that layer.
