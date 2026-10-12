@@ -344,3 +344,29 @@ func TestSpanProblemsReadTheFilterReport(t *testing.T) {
 		t.Errorf("unrelated output refused: %v", err)
 	}
 }
+
+// A link to an anchor nothing carries, as spans.lua reports it, stops the
+// build naming the nearest identifier that exists.
+func TestAnchorProblemsNameTheNearest(t *testing.T) {
+	out := "MDBRAND-ANCHOR setup\nMDBRAND-IDS install set-up\n"
+	err := anchorProblems(out)
+	if err == nil || !strings.Contains(err.Error(), "#setup — did you mean #set-up?") {
+		t.Errorf("err = %v", err)
+	}
+	if err := anchorProblems("MDBRAND-ACCENT\n"); err != nil {
+		t.Errorf("no anchor report must pass: %v", err)
+	}
+}
+
+// A raw \ref or \cite to nothing prints "??" or "[?]", and the final pass's log
+// is the only witness. The wording is LaTeX's own, wrapped as the log wraps it.
+func TestScanLogFindsUndefinedReferences(t *testing.T) {
+	log := "LaTeX Warning: Reference `tab:costes' on page 1 undefined on input line 52.\n" +
+		"LaTeX Warning: Citation `knuth' on page 2 undefined on input line 60.\n" +
+		"LaTeX Warning: Reference `tab:costes' on page 3 \nundefined on input line 80.\n" +
+		"LaTeX Warning: There were undefined references.\n"
+	got := strings.Join(scanLog(log).Undefined, "|")
+	if got != `\ref{tab:costes}|\cite{knuth}` {
+		t.Errorf("undefined = %q", got)
+	}
+}

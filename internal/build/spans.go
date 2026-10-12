@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/suggest"
 )
 
 // spanFilter colours [text]{.accent} in both outputs and reports any other
@@ -36,6 +37,46 @@ func writeSpanFilter(work string, b *brand.Brand) (string, error) {
 }
 
 var spanRe = regexp.MustCompile(`MDBRAND-SPAN ([^\t\n]+)\t([^\n]*)`)
+
+// filterProblems is everything spans.lua reports that stops a build.
+func filterProblems(pandocOut string) error {
+	if err := spanProblems(pandocOut); err != nil {
+		return err
+	}
+	return anchorProblems(pandocOut)
+}
+
+var (
+	anchorRe = regexp.MustCompile(`MDBRAND-ANCHOR (\S+)`)
+	idsRe    = regexp.MustCompile(`MDBRAND-IDS ([^\n]*)`)
+)
+
+// anchorProblems stops a link to an anchor nothing carries: it prints as a
+// link, and leads nowhere in the PDF and the .docx alike.
+func anchorProblems(pandocOut string) error {
+	missing := uniqueMatches(anchorRe, pandocOut)
+	if len(missing) == 0 {
+		return nil
+	}
+	var known []string
+	if m := idsRe.FindStringSubmatch(pandocOut); m != nil {
+		known = strings.Fields(m[1])
+	}
+	var lines []string
+	for _, a := range missing {
+		line := "#" + a
+		if near := suggest.Closest(a, known); near != "" {
+			line += " — did you mean #" + near + "?"
+		}
+		lines = append(lines, line)
+	}
+	return fmt.Errorf(`%d link(s) to an anchor nothing in the document carries:
+  %s
+The words print as a link that leads nowhere. A heading's anchor is its text
+in lower case with spaces as hyphens and punctuation dropped ("Set-up" is
+#set-up); or give the target one of its own: # Set-up {#setup}`,
+		len(missing), strings.Join(lines, "\n  "))
+}
 
 // spanProblems turns the filter's report into the build's refusal.
 func spanProblems(pandocOut string) error {
