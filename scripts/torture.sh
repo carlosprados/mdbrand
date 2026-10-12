@@ -183,6 +183,27 @@ else
 	echo "  --    pdftotext absent, PDF contents not checked"
 fi
 
+# ------------------------------------------------------------------ references
+# Entries in the front matter are a source: before, citeproc ran only for a
+# bibliography: file, and the citation printed as "[@knuth1984, p. 3]".
+echo
+echo "testdata/references.md — citing from the front matter"
+out="$("$bin" build "$root/testdata/references.md" -o "$work/references.pdf" 2>&1)"
+status=$?
+if [ $status -ne 0 ]; then
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+elif command -v pdftotext >/dev/null; then
+	text="$(pdftotext "$work/references.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	printf '%s' "$text" | grep -qF '[@' \
+		&& bad "a citation printed as written: $(printf '%s' "$text" | grep -oF '[@' | head -1)" \
+		|| ok "no citation printed as written"
+	printf '%s' "$text" | grep -qF 'The TeXbook' \
+		&& ok "the reference list printed" \
+		|| bad "the reference list is not in the PDF"
+else
+	echo "  --    pdftotext absent, PDF contents not checked"
+fi
+
 # ------------------------------------------------------------------------ data
 # Values from testdata/data/, printed where the document asked for them: in the
 # title, the prose and a caption, merged keys included, and every Markdown
@@ -493,6 +514,8 @@ traps=(
 	"span-colour.md|fail|[words]{.accent}|--to docx --brand none"
 	"display-glyph.md|fail|display face (fonts.office.display), has no glyph|--to docx --brands-dir $root/testdata/brands"
 	"missing-style.md|fail|DejaVuSans: small caps|--brands-dir $root/testdata/brands"
+	"cite-no-source.md|fail|2 citation(s) but nothing to cite them from"
+	"cite-no-source.md|fail|@fig:arq read as pandoc-crossref|--to docx --brand none"
 	"confidential-too-long.md|fail|too wide for the footer"
 	"confidential-too-long.md|ok|the .docx footer fits about|--to docx --brand none"
 	"title-too-long.md|fail|Set mdbrand.short_title"

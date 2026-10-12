@@ -88,14 +88,15 @@ pictures keep their markup; every relative path resolves against the document,
 and one that is not there stops the build by name.
 
 Citations need no flag either — declaring a bibliography in the front matter is
-what turns them on:
+what turns them on (or the entries themselves, under references:):
 
     bibliography: refs.bib      # a path, or a list of them
     csl: apa.csl                # optional
 
 Those paths resolve against the document, not the working directory, and one
 that is not there stops the build by name instead of shipping a PDF full of
-[@key?].
+[@key?]. A [@key] in a document with neither stops it too: pandoc would print
+it as written.
 
 mdbrand owns the preamble, so a document that sets header-includes,
 include-before or include-after is refused rather than built without them:

@@ -535,12 +535,15 @@ prepared before the document, not inside it.
 
 Declaring `bibliography:` is the whole switch: pandoc runs with `--citeproc`, so
 `@key` and `[@key, p. 42]` resolve and the reference list lands where the
-document puts its `# Referencias` heading. `csl:` selects the style.
+document puts `::: {#refs}`, or at the end. `csl:` selects the style. Entries
+written in the front matter under `references:` turn it on as well.
 
 Paths resolve **against the document**, not against the working directory, and a
 `.bib` that is not there fails the build by name. So does a citation key with no
 entry: pandoc reports those as warnings and exits 0 anyway, which is how `(fml?)`
-ends up printed in the middle of a sentence.
+ends up printed in the middle of a sentence. And so does a `[@key]` in a
+document with no bibliography at all, which pandoc would print as written; a
+bare `@name` is left alone, since that is how a handle is written.
 
 ### Coloured words
 

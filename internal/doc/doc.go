@@ -35,6 +35,9 @@ type Meta struct {
 	// --citeproc on; there is no separate switch to forget.
 	Bibliography StringList `yaml:"bibliography"`
 	CSL          string     `yaml:"csl"`
+	// References are entries written in the front matter itself, which pandoc
+	// cites from as it does from a file. Only their presence matters here.
+	References any `yaml:"references"`
 
 	// Keys mdbrand has to refuse rather than drop. The preamble, the cover and
 	// the closing matter reach pandoc as --include-in-header,
@@ -457,6 +460,10 @@ func (m Meta) RunningTitle() string {
 	}
 	return m.Title
 }
+
+// CitesFrom reports whether the document gives citeproc anything to cite
+// from: a bibliography file or references in the front matter.
+func (m Meta) CitesFrom() bool { return len(m.Bibliography) > 0 || m.References != nil }
 
 // HasTOC reports whether the document asks for a table of contents.
 func (m Meta) HasTOC() bool { return m.TOC != nil && *m.TOC }

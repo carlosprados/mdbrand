@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/doc"
 )
 
 // Regression: a machine-wide default must never outrank the document. The bug
@@ -84,6 +85,28 @@ func TestMissingCitations(t *testing.T) {
 	}
 	if n := missingCitations("[WARNING] Deprecated: --smart"); len(n) != 0 {
 		t.Errorf("unrelated warnings must not match: %v", n)
+	}
+}
+
+// With nothing to cite from, pandoc prints [@key] as written and exits 0. The
+// filter's report is what tells; a document with references in its front
+// matter has a source, and one that cites nothing has nothing to stop.
+func TestCitationProblemsWithoutASource(t *testing.T) {
+	out := "MDBRAND-CITE knuth1984\nMDBRAND-CITE fig:arq\nMDBRAND-CITE knuth1984\n"
+	err := citationProblems(doc.Meta{}, out, "PDF")
+	if err == nil {
+		t.Fatal("citations with no bibliography passed")
+	}
+	for _, want := range []string{"2 citation(s)", "@knuth1984, @fig:arq", "bibliography:", "@fig:arq read as pandoc-crossref"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("message lacks %q:\n%s", want, err)
+		}
+	}
+	if err := citationProblems(doc.Meta{References: []any{map[string]any{"id": "knuth1984"}}}, out, "PDF"); err != nil {
+		t.Errorf("references in the front matter are a source: %v", err)
+	}
+	if err := citationProblems(doc.Meta{}, "[WARNING] something else\n", "PDF"); err != nil {
+		t.Errorf("a document that cites nothing must pass: %v", err)
 	}
 }
 
