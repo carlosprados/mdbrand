@@ -70,3 +70,37 @@ func TestCatalogueMatchesTheExamples(t *testing.T) {
 		t.Errorf("catalogue %v, directories %v", names, dirs)
 	}
 }
+
+// A config file that cannot be read was read as no configuration at all, and
+// every document without a brand: of its own built unbranded, exit 0. Absent
+// from its default place is still the normal case.
+func TestConfigProblemsStop(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	if _, err := runSkill(t, "config"); err != nil {
+		t.Errorf("no config file at all: %v", err)
+	}
+	dir := t.TempDir()
+	broken := filepath.Join(dir, "broken.yaml")
+	typo := filepath.Join(dir, "typo.yaml")
+	if err := os.WriteFile(broken, []byte("style: [note\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(typo, []byte("brnad: amplia\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for cfg, want := range map[string]string{
+		broken:                          "cannot be read",
+		filepath.Join(dir, "none.yaml"): "no such file",
+		typo:                            "did you mean brand?",
+	} {
+		_, err := runSkill(t, "config", "--config", cfg)
+		if exit.Code(err) != exit.Usage || !strings.Contains(err.Error(), want) {
+			t.Errorf("--config %s: %v, want exit 2 saying %q", filepath.Base(cfg), err, want)
+		}
+	}
+	if _, err := runSkill(t, "version", "--config", broken); err != nil {
+		t.Errorf("version must run whatever the config says: %v", err)
+	}
+}
