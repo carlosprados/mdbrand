@@ -61,17 +61,17 @@ cannot be placed inside that band is reported as an error with the fix.
 			if !tex.ValidStyle(style) {
 				return fmt.Errorf("unknown style %q: pick one of %s", style, strings.Join(tex.Styles, ", "))
 			}
-			fb, textWidth, err := tex.FigureBox(b, style)
+			fb, box, err := tex.FigureBox(b, style)
 			if err != nil {
 				return err
 			}
 
 			out := cmd.OutOrStdout()
 			fmt.Fprintf(out, "brand %s · style %s · measure %.1f mm · text band %.1f–%.1f pt · max height %.0f mm\n\n",
-				b.Name, style, textWidth, fb.Diagrams.MinTextPt, fb.Diagrams.MaxTextPt, fb.Diagrams.MaxHeightMM)
+				b.Name, style, box.WidthMM, fb.Diagrams.MinTextPt, fb.Diagrams.MaxTextPt, fb.Diagrams.MaxHeightMM)
 			bad := 0
 			for _, f := range figs {
-				res, err := fig.Render(f, fb, work, textWidth, sets[f])
+				res, err := fig.Render(f, fb, work, box, sets[f])
 				if err != nil {
 					bad++
 					fmt.Fprintf(out, "%-26s FAIL\n%v\n\n", filepath.Base(f.SrcPath), err)

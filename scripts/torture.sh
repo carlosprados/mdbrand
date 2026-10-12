@@ -521,6 +521,8 @@ traps=(
 	"dead-anchor.md|fail|#setup — did you mean #set-up?|--to docx --brand none"
 	"undefined-ref.md|fail|\\ref{tab:costes}"
 	"table-row-tall.md|fail|taller than a page"
+	"fig-width-tall.md|fail|Lower width= to 88mm"
+	"fig-width-unit.md|fail|width=400px is not a width mdbrand can place"
 	"confidential-too-long.md|fail|too wide for the footer"
 	"confidential-too-long.md|ok|the .docx footer fits about|--to docx --brand none"
 	"title-too-long.md|fail|Set mdbrand.short_title"

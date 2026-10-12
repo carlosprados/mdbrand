@@ -775,7 +775,12 @@ mesa -> og.trainer: listas
 
 Fence languages: `d2`, and `vegalite` / `vega` / `vl`. Side files: `*.d2`,
 `*.vl.json`, `*.vl.yaml`, `*.vega.json`. Per-figure attributes on the fence or
-after the link: `caption="…"`, `width=120mm`, `scale=0.4`.
+after the link: `caption="…"`, `width=120mm`, `scale=0.4`. `width=` is read in
+mm, cm, in or pt, or as a share of the measure (`width=80%`), and anything else
+stops the build. An explicit width overrides the sizing, so the build checks
+what it leads to: wider than the measure, or taller than the page — where
+LaTeX would shrink the figure to fit, labels and all, in silence — stops it,
+naming the width that fits.
 
 An **`.svg` rendered elsewhere** goes through the same door: linked as
 `![caption](figs/x.svg)`, it is checked, sized for legible labels and converted

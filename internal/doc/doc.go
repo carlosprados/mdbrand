@@ -429,20 +429,6 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 	return body, figs, nil
 }
 
-// WidthMM returns an explicit width attribute in millimetres, or 0.
-func (fg *Fig) WidthMM() float64 {
-	v := fg.Attrs["width"]
-	if v == "" {
-		return 0
-	}
-	v = strings.TrimSuffix(strings.TrimSpace(v), "mm")
-	x, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		return 0
-	}
-	return x
-}
-
 // Scale returns an explicit d2 scale override, or 0.
 func (fg *Fig) Scale() float64 {
 	x, err := strconv.ParseFloat(fg.Attrs["scale"], 64)
