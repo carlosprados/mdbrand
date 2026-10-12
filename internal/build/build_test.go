@@ -379,3 +379,19 @@ func TestScanLogFindsRowsCutAtTheFoot(t *testing.T) {
 		t.Errorf("tall rows = %q", got)
 	}
 }
+
+// pdftotext clips a word the sheet cuts and gives it the edge as xMax; a word
+// that merely ends near the margin is not cut, on any page.
+func TestOffPaperFindsWordsCutAtTheSheet(t *testing.T) {
+	bbox := `<page width="595.280000" height="841.890000">
+<word xMin="72.0" yMin="100.0" xMax="532.9" yMax="110.0">see</word>
+</page>
+<page width="595.280000" height="841.890000">
+<word xMin="299.8" yMin="100.0" xMax="597.263957" yMax="110.0">https://a.com/?x=1&amp;y=2</word>
+<word xMin="0.0" yMin="200.0" xMax="40.0" yMax="210.0">left</word>
+</page>`
+	got := strings.Join(offPaper(bbox), "|")
+	if got != `page 2: "https://a.com/?x=1&y=2"|page 2: "left"` {
+		t.Errorf("off paper = %s", got)
+	}
+}

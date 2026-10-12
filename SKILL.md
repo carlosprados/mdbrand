@@ -234,7 +234,7 @@ stepping down to `\footnotesize`. A fence **with a language** wraps what still
 does not fit, marked with an arrow; a **bare fence** is never wrapped, because
 it may hold an ASCII diagram. So put the language on real code and leave it off
 pictures. A block still too wide is warned about with the columns it has and
-the columns that fit.
+the columns that fit; one so wide it runs off the paper fails the build.
 
 ## Coloured words
 
@@ -345,7 +345,9 @@ the log before theorising. `pdffonts x.pdf` says which faces were embedded;
 
 An overfull line is reported on stderr with how far it ran and the text it
 could not fit — enough to find it in the Markdown. Do not discard stderr and
-then call the document finished.
+then call the document finished. A line that runs past the margin and off the
+sheet is cut there, and fails the build naming the word: write a URL as
+`<https://…>` or a path as `` `code` ``, which break.
 
 ## Dependencies
 

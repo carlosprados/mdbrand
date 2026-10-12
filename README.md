@@ -1109,6 +1109,12 @@ columns in the PDF; widen the separators before rebuilding. Inline code is not a
 cause: `-`, `/`, `.` and `_` are break points inside `` `code` ``, so a paragraph
 ending in a long repo name wraps instead of overflowing.
 
+**`line(s) run off the paper`** — the overflow is wider than the margin, so the
+sheet cuts the line: the rest of it is not in the PDF at all. mdbrand reads the
+finished PDF with `pdftotext -bbox` and names each word cut at the edge. Write
+a URL as `<https://…>` and a path as `` `code` ``, both of which break; shorten
+or split a code block; give a table fewer or narrower columns.
+
 **`the front matter sets header-includes`** — mdbrand owns the preamble, and
 pandoc's `--include-in-header` (with `--include-before-body` and
 `--include-after-body`, which place the design and the cover) *replaces* the
