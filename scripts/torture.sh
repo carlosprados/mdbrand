@@ -523,6 +523,8 @@ traps=(
 	"table-row-tall.md|fail|taller than a page"
 	"fig-width-tall.md|fail|Lower width= to 88mm"
 	"fig-width-unit.md|fail|width=400px is not a width mdbrand can place"
+	"off-paper.md|fail|run off the paper"
+	"wide-code-off-paper.md|fail|run off the paper"
 	"confidential-too-long.md|fail|too wide for the footer"
 	"confidential-too-long.md|ok|the .docx footer fits about|--to docx --brand none"
 	"title-too-long.md|fail|Set mdbrand.short_title"

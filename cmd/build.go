@@ -67,6 +67,11 @@ has and the columns that fit. A fence that declares a language is wrapped
 instead — a bare fence never is, because it may well be an ASCII diagram and
 wrapping one destroys its alignment in silence.
 
+Any line that runs past the margin and off the sheet — a bare URL, a code line,
+a table too wide — stops the build, naming the word the edge cuts: the rest of
+the line would not be in the PDF at all. Measured on the finished PDF with
+pdftotext -bbox.
+
 A document whose text uses a glyph the font lacks also stops the build: those
 characters print as nothing and only the XeLaTeX log would ever know. A bundle
 may name fonts.fallback (Noto Sans Symbols2, say): the characters the body face
