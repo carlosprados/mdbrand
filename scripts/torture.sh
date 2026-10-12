@@ -525,6 +525,7 @@ traps=(
 	"fig-width-unit.md|fail|width=400px is not a width mdbrand can place"
 	"off-paper.md|fail|run off the paper"
 	"wide-code-off-paper.md|fail|run off the paper"
+	"header-too-short.md|fail|Raise page.headheight by at least 165pt|--brands-dir $root/testdata/brands"
 	"confidential-too-long.md|fail|too wide for the footer"
 	"confidential-too-long.md|ok|the .docx footer fits about|--to docx --brand none"
 	"title-too-long.md|fail|Set mdbrand.short_title"

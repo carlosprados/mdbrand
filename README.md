@@ -976,7 +976,10 @@ the logo's proportions. mdbrand measures the logo and sets the box itself, so a
 square crest gets the room it needs instead of printing across the first line of
 every page. Declare `headheight` only to make the header taller than the mark
 needs; declare one that cannot hold the mark and the build fails, naming both
-ways out. `mdbrand brand validate` reports the value actually used.
+ways out. `mdbrand brand validate` reports the value actually used. The typeset
+page is checked as well: a header that still comes out taller than its box — a
+logo in a PDF whose page size mdbrand cannot read, say — stops the build once it
+reaches the text, and warns when it only narrows the gap above it.
 
 **A shared bundle must not carry one machine's absolute path.** `path` is a list
 of candidates and the first that exists wins. A **relative** candidate resolves
