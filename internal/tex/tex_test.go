@@ -159,6 +159,14 @@ func TestHeaderHeightMM(t *testing.T) {
 		t.Errorf("square logo: headheight %.2fmm cannot hold a 16mm mark", h)
 	}
 
+	// fancyhdr ends the header in a strut below the mark. A 7mm square at
+	// linestretch 1.125 asked for 23.92pt in a real log; the box built to the
+	// logo plus slack alone was 1.9pt short on every page.
+	b = bundleFor(t, "logo_width_header: 7mm", "linestretch: 1.125")
+	if h, err := HeaderHeightMM(b, 1); err != nil || h/pt < 23.92 {
+		t.Errorf("7mm square at 1.125: %.2fpt, %v; fancyhdr asks for 23.92pt", h/pt, err)
+	}
+
 	// Declared and sufficient: mdbrand must not second-guess it.
 	b = bundleFor(t, "logo_width_header: 10mm", "headheight: 32pt", "headsep: 12pt", "margin: 25mm")
 	h, err = HeaderHeightMM(b, 1)

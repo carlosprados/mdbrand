@@ -252,6 +252,18 @@ const mmPerPt = 25.4 / 72.272
 // rounding alone, and that warning only exists in a log nobody reads.
 const headSlackMM = 2 * mmPerPt
 
+// headStrutMM is what fancyhdr adds below the mark: each part of the header
+// ends in a \strut, 0.3 of the 10pt class's 12pt baselineskip, stretched by
+// linestretch. Measured: a 7mm-tall logo at 1.125 asked for 23.92pt, and the
+// box built to the logo plus slack alone came out 1.9pt short on every page.
+func headStrutMM(b *brand.Brand) float64 {
+	stretch := b.Page.LineStretch
+	if stretch <= 0 {
+		stretch = 1
+	}
+	return 0.3 * 12 * stretch * mmPerPt
+}
+
 // HeaderHeightMM settles the running header's box height, in millimetres.
 //
 // logoAspect is the header logo's height divided by its width, or 0 when the
@@ -287,24 +299,33 @@ func HeaderHeightMM(b *brand.Brand, logoAspect float64) (float64, error) {
 		logoH = logoW * logoAspect
 	}
 
+	need := logoH
+	if logoH > 0 {
+		need += headStrutMM(b) + headSlackMM
+	}
 	height := declared
 	switch {
-	case logoH+headSlackMM <= declared:
+	case need <= declared:
 		// Fits as declared, whoever chose the number.
+	case b.Page.HeadHeightDeclared() && logoH+headSlackMM <= declared:
+		// The author's number holds the mark itself and stays, as it always
+		// has: a bundle that built must still build. What the strut costs
+		// is the log check's to report.
 	case b.Page.HeadHeightDeclared():
 		return 0, fmt.Errorf(
 			"page.headheight %s cannot hold the header logo, which is %.1fmm tall at "+
 				"logo_width_header %s: raise headheight to %.0fpt, or lower logo_width_header to %.0fmm",
 			b.Page.HeadHeight, logoH, b.Page.LogoWidthHeader,
-			math.Ceil((logoH+headSlackMM)/mmPerPt), math.Floor((declared-headSlackMM)/logoAspect))
+			math.Ceil(need/mmPerPt), math.Floor((declared-headSlackMM)/logoAspect))
 	default:
-		height = logoH + headSlackMM
+		height = need
 	}
 
 	// The header lives in the top margin, above the text block. If it is taller
 	// than the margin it runs off the top of the paper instead of onto the text,
-	// which is the same defect wearing a different hat.
-	if height+sep >= margin {
+	// which is the same defect wearing a different hat. The slack is air above
+	// the mark, and the paper's edge may cut air.
+	if height-headSlackMM+sep >= margin {
 		return 0, fmt.Errorf(
 			"the running header needs %.1fmm (headheight) + %s (headsep) and the top margin is only %s: "+
 				"lower logo_width_header, or raise page.margin",
