@@ -155,8 +155,37 @@ func TestD2SourceLeavesASourceThatSizesItself(t *testing.T) {
 	if strings.Contains(string(raw), "added by mdbrand: label size") {
 		t.Errorf("d2Source added font-size globs to a source that sizes itself:\n%s", raw)
 	}
-	if !strings.Contains(string(raw), "**.style.font-size: 48") {
-		t.Errorf("the author's own font size is gone:\n%s", raw)
+	// Kept, but level by level on its own line: `**` would reach the theme's
+	// vars block and d2 would refuse the file.
+	if !strings.Contains(string(raw), "*.style.font-size: 48; *.*.style.font-size: 48") ||
+		strings.Contains(string(raw), "**.style") {
+		t.Errorf("the author's own font size is not kept level by level:\n%s", raw)
+	}
+	if strings.SplitN(string(raw), "\n", 3)[1] != "a -> b" {
+		t.Errorf("the expansion moved the author's second line:\n%s", raw)
+	}
+}
+
+// A trailing comment stays at the end of the line, where it cannot swallow the
+// statements written after it; a # inside quotes is a colour. A ** glob that
+// opens a block cannot be rewritten on one line and stops by line number.
+func TestExpandRecursiveGlobs(t *testing.T) {
+	src := "x\n  **.style.stroke: \"#555555\" # grey\n(** -> **)[*].style.font-size: 32\n"
+	got, err := expandRecursiveGlobs([]byte(src), "f.d2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(got), "\n")
+	if !strings.HasPrefix(lines[1], `  *.style.stroke: "#555555"; *.*.style.stroke: "#555555";`) ||
+		!strings.HasSuffix(lines[1], `"#555555" # grey`) {
+		t.Errorf("line 2 = %q", lines[1])
+	}
+	if lines[2] != "(** -> **)[*].style.font-size: 32" {
+		t.Errorf("the edge glob was touched: %q", lines[2])
+	}
+	if _, err := expandRecursiveGlobs([]byte("a\n**.style: {\n  font-size: 32\n}\n"), "f.d2"); err == nil ||
+		!strings.Contains(err.Error(), "f.d2:2:") {
+		t.Errorf("a block glob passed, err = %v", err)
 	}
 }
 

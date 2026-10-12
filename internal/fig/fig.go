@@ -295,12 +295,73 @@ func d2Source(f *doc.Fig, b *brand.Brand, scale float64, workDir string) (path s
 	// Colours likewise: a .d2 with theme-overrides of its own has taken the
 	// decision back, and an appended block would override it.
 	if !themed {
+		if body, err = expandRecursiveGlobs(body, f.SrcPath); err != nil {
+			return "", false, err
+		}
 		body = append(body, []byte(d2Theme(b))...)
 	}
 	if err := os.WriteFile(gen, body, 0o644); err != nil {
 		return "", false, fmt.Errorf("writing the sized copy of %s: %w", filepath.Base(f.SrcPath), err)
 	}
 	return gen, true, nil
+}
+
+// recursiveGlobRe is a shape glob that descends without limit: `**.style…`.
+// The edge form `(** -> **)` starts with a parenthesis and is not matched.
+var recursiveGlobRe = regexp.MustCompile(`^([ \t]*)\*\*\.(.*)$`)
+
+// expandRecursiveGlobs rewrites each `**.x: v` line as `*.x: v; *.*.x: v; …`,
+// one statement per level, on the same line. `**` also matches the keys of
+// the vars block the brand's theme appends, and d2 then refuses the file with
+// `"style" needs a value`: the luchando.org essays, whose .d2 files carry the
+// glob lines the README once asked for, stopped building when figures took
+// the brand's colours. The levels reach what `**` reached for every diagram
+// d2MaxDepth covers, and the same line keeps d2's line numbers the author's.
+func expandRecursiveGlobs(src []byte, name string) ([]byte, error) {
+	lines := strings.Split(string(src), "\n")
+	for i, ln := range lines {
+		m := recursiveGlobRe.FindStringSubmatch(ln)
+		if m == nil {
+			continue
+		}
+		stmt, comment := splitD2Comment(m[2])
+		if strings.HasSuffix(strings.TrimSpace(stmt), "{") {
+			return nil, fmt.Errorf(`%s:%d: a **. glob that opens a block cannot be kept: d2 applies **
+to the vars block mdbrand appends for the brand's colours and refuses the
+file. Write the properties on one line each (**.style.font-size: 32), or
+delete the block if it only sets font-size: mdbrand sizes labels itself`,
+				filepath.Base(name), i+1)
+		}
+		var b strings.Builder
+		b.WriteString(m[1])
+		sel := "*"
+		for level := 0; level < d2MaxDepth; level++ {
+			if level > 0 {
+				b.WriteString("; ")
+			}
+			b.WriteString(sel + "." + strings.TrimRight(stmt, " \t"))
+			sel += ".*"
+		}
+		b.WriteString(comment)
+		lines[i] = b.String()
+	}
+	return []byte(strings.Join(lines, "\n")), nil
+}
+
+// splitD2Comment separates a trailing `# comment`, which would otherwise
+// swallow every statement written after it on the line. A # inside quotes is
+// a colour, not a comment.
+func splitD2Comment(s string) (stmt, comment string) {
+	quoted := false
+	for i, r := range s {
+		switch {
+		case r == '"':
+			quoted = !quoted
+		case r == '#' && !quoted && (i == 0 || s[i-1] == ' ' || s[i-1] == '\t'):
+			return s[:i], " " + s[i:]
+		}
+	}
+	return s, ""
 }
 
 var fontRe = regexp.MustCompile(`font-size\s*[:=]\s*"?\s*([0-9.]+)`)
