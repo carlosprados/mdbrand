@@ -40,6 +40,18 @@ function Span(el)
   return out
 end
 
+-- Every bracketed citation, so the build can stop one that has nothing to be
+-- cited from: pandoc would print "[@key]" as written. A bare @key is how
+-- people write a handle, and left alone.
+function Cite(el)
+  for _, c in ipairs(el.citations) do
+    if c.mode ~= "AuthorInText" then
+      io.stderr:write("MDBRAND-CITE " .. c.id .. "\n")
+    end
+  end
+  return nil
+end
+
 function Div(el)
   check(el)
   if el.classes:includes("accent") then

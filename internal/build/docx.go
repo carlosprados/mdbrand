@@ -135,12 +135,8 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err != nil {
 		return err
 	}
-	if keys := missingCitations(pandocOut); len(keys) > 0 {
-		return fmt.Errorf(`the bibliography has no entry for %d citation key(s):
-  %s
-citeproc prints those as "(key?)" in the finished document and exits 0, so
-nothing else would have told you. Fix the key or add the entry.`,
-			len(keys), strings.Join(keys, ", "))
+	if err := citationProblems(d.Meta, pandocOut, "document"); err != nil {
+		return err
 	}
 	if err := spanProblems(pandocOut); err != nil {
 		return err

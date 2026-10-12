@@ -13,6 +13,7 @@
 package build
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -343,10 +344,63 @@ var citeprocMissingRe = regexp.MustCompile(`Citeproc: citation ([^\s]+) not foun
 // and without repeats. pandoc reports them as warnings and still exits 0, which
 // is how a PDF reaches a reader with "(fml?)" printed in the middle of a
 // sentence.
-func missingCitations(out string) []string {
+func missingCitations(out string) []string { return uniqueMatches(citeprocMissingRe, out) }
+
+// citeRe is what spans.lua reports for each bracketed citation: [@key] and
+// [-@key]. A bare @key is left out — it is how people write a handle, and
+// with nothing to cite from it prints as written, which is right.
+var citeRe = regexp.MustCompile(`MDBRAND-CITE (\S+)`)
+
+// crossrefPrefixes are pandoc-crossref's: [@fig:x] is a cross-reference to its
+// author, a citation to pandoc.
+var crossrefPrefixes = []string{"fig:", "tbl:", "sec:", "eq:", "lst:"}
+
+// citationProblems stops a build whose citations would print wrong. With a
+// bibliography, a key it lacks prints as "(key?)"; without one, every
+// [@key] prints as written. pandoc exits 0 either way.
+func citationProblems(m doc.Meta, pandocOut, product string) error {
+	if keys := missingCitations(pandocOut); len(keys) > 0 {
+		return fmt.Errorf(`the bibliography has no entry for %d citation key(s):
+  %s
+citeproc prints those as "(key?)" in the finished %s and exits 0, so nothing
+else would have told you. Fix the key or add the entry.`,
+			len(keys), strings.Join(keys, ", "), product)
+	}
+	if m.CitesFrom() {
+		return nil
+	}
+	keys := uniqueMatches(citeRe, pandocOut)
+	if len(keys) == 0 {
+		return nil
+	}
+	var xref []string
+	for _, k := range keys {
+		for _, p := range crossrefPrefixes {
+			if strings.HasPrefix(k, p) {
+				xref = append(xref, "@"+k)
+				break
+			}
+		}
+	}
+	msg := fmt.Sprintf(`%d citation(s) but nothing to cite them from:
+  @%s
+Without a bibliography pandoc prints each one as written, "[@%s]", in the
+finished %s, and exits 0. Declare bibliography: refs.bib (a path relative to
+the document), or the entries under references: in the front matter.`,
+		len(keys), strings.Join(keys, ", @"), keys[0], product)
+	if len(xref) > 0 {
+		msg += fmt.Sprintf(`
+%s read as pandoc-crossref references: mdbrand does not number figures,
+tables or sections, so write the reference out ("Figure 3").`, strings.Join(xref, ", "))
+	}
+	return errors.New(msg)
+}
+
+// uniqueMatches is the first group of every match, in order, without repeats.
+func uniqueMatches(re *regexp.Regexp, out string) []string {
 	var keys []string
 	seen := map[string]bool{}
-	for _, m := range citeprocMissingRe.FindAllStringSubmatch(out, -1) {
+	for _, m := range re.FindAllStringSubmatch(out, -1) {
 		if !seen[m[1]] {
 			seen[m[1]] = true
 			keys = append(keys, m[1])
@@ -361,7 +415,7 @@ func missingCitations(out string) []string {
 // Passing the files absolutely on the command line overrides the metadata and
 // removes the whole class of error.
 func citeArgs(d *doc.File, input string, inputs *[]string) ([]string, error) {
-	if len(d.Meta.Bibliography) == 0 {
+	if !d.Meta.CitesFrom() {
 		return nil, nil
 	}
 	docDir := filepath.Dir(mustAbs(input))

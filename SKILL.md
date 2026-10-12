@@ -174,7 +174,10 @@ than three rows on a side) and labelled *Tabla* in Spanish. Do not add
 the list lands where the document puts `::: {#refs}` (under a `# Referencias
 {.nocount}` heading), or at the end. `csl:` picks the style. Paths resolve
 against the document. A missing `.bib` or a key with no entry stops the build:
-pandoc alone exits 0 and prints `(key?)` in the middle of a sentence.
+pandoc alone exits 0 and prints `(key?)` in the middle of a sentence. Entries
+may instead sit in the front matter under `references:`. A `[@key]` with
+neither stops the build too — and `[@fig:x]` is not a cross-reference here:
+mdbrand does not number figures, so write "Figure 3".
 
 ## Diagrams and charts
 
