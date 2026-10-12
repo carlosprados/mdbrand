@@ -98,6 +98,8 @@ type Data struct {
 	CoverLogoSecondaryWidth string
 	HeaderLogoWidth         string
 
+	TOC bool // toc: true; widens the table of contents' number boxes
+
 	DisplayFont       bool
 	DisplayRegularDir string
 	DisplayRegular    string

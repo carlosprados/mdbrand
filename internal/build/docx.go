@@ -60,7 +60,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		Reference: d.Meta.Options.Reference, Confidential: d.Meta.Options.Confidential, BrandFooter: b.Footer,
 		To: d.Meta.Options.To, Place: d.Meta.Options.Place,
 		Greeting: d.Meta.Options.Greeting, Signature: d.Meta.Options.Signature,
-		TOC: d.Meta.TOC != nil && *d.Meta.TOC, TOCDepth: d.Meta.TOCDepth, Lang: d.Meta.Lang,
+		TOC: d.Meta.HasTOC(), TOCDepth: d.Meta.TOCDepth, Lang: d.Meta.Lang,
 	}
 	if meta.Logo, err = docxLogoFile(b.LogoPath(), work, "docx-logo"); err != nil {
 		return err

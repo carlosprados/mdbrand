@@ -120,5 +120,35 @@
 \ifdefined\captionsspanish
   \addto\captionsspanish{\renewcommand{\tablename}{Tabla}\renewcommand{\listtablename}{Índice de tablas}}%
 \fi
+{{- if .TOC}}
+
+% article boxes a contents number in 1.5em (section) and 2.3em (subsection).
+% Spanish babel adds a dot after it, so "10." in bold, or "10.4." and "10.10.",
+% overrun the box and print against the title — silently, as \numberline's box
+% is set with no overfull warning. These are article's own definitions with
+% wider boxes, each level indented to the previous level's text.
+\makeatletter
+\@ifclassloaded{article}{%
+  \renewcommand*\l@section[2]{%
+    \ifnum \c@tocdepth >\z@
+      \addpenalty\@secpenalty
+      \addvspace{1.0em \@plus\p@}%
+      \setlength\@tempdima{2.3em}%
+      \begingroup
+        \parindent \z@ \rightskip \@pnumwidth
+        \parfillskip -\@pnumwidth
+        \leavevmode \bfseries
+        \advance\leftskip\@tempdima
+        \hskip -\leftskip
+        #1\nobreak\hfil
+        \nobreak\hb@xt@\@pnumwidth{\hss #2%
+                                   \kern-\p@\kern\p@}\par
+      \endgroup
+    \fi}%
+  \renewcommand*\l@subsection{\@dottedtocline{2}{2.3em}{3.4em}}%
+  \renewcommand*\l@subsubsection{\@dottedtocline{3}{5.7em}{4.5em}}%
+}{}
+\makeatother
+{{- end}}
 
 {{template "code" .}}

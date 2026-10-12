@@ -48,6 +48,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 		FallbackFont:  fallbackFont,
 		FallbackChars: fallbackChars,
 		Brand:         b, Style: p.style,
+		TOC:                     d.Meta.HasTOC(),
 		LogoFile:                logoFile,
 		LogoSecondaryFile:       logoSecondFile,
 		CoverLogoWidth:          b.Page.LogoWidthCover,
@@ -149,7 +150,7 @@ else would have told you. Fix the key or add the entry.`,
 
 	// xelatex, run here so the log is ours to read.
 	passes := 2
-	if d.Meta.TOC != nil && *d.Meta.TOC {
+	if d.Meta.HasTOC() {
 		passes = 3
 	}
 	for i := 0; i < passes; i++ {
