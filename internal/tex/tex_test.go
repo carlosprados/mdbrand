@@ -220,12 +220,12 @@ func TestHeaderHeightSpecKeepsDeclaredString(t *testing.T) {
 // from one bundle must not find the slide's band on the page.
 func TestFigureBoxForSlides(t *testing.T) {
 	b := brand.Default()
-	fb, w, err := FigureBox(b, Slides)
+	fb, sb, err := FigureBox(b, Slides)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if w != SlideWidthMM-2*SlideMarginMM {
-		t.Errorf("slide measure = %.1f mm", w)
+	if sb.WidthMM != SlideWidthMM-2*SlideMarginMM || sb.HeightMM != 0 {
+		t.Errorf("slide box = %+v", sb)
 	}
 	if fb.Diagrams.MinTextPt != b.Slides.Diagrams.MinTextPt || fb.Diagrams.MaxHeightMM != SlideFigureMaxHeightMM {
 		t.Errorf("slide band not applied: %+v", fb.Diagrams)
@@ -238,7 +238,7 @@ func TestFigureBoxForSlides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want, _ := TextWidthMM(b); pb != b || pw != want {
+	if want, _ := TextWidthMM(b); pb != b || pw.WidthMM != want || pw.HeightMM != 297-2*22 {
 		t.Errorf("a page style must get the bundle and its measure untouched")
 	}
 }

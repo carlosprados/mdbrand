@@ -47,16 +47,27 @@ const (
 // FigureBox is the room a figure has in a style, and the brand as the figure
 // sizing sees it there: on a slide the measure is the frame's, and the band
 // and height are the slide's, never the page's.
-func FigureBox(b *brand.Brand, style string) (*brand.Brand, float64, error) {
+func FigureBox(b *brand.Brand, style string) (*brand.Brand, Box, error) {
 	if style != Slides {
 		w, err := TextWidthMM(b)
-		return b, w, err
+		if err != nil {
+			return nil, Box{}, err
+		}
+		m, _ := ParseLenMM(b.Page.Margin) // TextWidthMM has parsed it
+		return b, Box{WidthMM: w, HeightMM: PaperHeightMM(b.Page.PaperSize) - 2*m}, nil
 	}
 	fb := *b
 	fb.Diagrams.MinTextPt = b.Slides.Diagrams.MinTextPt
 	fb.Diagrams.MaxTextPt = b.Slides.Diagrams.MaxTextPt
 	fb.Diagrams.MaxHeightMM = SlideFigureMaxHeightMM
-	return &fb, SlideWidthMM - 2*SlideMarginMM, nil
+	return &fb, Box{WidthMM: SlideWidthMM - 2*SlideMarginMM}, nil
+}
+
+// Box is the room a figure has: the text measure, and on a page the text
+// height, which geometry sets as the paper less a margin on each side. A
+// slide's height is 0: the frame's own overflow check measures it.
+type Box struct {
+	WidthMM, HeightMM float64
 }
 
 // ValidStyle reports whether s is a known style.

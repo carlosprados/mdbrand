@@ -130,7 +130,7 @@ func workDir(asked string) (string, bool, error) {
 // typeset: figures extracted, data printed, words counted, figures rendered.
 func (p *prepared) fill(inputs *[]string) error {
 	o, d := p.o, p.d
-	figBrand, textWidth, err := tex.FigureBox(p.b, p.style)
+	figBrand, box, err := tex.FigureBox(p.b, p.style)
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (p *prepared) fill(inputs *[]string) error {
 			*inputs = append(*inputs, fig.DataRefs(f)...)
 		}
 		o.logf("  fig %s", filepath.Base(f.SrcPath))
-		res, ferr := fig.Render(f, figBrand, p.work, textWidth, Datasets(p.store, d.Meta.Lang))
+		res, ferr := fig.Render(f, figBrand, p.work, box, Datasets(p.store, d.Meta.Lang))
 		if ferr != nil {
 			return ferr
 		}

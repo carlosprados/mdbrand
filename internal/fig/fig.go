@@ -31,6 +31,7 @@ import (
 	"github.com/carlosprados/mdbrand/internal/doc"
 	"github.com/carlosprados/mdbrand/internal/imgsize"
 	"github.com/carlosprados/mdbrand/internal/run"
+	"github.com/carlosprados/mdbrand/internal/tex"
 )
 
 const (
@@ -50,11 +51,16 @@ type Result struct {
 	Note     string  // non-fatal remark worth printing
 }
 
-// Render renders one figure and computes its placement. textWidthMM is the
-// document's text measure; ds supplies a chart's named data, and may be nil.
-func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64, ds Datasets) (*Result, error) {
+// Render renders one figure and computes its placement. box is the room the
+// document gives it; ds supplies a chart's named data, and may be nil.
+func Render(f *doc.Fig, b *brand.Brand, workDir string, box tex.Box, ds Datasets) (*Result, error) {
 	if _, err := os.Stat(f.SrcPath); err != nil {
 		return nil, fmt.Errorf("figure %d: %w", f.Index, err)
+	}
+	textWidthMM := box.WidthMM
+	explicit, err := explicitWidth(f, textWidthMM)
+	if err != nil {
+		return nil, err
 	}
 	svg := filepath.Join(workDir, fmt.Sprintf("fig%02d.svg", f.Index))
 	pdf := filepath.Join(workDir, fmt.Sprintf("fig%02d.pdf", f.Index))
@@ -112,8 +118,8 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64, ds 
 
 	width := textWidthMM
 	switch {
-	case f.WidthMM() > 0:
-		width = f.WidthMM()
+	case explicit > 0:
+		width = explicit
 	default:
 		if found && naturalPt > 0 && b.Diagrams.MaxTextPt > 0 {
 			width = math.Min(width, natWmm*(b.Diagrams.MaxTextPt/naturalPt))
@@ -130,6 +136,11 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64, ds 
 	res.HeightMM = natHmm * (width / natWmm)
 	if found {
 		res.TextPt = naturalPt * (width / natWmm)
+	}
+	if explicit > 0 {
+		if err := fitsBox(res, box, natWmm, natHmm); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := run.Quiet(workDir, "rsvg-convert", "-f", "pdf", "-o", pdf, svg); err != nil {
@@ -149,11 +160,60 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, textWidthMM float64, ds 
 			"  It is %.0f×%.0f mm on the page%s. In order of preference:\n%s",
 			filepath.Base(f.SrcPath), res.TextPt, b.Diagrams.MinTextPt, res.WidthMM, res.HeightMM,
 			held, illegibleFixes(f.Kind, tall))
-	case res.HeightMM > b.Diagrams.MaxHeightMM && f.WidthMM() > 0:
+	case res.HeightMM > b.Diagrams.MaxHeightMM && explicit > 0:
 		res.Note = fmt.Sprintf("%.0f mm tall with an explicit width= — over the %.0f mm guide",
 			res.HeightMM, b.Diagrams.MaxHeightMM)
 	}
 	return res, nil
+}
+
+// explicitWidth reads a width= the author wrote, in mm, or 0 when there is
+// none. A percentage is of the measure, as pandoc reads it. Anything else is
+// refused: a figure placed at a width nobody asked for is the defect.
+func explicitWidth(f *doc.Fig, textWidthMM float64) (float64, error) {
+	v := strings.TrimSpace(f.Attrs["width"])
+	if v == "" {
+		return 0, nil
+	}
+	var w float64
+	var err error
+	if pc, ok := strings.CutSuffix(v, "%"); ok {
+		w, err = strconv.ParseFloat(strings.TrimSpace(pc), 64)
+		w *= textWidthMM / 100
+	} else {
+		w, err = tex.ParseLenMM(v)
+	}
+	if err != nil || w <= 0 {
+		return 0, fmt.Errorf("%s: width=%s is not a width mdbrand can place: write it in mm,\n"+
+			"  cm, in or pt, or as a share of the text measure (width=80%%) — or drop it\n"+
+			"  and let mdbrand size the figure for legible labels", filepath.Base(f.SrcPath), v)
+	}
+	return w, nil
+}
+
+// fitsBox stops a figure that an explicit width= puts outside the room it has.
+// Wider than the measure, it prints into the margin. Taller than the text
+// height, pandoc's LaTeX scales it down to fit — height=\textheight with
+// keepaspectratio — and its labels shrink with it while the report quotes
+// the size before.
+func fitsBox(res *Result, box tex.Box, natWmm, natHmm float64) error {
+	name := filepath.Base(res.Fig.SrcPath)
+	if res.WidthMM > box.WidthMM+0.5 {
+		return fmt.Errorf("%s: width=%s is %.0f mm, wider than the %.0f mm text measure: it would\n"+
+			"  print into the margin. Lower it to %.0fmm, or drop width= and let mdbrand size it",
+			name, res.Fig.Attrs["width"], res.WidthMM, box.WidthMM, math.Floor(box.WidthMM))
+	}
+	if box.HeightMM > 0 && res.HeightMM > box.HeightMM+0.5 {
+		fit := math.Floor(natWmm * box.HeightMM / natHmm)
+		msg := fmt.Sprintf("%s: at width=%s it is %.0f mm tall, taller than the %.0f mm of text a\n"+
+			"  page holds: LaTeX would shrink it to fit, labels and all, and say nothing.\n"+
+			"  Lower width= to %.0fmm", name, res.Fig.Attrs["width"], res.HeightMM, box.HeightMM, fit)
+		if res.TextPt > 0 {
+			msg += fmt.Sprintf(" (labels at %.1fpt)", res.TextPt*fit/res.WidthMM)
+		}
+		return fmt.Errorf("%s, or lay it out wider than tall", msg)
+	}
+	return nil
 }
 
 // illegibleFixes is the advice for a figure whose labels fall under the

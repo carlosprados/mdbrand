@@ -1,6 +1,7 @@
 package fig
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/doc"
+	"github.com/carlosprados/mdbrand/internal/tex"
 )
 
 // The shapes below are what d2 and vl2svg actually emit; the sizing maths is
@@ -222,4 +224,43 @@ func TestD2SourceKeepsAnImportingSourceBesideItsImports(t *testing.T) {
 		t.Errorf("the globs are missing from the copy:\n%s", body)
 	}
 	os.Remove(got)
+}
+
+// pandoc reads width= in any LaTeX unit or as a share of the measure, and
+// mdbrand read only mm: width=10cm or 50% placed the figure at a width
+// nobody asked for, with its labels reported at that size.
+func TestExplicitWidthReadsUnitsAndRefusesTheRest(t *testing.T) {
+	for in, want := range map[string]float64{
+		"": 0, "120mm": 120, "10cm": 100, "2in": 50.8, "50%": 83, " 72.27pt ": 25.4,
+	} {
+		got, err := explicitWidth(&doc.Fig{Attrs: map[string]string{"width": in}}, 166)
+		if err != nil || math.Abs(got-want) > 1e-9 {
+			t.Errorf("width=%q = %g, %v; want %g", in, got, err, want)
+		}
+	}
+	for _, in := range []string{"400", "400px", "wide", "0mm", "-5%"} {
+		if _, err := explicitWidth(&doc.Fig{SrcPath: "a.d2", Attrs: map[string]string{"width": in}}, 166); err == nil {
+			t.Errorf("width=%q was accepted", in)
+		}
+	}
+}
+
+// A tall figure at an explicit width is shrunk by LaTeX to the text height,
+// labels and all; the build must stop and name the width that fits.
+func TestFitsBoxStopsWhatLaTeXWouldShrink(t *testing.T) {
+	box := tex.Box{WidthMM: 166, HeightMM: 253}
+	tall := &Result{Fig: &doc.Fig{SrcPath: "a.d2", Attrs: map[string]string{"width": "60mm"}},
+		WidthMM: 60, HeightMM: 600, TextPt: 10}
+	err := fitsBox(tall, box, 100, 1000)
+	if err == nil || !strings.Contains(err.Error(), "Lower width= to 25mm (labels at 4.2pt)") {
+		t.Errorf("tall: %v", err)
+	}
+	wide := &Result{Fig: tall.Fig, WidthMM: 180, HeightMM: 50}
+	if err := fitsBox(wide, box, 100, 1000); err == nil || !strings.Contains(err.Error(), "wider than the 166 mm") {
+		t.Errorf("wide: %v", err)
+	}
+	slide := tex.Box{WidthMM: 166}
+	if err := fitsBox(tall, slide, 100, 1000); err != nil {
+		t.Errorf("a slide's height is the frame check's: %v", err)
+	}
 }

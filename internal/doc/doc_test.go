@@ -132,16 +132,6 @@ func TestExtractFigs(t *testing.T) {
 	}
 }
 
-func TestWidthAttr(t *testing.T) {
-	fg := &Fig{Attrs: map[string]string{"width": "120mm"}}
-	if got := fg.WidthMM(); got != 120 {
-		t.Errorf("width = %g", got)
-	}
-	if got := (&Fig{Attrs: map[string]string{}}).WidthMM(); got != 0 {
-		t.Errorf("absent width = %g, want 0", got)
-	}
-}
-
 // `bibliography:` is pandoc's own key and people write it both ways. Accepting
 // only a sequence would silently ignore the single-file form, which is the
 // common one, and the PDF would come out full of "[@key?]".
