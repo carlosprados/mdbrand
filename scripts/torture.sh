@@ -159,6 +159,28 @@ else
 	echo "  --    pdftotext absent, PDF contents not checked"
 fi
 
+# ------------------------------------------------------------------------- toc
+# article's contents box a number in 1.5em; "10." in bold, "10.4." and
+# "10.10." overran it and printed against their titles, with no warning in the
+# log. pdftotext reads the touching pair as one word.
+echo
+echo "testdata/toc.md — two-digit numbers in the contents"
+out="$("$bin" build "$root/testdata/toc.md" -o "$work/toc.pdf" 2>&1)"
+status=$?
+if [ $status -ne 0 ]; then
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+elif command -v pdftotext >/dev/null; then
+	text="$(pdftotext "$work/toc.pdf" - 2>/dev/null)"
+	printf '%s\n' "$text" | grep -qF '10.10.10. Subsubsección 10' \
+		&& ok "the contents reach the third level" \
+		|| bad "the contents have no 10.10.10 entry"
+	touching="$(printf '%s\n' "$text" | grep -E '^[0-9]+(\.[0-9]+)*\.[^ .0-9]' | cut -c1-30)"
+	[ -z "$touching" ] && ok "every contents number clears its title" \
+		|| bad "contents numbers against their titles: $(printf '%s' "$touching" | tr '\n' '|')"
+else
+	echo "  --    pdftotext absent, PDF contents not checked"
+fi
+
 # ------------------------------------------------------------------------ data
 # Values from testdata/data/, printed where the document asked for them: in the
 # title, the prose and a caption, merged keys included, and every Markdown

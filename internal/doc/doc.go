@@ -458,6 +458,9 @@ func (m Meta) RunningTitle() string {
 	return m.Title
 }
 
+// HasTOC reports whether the document asks for a table of contents.
+func (m Meta) HasTOC() bool { return m.TOC != nil && *m.TOC }
+
 // Printed is every front matter string a page prints, split by the face both
 // writers set it in: a letter's greeting in the body face; the cover, the
 // letterhead, the running header, the footer and the signature in the display
