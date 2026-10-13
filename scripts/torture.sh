@@ -353,6 +353,24 @@ if [ $status -eq 0 ]; then
 	[ "$n" -ge 2 ] && ok "both pictures are in the PDF" || bad "the PDF holds $n of the 2 pictures"
 fi
 
+# Markdown about Markdown: a d2 fence inside a ````markdown sample was
+# rendered as a figure, and a picture link in code printed this machine's
+# absolute path. Both are examples and must print as written.
+echo
+echo "testdata/code-samples.md — figures and pictures inside code"
+out="$("$bin" build "$root/testdata/code-samples.md" --work "$work/code-samples" -o "$work/code-samples.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	text="$(pdftotext -layout "$work/code-samples.pdf" -)"
+	grep -qF '```d2 caption="An example"' <<<"$text" && ok "the d2 sample prints as code" || bad "the d2 sample was not printed as code"
+	[ "$(grep -cF '![Picture](diagrams/picture.png)' <<<"$text")" -eq 2 ] && ok "both picture samples print as written" || bad "a picture sample was rewritten"
+	n="$(pdfimages -list "$work/code-samples.pdf" | awk 'NR>2 && $3=="image"' | wc -l)"
+	[ "$n" -eq 1 ] && ok "the picture in prose is placed, once" || bad "the PDF holds $n pictures, want 1"
+fi
+
 # ------------------------------------------------------------------- the deck
 # style slides: a beamer deck from the deck bundle, which is set in DejaVu so
 # it builds anywhere and carries every slides key. Each check is a defect the

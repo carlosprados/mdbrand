@@ -198,6 +198,8 @@ Fences: `d2`, `vegalite`/`vega`/`vl`. Attributes: `caption="…"`, `width=120mm`
 `scale=0.4`. `width=` takes mm, cm, in, pt or a share of the measure (`80%`);
 a width that puts the figure past the margin or makes it taller than the page
 fails the build with the width that fits — leave it out unless you need it.
+To show a fence or a picture link as an example, put it inside code (a
+````` ````markdown ````` fence, `~~~`, or a code span): there it prints as written.
 
 - **Sizing is the tool's.** Each figure is placed at the widest size that fits
   the measure, keeps its labels inside the brand's `min_text_pt..max_text_pt`

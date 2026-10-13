@@ -397,3 +397,28 @@ func TestUnknownOptionIsRefusedWithTheNearestKey(t *testing.T) {
 		t.Errorf("want a refusal without a guess, got %v", err)
 	}
 }
+
+// Code is an example of Markdown, not Markdown: a d2 fence inside a
+// ````markdown sample was rendered, and a picture link in a code span or a ~~~
+// block printed this machine's absolute path. The one in prose is still read.
+func TestExtractFigsLeavesCodeAsWritten(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "logo.png", "PNG")
+	md := "````markdown\n```d2\na -> b\n```\n````\n\n" +
+		"Write `![Logo](logo.png)` or `![c](x.d2)`:\n\n~~~\n![Logo](logo.png)\n~~~\n\n" +
+		"![Logo](logo.png)\n"
+	f, err := Read(write(t, dir, "in.md", md))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, figs, err := f.ExtractFigs(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(figs) != 0 {
+		t.Errorf("got %d figures from code samples", len(figs))
+	}
+	if strings.Count(body, dir) != 1 || !strings.HasSuffix(body, "![Logo]("+filepath.Join(dir, "logo.png")+")\n") {
+		t.Errorf("body =\n%s", body)
+	}
+}

@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/carlosprados/mdbrand/internal/mdtext"
 	"github.com/carlosprados/mdbrand/internal/suggest"
 	"gopkg.in/yaml.v3"
 )
@@ -324,45 +325,15 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 	}
 	f.Refs = nil
 
-	// Pass 1: fenced blocks, line by line, so an indented or longer fence still
-	// terminates the block it opened.
-	var out []string
-	lines := strings.Split(f.Body, "\n")
-	for i := 0; i < len(lines); i++ {
-		m := fenceRe.FindStringSubmatch(lines[i])
-		if m == nil {
-			out = append(out, lines[i])
-			continue
-		}
-		fence := lines[i][:strings.IndexFunc(lines[i], func(r rune) bool { return r != '`' })]
-		var content []string
-		i++
-		for ; i < len(lines); i++ {
-			if strings.HasPrefix(strings.TrimSpace(lines[i]), fence) && strings.TrimSpace(strings.Trim(lines[i], "`")) == "" {
-				break
-			}
-			content = append(content, lines[i])
-		}
-		kind := normKind(m[1])
-		attrs := parseAttrs(m[2])
-		ext := ".d2"
-		if kind == "vega" {
-			ext = ".vl.json"
-		}
-		idx := len(figs)
-		src := filepath.Join(srcDir, fmt.Sprintf("fig%02d%s", idx, ext))
-		if err := os.WriteFile(src, []byte(strings.Join(content, "\n")+"\n"), 0o644); err != nil {
-			return "", nil, err
-		}
-		ph := fmt.Sprintf("@@MDBRAND_FIG_%d@@", idx)
-		figs = append(figs, &Fig{Kind: kind, SrcPath: src, BaseDir: absDocDir, Caption: attrs["caption"], Attrs: attrs, Placeholder: ph, Index: idx, Lang: f.Meta.Lang})
-		out = append(out, ph)
+	body, figs, err = f.extractFenced(srcDir, absDocDir)
+	if err != nil {
+		return "", nil, err
 	}
-	body = strings.Join(out, "\n")
 
-	// Pass 2: links to side files.
-	body = imgRe.ReplaceAllStringFunc(body, func(s string) string {
-		m := imgRe.FindStringSubmatch(s)
+	// Pass 2: links to side files. A link inside code is an example of one —
+	// a sample of Markdown in a fence, `![](x.d2)` in a sentence — and stays
+	// as written.
+	body = replaceOutsideCode(imgRe, body, func(m []string) string {
 		p := m[2]
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(docDir, p)
@@ -403,11 +374,11 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 	// every Markdown viewer came back as "file not found" — and one that
 	// happened to exist there would have been the wrong picture.
 	var missing []string
-	body = picRe.ReplaceAllStringFunc(body, func(s string) string {
-		m := picRe.FindStringSubmatch(s)
+	// In code it is an example, and printed this machine's absolute path.
+	body = replaceOutsideCode(picRe, body, func(m []string) string {
 		p := m[2]
 		if strings.Contains(p, "://") {
-			return s
+			return m[0]
 		}
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(docDir, p)
@@ -427,6 +398,95 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 	}
 
 	return body, figs, nil
+}
+
+// extractFenced is the first pass: each d2 or Vega-Lite fence becomes a
+// placeholder and its source a file in srcDir. Line by line, so an indented or
+// longer fence still terminates the block it opened; and a fence of any other
+// language is copied whole, since a d2 block inside a ````markdown sample is
+// an example of one, not a figure.
+func (f *File) extractFenced(srcDir, baseDir string) (string, []*Fig, error) {
+	var out []string
+	var figs []*Fig
+	lines := strings.Split(f.Body, "\n")
+	for i := 0; i < len(lines); i++ {
+		m := fenceRe.FindStringSubmatch(lines[i])
+		if m == nil {
+			out = append(out, lines[i])
+			if code := otherFence(lines[i]); code != "" {
+				for i++; i < len(lines); i++ {
+					out = append(out, lines[i])
+					if closesFence(lines[i], code) {
+						break
+					}
+				}
+			}
+			continue
+		}
+		fence := lines[i][:strings.IndexFunc(lines[i], func(r rune) bool { return r != '`' })]
+		var content []string
+		for i++; i < len(lines); i++ {
+			if closesFence(lines[i], fence) {
+				break
+			}
+			content = append(content, lines[i])
+		}
+		kind := normKind(m[1])
+		attrs := parseAttrs(m[2])
+		ext := ".d2"
+		if kind == "vega" {
+			ext = ".vl.json"
+		}
+		idx := len(figs)
+		src := filepath.Join(srcDir, fmt.Sprintf("fig%02d%s", idx, ext))
+		if err := os.WriteFile(src, []byte(strings.Join(content, "\n")+"\n"), 0o644); err != nil {
+			return "", nil, err
+		}
+		ph := fmt.Sprintf("@@MDBRAND_FIG_%d@@", idx)
+		figs = append(figs, &Fig{Kind: kind, SrcPath: src, BaseDir: baseDir, Caption: attrs["caption"], Attrs: attrs, Placeholder: ph, Index: idx, Lang: f.Meta.Lang})
+		out = append(out, ph)
+	}
+	return strings.Join(out, "\n"), figs, nil
+}
+
+// otherFence is the fence a line opens that is not a figure's, or "".
+func otherFence(line string) string {
+	trimmed := strings.TrimLeft(line, " ")
+	if len(line)-len(trimmed) > 3 {
+		return ""
+	}
+	return mdtext.Fence(trimmed)
+}
+
+// closesFence reports whether line closes a block opened by fence: the same
+// character, at least as many, and nothing else on the line.
+func closesFence(line, fence string) bool {
+	t := strings.TrimSpace(line)
+	return strings.HasPrefix(t, fence) && strings.Trim(t, fence[:1]) == ""
+}
+
+// replaceOutsideCode is ReplaceAllStringFunc for matches that start in prose;
+// one inside a code fence, a code span or mathematics is left as written.
+func replaceOutsideCode(re *regexp.Regexp, s string, fn func(m []string) string) string {
+	code := mdtext.Protected(s)
+	var b strings.Builder
+	last := 0
+	for _, ix := range re.FindAllStringSubmatchIndex(s, -1) {
+		if mdtext.Inside(code, ix[0]) {
+			continue
+		}
+		m := make([]string, len(ix)/2)
+		for g := range m {
+			if ix[2*g] >= 0 {
+				m[g] = s[ix[2*g]:ix[2*g+1]]
+			}
+		}
+		b.WriteString(s[last:ix[0]])
+		b.WriteString(fn(m))
+		last = ix[1]
+	}
+	b.WriteString(s[last:])
+	return b.String()
 }
 
 // Scale returns an explicit d2 scale override, or 0.
