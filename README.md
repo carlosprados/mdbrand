@@ -52,6 +52,7 @@ same traps. They are now the tool's behaviour, not something to remember:
 | `pdflatex` chokes on the Unicode these documents are full of | XeLaTeX always; the engine is not a flag |
 | A font without the glyph prints **nothing**, and only the LaTeX log knows (`DejaVu Serif` has no `☐` or `⏱`; Latin Modern no `↔` or `≈`) | mdbrand runs XeLaTeX itself, reads the log, and **fails** naming each missing character and font |
 | A d2 `\|md\|` block becomes a `<foreignObject>` and `rsvg-convert` drops it silently | Detected before rendering; the build stops and says why |
+| A picture inside an SVG or a Vega image mark, linked by a relative path, leaves an empty frame | Resolved against the source and embedded in the figure; a missing or remote one stops the build by name |
 | `rsvg-convert` 2.40, the usual Windows build, prints an SVG `<mask>` (every labelled d2 connection) as a black box | The build stops naming the version and the fix; `mdbrand doctor` marks it `TOO OLD` |
 | d2's own PDF export downloads a Playwright driver from URLs that 404 | Never used: source → SVG → `rsvg-convert` → PDF |
 | `vl2pdf` writes points equal to the spec's pixels, so charts come out 33% off the SVG route | Same SVG route for both, so 1px = 0.75pt everywhere |
@@ -1114,6 +1115,11 @@ takes the sizing away from mdbrand.
 
 **`renders a <foreignObject>`** — a d2 `|md|` block. Keep labels short and put
 the prose in the document.
+
+**`links picture(s) that would not print`** — an `<image href>` in an SVG, or a
+Vega image mark's `url`, names a file that is not there or a remote URL.
+A relative path resolves against the SVG's directory (the document's, for a
+fenced chart); download a remote picture beside the figure.
 
 **`converted to an empty PDF`** — the logo's artwork sits outside its `viewBox`,
 or it uses the invalid `data:img/` MIME type. `mdbrand brand validate` says

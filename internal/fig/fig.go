@@ -89,7 +89,15 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, box tex.Box, ds *Dataset
 	if err != nil {
 		return nil, err
 	}
-	src := string(raw)
+	src, err := inlineImages(string(raw), f.BaseDir, filepath.Base(f.SrcPath))
+	if err != nil {
+		return nil, err
+	}
+	if src != string(raw) {
+		if err := os.WriteFile(svg, []byte(src), 0o644); err != nil {
+			return nil, err
+		}
+	}
 
 	// rsvg-convert drops <foreignObject> without a word, so a d2 |md| block
 	// disappears from the PDF and nothing says why.
