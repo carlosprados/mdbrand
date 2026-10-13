@@ -224,7 +224,8 @@ To show a fence or a picture link as an example, put it inside code (a
   A CSV is read by mdbrand's own parser, as tables read it: `;` or `,`, and a
   decimal comma is a number where `lang` writes one.
   In a decimal-comma `lang` numbers print as that language writes them
-  (`30.000`), and in Spanish so do month names.
+  (`30.000`, `30 000` in French), and month names too in es, ca, de, fr, it,
+  nl, da and pt; a dated chart in a language without them (gl, eu) stops.
 - **Pictures:** an `.svg` made elsewhere is treated as a figure (sized, checked
   for legibility); PNG, JPEG and PDF keep their markup. A missing picture stops
   the build by name.

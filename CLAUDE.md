@@ -270,8 +270,11 @@ Do not relax one without understanding what it cost.
     decimal-comma `lang` compiles with vl2vg and renders with `vg2svg -f -t`,
     after a probe that renders `format(1000, ',')` and stops unless it reads
     `1.000`. English keeps vl2svg, byte for byte. Reported upstream as
-    vega/vega#4361 and vega/vega-lite#9955.
-    → `internal/fig/locale_test.go`, `testdata/locale.md`.
+    vega/vega#4361 and vega/vega-lite#9955. French printed `10,000` — fr had
+    no separators at all — and German `Jan`: month names came only for
+    Spanish. The others are d3-time-format's tables, embedded unchanged, and
+    a dated chart in a language with none stops rather than print English.
+    → `internal/fig/locale_test.go`, `testdata/locale.md`, `testdata/locale-fr.md`.
 
 21. **A figure takes the brand where its author did not choose.** Charts came
     out in Vega's blue and Noto Sans and diagrams in d2's, on pages in the

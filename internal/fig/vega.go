@@ -82,6 +82,9 @@ func VegaSpec(f *doc.Fig, ds *Datasets) (spec []byte, refs []string, err error) 
 	}
 	if len(r.errs) == 0 && len(r.missing) == 0 && len(r.remote) == 0 {
 		r.errs = unknownFields(v)
+		if err := timeless(v, f.Lang); err != nil {
+			r.errs = append(r.errs, err.Error())
+		}
 	}
 
 	if len(r.errs) > 0 {

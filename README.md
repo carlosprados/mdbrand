@@ -827,8 +827,12 @@ figures:
 
 **A chart speaks the document's language.** In a document whose `lang` writes
 a decimal comma (Spanish, Catalan, Galician, Basque, Portuguese, Italian,
-German, Dutch, Danish — the same list the tables use), axes print `30.000`, not
-`30,000`, and in Spanish months and days are `ene`, `lunes`. Vega has no way to
+German, Dutch, Danish, French — the same list the tables use), axes print
+`30.000` (`30 000` in French), not `30,000`, and months and days are in the
+language: `ene`, `janv.`, `Mrz` — Spanish, Catalan, German, French, Italian,
+Dutch, Danish and Portuguese, the last seven from d3's own tables. A chart of
+dates in a language without one (Galician, Basque) stops the build rather than
+print `Jan`. Vega has no way to
 take that from the spec: its CLIs overwrite a spec's `config.locale`, and
 `vl2svg -f/-t` pass the file's text where an object is wanted. So those charts
 are compiled with `vl2vg` and rendered with `vg2svg -f -t`, which works from

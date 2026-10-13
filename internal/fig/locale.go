@@ -1,6 +1,7 @@
 package fig
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -38,20 +39,71 @@ func numberLocale(lang string) map[string]any {
 	return map[string]any{"decimal": decimal, "thousands": thousands, "grouping": []int{3}, "currency": currency}
 }
 
-// timeLocale is the d3-time-format locale for lang, or nil. Only Spanish is
-// here: month and day names nobody has checked are worse than English ones.
+// timeLocale is the d3-time-format locale for lang, or nil. Spanish is our
+// own, as it always was; the others are d3's, embedded unchanged. Month and
+// day names nobody has checked are worse than English ones, so a language
+// without a table has none, and a chart of dates in it stops (timeless).
 func timeLocale(lang string) map[string]any {
-	if strings.ToLower(strings.SplitN(lang, "-", 2)[0]) != "es" {
+	base := strings.ToLower(strings.SplitN(lang, "-", 2)[0])
+	if base == "es" {
+		return spanishTime
+	}
+	raw, err := timeLocales.ReadFile("timelocale/" + base + ".json")
+	if err != nil {
 		return nil
 	}
-	return map[string]any{
-		"dateTime": "%A, %e de %B de %Y, %X", "date": "%d/%m/%Y", "time": "%H:%M:%S",
-		"periods":     []string{"AM", "PM"},
-		"days":        []string{"domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"},
-		"shortDays":   []string{"dom", "lun", "mar", "mié", "jue", "vie", "sáb"},
-		"months":      []string{"enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"},
-		"shortMonths": []string{"ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"},
+	var v map[string]any
+	if json.Unmarshal(raw, &v) != nil {
+		return nil
 	}
+	return v
+}
+
+//go:embed timelocale/*.json
+var timeLocales embed.FS
+
+var spanishTime = map[string]any{
+	"dateTime": "%A, %e de %B de %Y, %X", "date": "%d/%m/%Y", "time": "%H:%M:%S",
+	"periods":     []string{"AM", "PM"},
+	"days":        []string{"domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"},
+	"shortDays":   []string{"dom", "lun", "mar", "mié", "jue", "vie", "sáb"},
+	"months":      []string{"enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"},
+	"shortMonths": []string{"ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"},
+}
+
+// timeless refuses a chart of dates in a language with no month names here:
+// Vega would print Jan and Monday on a page in Galician, exit 0.
+func timeless(v any, lang string) error {
+	base := strings.ToLower(strings.SplitN(lang, "-", 2)[0])
+	if base == "" || base == "en" || timeLocale(lang) != nil || !usesTime(v) {
+		return nil
+	}
+	return fmt.Errorf(`the chart has dates, and mdbrand has no month or day names in %q: Vega
+  would print them in English. Write the axis yourself (labelExpr, or a
+  nominal field holding the names), or ask for the language at
+  https://github.com/carlosprados/mdbrand/issues`, lang)
+}
+
+// usesTime reports whether a spec has a temporal field or a time unit.
+func usesTime(v any) bool {
+	switch t := v.(type) {
+	case map[string]any:
+		for k, c := range t {
+			if k == "values" || k == "datasets" {
+				continue
+			}
+			if k == "timeUnit" || k == "type" && c == "temporal" || usesTime(c) {
+				return true
+			}
+		}
+	case []any:
+		for _, c := range t {
+			if usesTime(c) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // localeArgs writes lang's locale files into dir and returns the vg2svg flags
