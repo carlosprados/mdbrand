@@ -247,7 +247,8 @@ the columns that fit; one so wide it runs off the paper fails the build.
 
 `[words]{.accent}` sets them in the bundle's `colors.accent` (its primary
 unless it names one), in the PDF and the `.docx`. That is the only colour:
-`color=`, `colour=`, `style=` and a `::: {.accent}` block stop the build,
+`color=`, `colour=`, `style=`, `bgcolor=` (on a span, div, heading, code or
+link) and a `::: {.accent}` block stop the build,
 because pandoc drops them in silence. Use it for a phrase, not a paragraph.
 Under 4.5:1 against white a deck stops and a page warns, naming a darker shade
 to put in the bundle.

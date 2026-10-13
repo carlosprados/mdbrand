@@ -90,8 +90,9 @@ Contextual alternates are off for that reason — Inter's turned "(SD1)" into
 U+EE4E SD1 U+EE4F. Without pdftotext the build warns that it was not checked.
 
 [words]{.accent} sets words in the brand's primary colour, in the PDF and the
-.docx alike. A span or div with color=, colour= or style= stops the build:
-pandoc drops those attributes in silence, so the words would print black.
+.docx alike. color=, colour=, style=, bgcolor= or background= on a span, div,
+heading, code or link stops the build: pandoc drops those attributes in
+silence, so the words would print black.
 Raw HTML stops it too, each tag named with its Markdown — <br>, <b>, <img>,
 <table> vanish from both outputs; an HTML comment is fine.
 

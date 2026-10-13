@@ -559,8 +559,9 @@ The deadline is [non-negotiable]{.accent}, and the rest is detail.
 the bundle names a colour for words — in the PDF and the
 `.docx` alike — in the `.docx` as an *Accent* character style, with the colour
 also on each run, because Google Docs drops character styles when it imports.
-The palette is the brand's, not the author's: there is no hex colour. A span
-with `color=`, `colour=` or `style=` stops the build, and so does a
+The palette is the brand's, not the author's: there is no hex colour. A span,
+div, heading, code or link with `color=`, `colour=`, `style=`, `bgcolor=` or
+`background=`, in any case, stops the build, and so does a
 `::: {.accent}` block, because pandoc drops those attributes on both outputs
 and the words would print black without a word of warning.
 
