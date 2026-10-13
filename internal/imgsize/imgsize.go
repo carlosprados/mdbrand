@@ -21,10 +21,11 @@ import (
 )
 
 var (
-	rootRe    = regexp.MustCompile(`(?s)<svg\b[^>]*>`)
-	viewBoxRe = regexp.MustCompile(`viewBox\s*=\s*"\s*([-0-9.eE]+)[ ,]+([-0-9.eE]+)[ ,]+([-0-9.eE]+)[ ,]+([-0-9.eE]+)`)
-	attrWRe   = regexp.MustCompile(`\bwidth\s*=\s*"\s*([0-9.]+)`)
-	attrHRe   = regexp.MustCompile(`\bheight\s*=\s*"\s*([0-9.]+)`)
+	rootRe = regexp.MustCompile(`(?s)<svg\b[^>]*>`)
+	// Either quote: viewBox='0 0 400 120' went unread.
+	viewBoxRe = regexp.MustCompile(`viewBox\s*=\s*["']\s*([-0-9.eE]+)[ ,]+([-0-9.eE]+)[ ,]+([-0-9.eE]+)[ ,]+([-0-9.eE]+)`)
+	attrWRe   = regexp.MustCompile(`\bwidth\s*=\s*["']\s*([0-9.]+)\s*([a-z%]*)`)
+	attrHRe   = regexp.MustCompile(`\bheight\s*=\s*["']\s*([0-9.]+)\s*([a-z%]*)`)
 	// A PDF may carry several MediaBox entries; the first belongs to the page
 	// that a one-page logo is.
 	mediaBoxRe = regexp.MustCompile(`/MediaBox\s*\[\s*([-0-9.]+)\s+([-0-9.]+)\s+([-0-9.]+)\s+([-0-9.]+)\s*\]`)
@@ -40,12 +41,7 @@ func SVG(src string) (w, h, unit float64, err error) {
 		return 0, 0, 0, fmt.Errorf("no <svg> element")
 	}
 	vb := viewBoxRe.FindStringSubmatch(root)
-	if m := attrWRe.FindStringSubmatch(root); m != nil {
-		w, _ = strconv.ParseFloat(m[1], 64)
-	}
-	if m := attrHRe.FindStringSubmatch(root); m != nil {
-		h, _ = strconv.ParseFloat(m[1], 64)
-	}
+	w, h = svgLength(attrWRe.FindStringSubmatch(root)), svgLength(attrHRe.FindStringSubmatch(root))
 	if w == 0 || h == 0 {
 		if vb == nil {
 			return 0, 0, 0, fmt.Errorf("root <svg> has neither width/height nor viewBox")
@@ -63,6 +59,25 @@ func SVG(src string) (w, h, unit float64, err error) {
 		return 0, 0, 0, fmt.Errorf("root <svg> has a non-positive size")
 	}
 	return w, h, unit, nil
+}
+
+// svgLength is an SVG width or height in CSS pixels, 96 to the inch; 0 for a
+// relative one (100%, 10em), which says nothing of the drawing's size, so the
+// viewBox decides. width="100%" was read as 100 pixels, 50mm as 50.
+func svgLength(m []string) float64 {
+	if m == nil {
+		return 0
+	}
+	v, err := strconv.ParseFloat(m[1], 64)
+	if err != nil {
+		return 0
+	}
+	perUnit := map[string]float64{"": 1, "px": 1, "in": 96, "cm": 96 / 2.54, "mm": 96 / 25.4, "pt": 96.0 / 72, "pc": 16}
+	f, ok := perUnit[m[2]]
+	if !ok {
+		return 0
+	}
+	return v * f
 }
 
 // Aspect returns height divided by width for the image at path: 1 for a square

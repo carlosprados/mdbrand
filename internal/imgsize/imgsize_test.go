@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -121,5 +122,27 @@ func writePNG(t *testing.T, path string, w, h int) {
 	}
 	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// A relative width says nothing of the drawing, an absolute one is converted,
+// and a viewBox in single quotes is a viewBox.
+func TestSVGUnits(t *testing.T) {
+	for src, want := range map[string][3]float64{
+		`<svg width="100%" height="100%" viewBox="0 0 400 120">`: {400, 120, 1},
+		`<svg width='50mm' height='25mm' viewBox='0 0 100 50'>`:  {50 * 96 / 25.4, 25 * 96 / 25.4, 50 * 96 / 25.4 / 100},
+		`<svg width="300" height="90">`:                          {300, 90, 1},
+	} {
+		w, h, unit, err := SVG(src)
+		if err != nil {
+			t.Fatalf("%s: %v", src, err)
+		}
+		got := [3]float64{w, h, unit}
+		for i := range got {
+			if math.Abs(got[i]-want[i]) > 1e-9 {
+				t.Errorf("%s: got %v, want %v", src, got, want)
+				break
+			}
+		}
 	}
 }

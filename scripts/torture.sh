@@ -637,6 +637,7 @@ traps=(
 	"slide-column-figure.md|fail|It is 67×"
 	"slide-footer.md|fail|the slides' footer is"
 	"notes-wide.md|fail|\"A slide\"|--to pdf,notes --brand none"
+	"list-deep.md|fail|a list nests deeper than LaTeX can set"
 	"accent-pale.md|fail|Set colors.accent|--brands-dir $root/testdata/brands"
 	"accent-pale.md|ok|Set colors.accent|--style note --brands-dir $root/testdata/brands"
 	"brand-typo.md|fail|colors.acent is not a setting mdbrand reads — did you mean accent?|--brands-dir $root/testdata/brands"

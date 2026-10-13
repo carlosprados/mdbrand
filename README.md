@@ -809,7 +809,9 @@ An **`.svg` rendered elsewhere** goes through the same door: linked as
 `![caption](figs/x.svg)`, it is checked, sized for legible labels and converted
 by `rsvg-convert`, rather than handed to pandoc as `\includesvg` (which needs
 Inkscape). PNG, JPEG and PDF pictures stay as they are. Every relative picture
-path resolves against the document, and a missing one stops the build by name.
+path resolves against the document — inline or by reference (`![x][logo]`),
+`.PNG` as `.png`, a path with spaces in `<…>` — and a missing one stops the
+build by name. Lists nest four levels deep in the PDF; a fifth stops the build.
 A PNG or JPEG is measured where it was printed (`pdfimages`): a small picture
 stretched under 72 ppi stops the build, under 150 ppi it warns — LaTeX scales
 a 400-pixel screenshot to the measure without a word — and both name the width
