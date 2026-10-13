@@ -101,14 +101,14 @@ cannot be placed inside that band is reported as an error with the fix.
 // reads by name, and the brand and style the first document declares.
 type diagramSources struct {
 	figs         []*doc.Fig
-	sets         map[*doc.Fig]fig.Datasets
+	sets         map[*doc.Fig]*fig.Datasets
 	brand, style string
 }
 
 // collectFigs reads every argument: a document's figures, or a source file
 // rendered on its own.
 func collectFigs(args []string, work string) (*diagramSources, error) {
-	src := &diagramSources{sets: map[*doc.Fig]fig.Datasets{}}
+	src := &diagramSources{sets: map[*doc.Fig]*fig.Datasets{}}
 	for _, a := range args {
 		if !strings.HasSuffix(a, ".md") {
 			p, err := filepath.Abs(a)

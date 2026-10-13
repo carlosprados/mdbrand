@@ -471,11 +471,13 @@ func fillData(o Options, d *doc.File, store *data.Store, body string, figs []*do
 	return body, d.SetFrontMatter(fm)
 }
 
-// Datasets lets a chart's "data": {"name": …} read the document's data, with
-// numbers parsed by the document's language, as its tables parse them.
-func Datasets(store *data.Store, lang string) fig.Datasets {
-	return func(name string) ([]map[string]any, error) {
-		return store.Records(name, lang)
+// Datasets lets a chart read the document's data — by name, or a local CSV by
+// url — with numbers parsed by the document's language, as its tables parse
+// them.
+func Datasets(store *data.Store, lang string) *fig.Datasets {
+	return &fig.Datasets{
+		Named: func(name string) ([]map[string]any, error) { return store.Records(name, lang) },
+		File:  func(path string) ([]map[string]any, error) { return data.FileRecords(path, lang) },
 	}
 }
 

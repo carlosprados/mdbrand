@@ -106,12 +106,12 @@ func TestVegaSpecNamedData(t *testing.T) {
 	must(t, os.WriteFile(src, []byte(`{
 	  "datasets": {"mine": [{"a": 1}]},
 	  "vconcat": [{"data": {"name": "maquinas"}}, {"data": {"name": "mine"}}]}`), 0o644))
-	ds := func(name string) ([]map[string]any, error) {
+	ds := &Datasets{Named: func(name string) ([]map[string]any, error) {
 		if name != "maquinas" {
 			t.Fatalf("asked for %q", name)
 		}
 		return []map[string]any{{"id": "m5.large", "ram": 8.0}}, nil
-	}
+	}}
 	spec, _, err := VegaSpec(&doc.Fig{Kind: "vega", SrcPath: src}, ds)
 	if err != nil {
 		t.Fatal(err)
@@ -136,13 +136,46 @@ func TestVegaSpecMixedField(t *testing.T) {
 		{"id": 2026.0, "sede": "Zamora", "coste": "1250,5"},
 		{"id": "m5", "sede": "Ávila", "coste": 2100.0},
 	}
-	ds := func(string) ([]map[string]any, error) { return rows, nil }
+	ds := &Datasets{Named: func(string) ([]map[string]any, error) { return rows, nil }}
 	_, _, err := VegaSpec(&doc.Fig{Kind: "vega", SrcPath: src}, ds)
 	if err == nil || !strings.Contains(err.Error(), `coste: 1 number(s) and "1250,5"`) || strings.Contains(err.Error(), "id:") {
 		t.Errorf("err = %v, want coste named and id left alone", err)
 	}
+	rows[0]["coste"] = ""
+	if _, _, err := VegaSpec(&doc.Fig{Kind: "vega", SrcPath: src}, ds); err != nil {
+		t.Errorf("a blank cell beside numbers is not text: %v", err)
+	}
 	rows[0]["coste"] = 1250.5
 	if _, _, err := VegaSpec(&doc.Fig{Kind: "vega", SrcPath: src}, ds); err != nil {
 		t.Errorf("an unused id mixing numbers and text must not fail the chart: %v", err)
+	}
+}
+
+// A local CSV linked by url is read by the document's parser and inlined: how
+// Vega would split the text no longer applies, and its own parse still does.
+func TestVegaSpecInlinesALocalCSV(t *testing.T) {
+	dir := t.TempDir()
+	must(t, os.WriteFile(filepath.Join(dir, "s.csv"), []byte("sede;coste\nÁvila;2100\n"), 0o644))
+	must(t, os.WriteFile(filepath.Join(dir, "l.json"), []byte(`[]`), 0o644))
+	src := filepath.Join(dir, "c.vl.json")
+	must(t, os.WriteFile(src, []byte(`{"layer": [
+	  {"data": {"url": "s.csv", "format": {"type": "csv", "delimiter": ";", "parse": {"coste": "number"}}}},
+	  {"data": {"url": "l.json"}}]}`), 0o644))
+	var asked string
+	ds := &Datasets{File: func(p string) ([]map[string]any, error) {
+		asked = p
+		return []map[string]any{{"sede": "Ávila", "coste": 2100.0}}, nil
+	}}
+	spec, refs, err := VegaSpec(&doc.Fig{Kind: "vega", SrcPath: src}, ds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(spec)
+	if asked != filepath.Join(dir, "s.csv") || !strings.Contains(s, `"format":{"parse":{"coste":"number"}}`) ||
+		!strings.Contains(s, `"values":[{"coste":2100,"sede":"Ávila"}]`) || strings.Contains(s, "s.csv") {
+		t.Errorf("asked %q, spec:\n%s", asked, s)
+	}
+	if !strings.Contains(s, `"url":"file://`) || len(refs) != 2 {
+		t.Errorf("a JSON url stays a url, and both files are watched: refs %v\n%s", refs, s)
 	}
 }

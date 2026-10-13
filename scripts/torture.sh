@@ -321,6 +321,23 @@ if [ $status -eq 0 ]; then
 	done
 fi
 
+# ------------------------------------------------------------- a csv by url
+# A chart whose data url pointed at a Spanish export drew one bar: Vega's CSV
+# reader splits on commas alone. The rows now come through the document's
+# parser, so every site is a bar and its label is in the SVG.
+echo
+echo "testdata/chart-url.md — a Spanish CSV linked by url"
+out="$("$bin" build "$root/testdata/chart-url.md" --work "$work/chart-url" -o "$work/chart-url.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	for want in ">Zamora<" ">Ávila<" ">Burgos<"; do
+		grep -qF -- "$want" "$work/chart-url/fig00.svg" && ok "the chart has a bar for ${want//[<>]/}" || bad "the chart lacks ${want//[<>]/}"
+	done
+fi
+
 # ------------------------------------------------------------------- the deck
 # style slides: a beamer deck from the deck bundle, which is set in DejaVu so
 # it builds anywhere and carries every slides key. Each check is a defect the
@@ -506,6 +523,7 @@ traps=(
 	"unknown-data-key.md|fail|the ones that exist are m5.large, m5.xlarge"
 	"table-typo.md|fail|has no field \"famila\"; the fields are"
 	"chart-mixed-data.md|fail|coste: 1 number(s) and \"1250,5\", \"1875,25\""
+	"chart-url-mixed.md|fail|data \"../data/sedes.csv\" mixes numbers and text"
 	"unknown-placeholder.md|fail|the ones that exist are {{words}}"
 	"wordcount-typo.md|fail|the keys are base and include"
 	"absent-body-font.md|fail|fontconfig cannot find it|--brand ghost --brands-dir $root/testdata/brands"

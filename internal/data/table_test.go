@@ -1,6 +1,8 @@
 package data
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -209,4 +211,19 @@ func TestRecordsTyped(t *testing.T) {
 	if es[0]["activa"] != "true" {
 		t.Errorf("activa = %#v", es[0]["activa"])
 	}
+	// A blank cell stays "", as Vega's own CSV reader has it: a text mark
+	// prints nothing for it, where null would print the word null.
+	recs, err := FileRecords(writeTemp(t, "e.csv", "partido,etiqueta\nPSOE,121\nBNG,\n"), "es")
+	if err != nil || recs[1]["etiqueta"] != "" || recs[0]["etiqueta"] != 121.0 {
+		t.Errorf("blank cell: %#v, %v", recs, err)
+	}
+}
+
+func writeTemp(t *testing.T, name, body string) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), name)
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return p
 }

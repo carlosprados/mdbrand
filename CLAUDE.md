@@ -153,7 +153,9 @@ Do not relax one without understanding what it cost.
     collated sorting, and a column never narrower than its longest word — a
     table sized to the letter overflowed by 3pt, under the warning threshold.
     Totals are exact and refuse a blank cell. A chart's `"data": {"name": …}`
-    reads the records through the same parser, and a field it plots that
+    reads the records through the same parser, and so does a local CSV its
+    `"data": {"url": …}` names — inlined as values, since Vega's reader
+    splits on commas alone and drew one bar of a `;` export. A field it plots that
     mixes numbers and text fails: Vega-Lite drew Ávila alone, exit 0, when
     an English document read a Spanish CSV.
     → `internal/data/*_test.go`, `internal/fig/vega_test.go`,

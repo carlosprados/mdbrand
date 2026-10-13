@@ -794,7 +794,11 @@ file in a linked one, wherever it sits in the spec (layers, concatenations, a
 lookup's `from`). A file that is not there stops the build, where `vl2svg` alone
 would have drawn an empty chart and exited 0; so does a remote URL, because a
 build that depends on the network does not reproduce. The data files are
-watched by `build -w` like the document itself.
+watched by `build -w` like the document itself. A CSV is read by mdbrand's own
+parser, as a table reads it, and handed to the chart as values: a Spanish
+export with `;` between fields and decimal commas draws every row in a Spanish
+document, and stops an English one naming the field, where Vega's reader
+split on commas alone and drew one bar.
 
 **Figures wear the brand.** A chart's bars and areas take the bundle's
 primary; its lines, points and rules the same colour, darkened only as far as
