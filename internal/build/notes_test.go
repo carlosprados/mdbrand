@@ -43,3 +43,18 @@ func TestJudgeNotesCountsInLines(t *testing.T) {
 		t.Errorf("no marker, no error: %v", err)
 	}
 }
+
+// A word too wide in a note is reported when the \note is read, before the
+// mark of its page, which names the slide; the footer's warnings and a note
+// that fits are not.
+func TestWideNotesByTheirSlide(t *testing.T) {
+	deck := strings.Split("\\begin{frame}{Fits}\nx\n\\end{frame}\n\\begin{frame}{Too wide}\ny\n\\end{frame}", "\n")
+	log := "Overfull \\hbox (9pt too wide) has occurred while \\output is active\n" +
+		"MDBRAND-NOTE-END line=3\n" +
+		"Overfull \\hbox (120pt too wide) in paragraph at lines 346--346\n" +
+		"MDBRAND-NOTE-END line=6\n"
+	err := wideNotes(log, deck)
+	if err == nil || !strings.Contains(err.Error(), `"Too wide"`) || strings.Contains(err.Error(), `"Fits"`) {
+		t.Errorf("err = %v", err)
+	}
+}

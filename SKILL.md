@@ -279,7 +279,12 @@ and figures. Start from `mdbrand example charla`.
 - **A slide that does not fit stops the build**, by title and millimetres.
   Split it with another `##` or cut it. With one figure on the slide the error
   names the exact `width=NNmm` to put on its block, or says no width keeps its
-  labels legible.
+  labels legible. A line too wide for the slide or its `::: column` stops it
+  too, by slide number and title, and so does a footer whose title or
+  `confidential:` label pushes the number off (set `short_title:`).
+- A figure inside `::: column` is sized for that column (its `width="40%"`,
+  or pandoc's 0.48 of the slide): a chart there needs larger labels.
+- A note with a word too wide for its column stops `--to notes`.
 - A deck refuses `docx`; a page refuses `notes`.
 - The bundle may add `slides: {background, foreground, logo, art, logo_width,
   logo_width_cover, diagrams: {min_text_pt, max_text_pt}}`; colours are held

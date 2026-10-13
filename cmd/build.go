@@ -49,8 +49,11 @@ that LaTeX would shrink the figure to fit, the build stops.
 
 With style slides the document is a 16:9 beamer deck: # opens a section, ##
 is a slide. Figures are sized for the frame instead (140 mm wide, 48 mm tall,
-the bundle's slides.diagrams band, 8.5-14pt by default), and a slide whose
-content runs past the bottom of its frame stops the build, named by its title.
+the bundle's slides.diagrams band, 8.5-14pt by default) — a figure in a :::
+column for its column's share — and a slide whose content runs past the
+bottom of its frame stops the build, named by its title. So does a line too
+wide for its slide or column, and a footer whose running title or
+confidentiality label would push the slide number off.
 
 A chart's "data": {"url": "data/x.csv"} resolves against the document, or
 against the spec's own file when it is linked. A missing file or a remote URL
@@ -169,8 +172,8 @@ converted: gog drive upload informe.docx --convert-to doc
 --to notes, for a deck (style slides), writes its speaker notes beside it as
 talk-notes.pdf: every slide at half size with its ::: notes beside it, two to
 an A4 sheet, pauses collapsed, and room to write on a slide without notes.
---to pdf,notes writes the deck and its notes. A note too long for its page
-stops the build by the slide's title.
+--to pdf,notes writes the deck and its notes. A note too long for its page,
+or holding a word too wide for its column, stops the build by the slide's title.
 
 --watch keeps mdbrand running and rebuilds whenever a file the build read
 changes: the document, its linked figures and pictures, the bibliography and

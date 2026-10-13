@@ -163,11 +163,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 		return err
 	}
 	if slides {
-		typeset, err := os.ReadFile(texPath)
-		if err != nil {
-			return err
-		}
-		if err := judgeFrames(sc.Frames, string(typeset), p.results, b.Slides.Diagrams.MinTextPt); err != nil {
+		if err := judgeDeck(sc, texPath, p, b); err != nil {
 			return err
 		}
 	}
@@ -179,6 +175,19 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	}
 	rep.Outputs = append(rep.Outputs, Output{Format: "pdf", Path: out, Pages: sc.Pages, built: filepath.Join(work, stem+".pdf")})
 	return nil
+}
+
+// judgeDeck stops a deck with a slide that does not fit its frame, by height
+// or by width.
+func judgeDeck(sc scan, texPath string, p *prepared, b *brand.Brand) error {
+	typeset, err := os.ReadFile(texPath)
+	if err != nil {
+		return err
+	}
+	if err := judgeFrames(sc.Frames, string(typeset), p.results, b.Slides.Diagrams.MinTextPt); err != nil {
+		return err
+	}
+	return judgeSlideWidths(sc.SlideWide)
 }
 
 // pdfBody is the body with each figure's placeholder replaced by its include.
@@ -393,6 +402,13 @@ every page left of the centred page number, and at this length the two would
 print over each other. Shorten the label — the cover has room for the full
 wording, the footer only for a word or two`, sc.ConfOverPt)
 	}
+	if sc.FootOverPt > 0 {
+		return fmt.Errorf(`the slides' footer is %.1fpt too wide: the running title and the
+confidentiality label share one line with the logo and the slide number, and
+at this length the number is pushed off the slide. Set mdbrand.short_title to
+a shorter form, or shorten mdbrand.confidential — the title slide has room
+for both in full`, sc.FootOverPt)
+	}
 	if sc.TitleOverPt > 0 {
 		return fmt.Errorf(`the running header title is %.1fpt too wide to sit beside the logo on one
 line: it would print under the mark, or wrap onto a second line of the header.
@@ -566,6 +582,8 @@ var (
 	confRe = regexp.MustCompile(`MDBRAND-CONFIDENTIAL-TOOWIDE over=([0-9.]+)pt`)
 	// And when the running title would run under the header's logo.
 	titleRe = regexp.MustCompile(`MDBRAND-TITLE-TOOWIDE over=([0-9.]+)pt`)
+	// And, on a deck, when the footer's text would push the slide number off.
+	footRe = regexp.MustCompile(`MDBRAND-FOOT-TOOWIDE over=([0-9.]+)pt`)
 	// A slide whose content runs past the bottom of its frame. beamer prints
 	// the rest over the footer, or off the page, and says so only here. The
 	// line is the frame's \end{frame} in the .tex, fragile frames included.
@@ -644,6 +662,8 @@ type scan struct {
 	ConfOverPt  float64
 	TitleOverPt float64
 	Frames      []frameOver
+	SlideWide   []slideOver // a deck's lines too wide, by slide
+	FootOverPt  float64
 }
 
 // scanLog pulls the things that matter out of a xelatex log.
@@ -741,6 +761,10 @@ func scanLog(log string) scan {
 	if m := titleRe.FindStringSubmatch(log); m != nil {
 		titleOverPt, _ = strconv.ParseFloat(m[1], 64)
 	}
+	var footOverPt float64
+	if m := footRe.FindStringSubmatch(log); m != nil {
+		footOverPt, _ = strconv.ParseFloat(m[1], 64)
+	}
 	var frames []frameOver
 	for _, m := range frameRe.FindAllStringSubmatch(log, -1) {
 		pt, _ := strconv.ParseFloat(m[1], 64)
@@ -748,7 +772,7 @@ func scanLog(log string) scan {
 		frames = append(frames, frameOver{Pt: pt, Line: line})
 	}
 	return scan{Holes: holes, Shapes: shapes, Undefined: undefined, TallRows: tallRows, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
-		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames}
+		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames, SlideWide: slideOverflows(lines), FootOverPt: footOverPt}
 }
 
 // offendingText reassembles the line XeLaTeX prints just below an Overfull

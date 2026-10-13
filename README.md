@@ -682,6 +682,14 @@ width keeps the labels legible and the text needs a slide of its own:
         put width=71mm on its block — its labels stay at 9.4pt
 ```
 
+The same goes for width. A line too wide for its slide — or for its `:::
+column`, where it would run across the column beside it — stops the build by
+the slide's number and title; a figure in a column is sized for that column,
+pandoc's `width="40%"` or its default 0.48 of the slide; a footer whose
+running title and `confidential:` label leave no room for the slide number
+stops it, naming `short_title`; and a speaker note holding a word too wide for
+its column stops `--to notes`.
+
 A deck is not a page, so `--to docx` refuses `style: slides`.
 
 The bundle's colours, type and logo make the deck. A `slides` section, all of
