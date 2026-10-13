@@ -94,7 +94,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	}
 
 	before, after := docx.Front(p.style, meta, look)
-	stem := strings.TrimSuffix(filepath.Base(o.Input), filepath.Ext(o.Input))
+	stem := workStem(o.Input)
 	mdName := stem + ".docx.md"
 	front, abstract, err := doc.LiftAbstract(d.FrontMatter)
 	if err != nil {

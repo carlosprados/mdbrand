@@ -565,3 +565,23 @@ placeholder in a plain sentence, and please report the case:
 	}
 	return body, nil
 }
+
+var (
+	// What TeX takes as a job name and a file name without quoting: % starts
+	// a comment, ~ is a tie, a space ends the name.
+	safeStemRe = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+	// The work directory's own files: a document called logo.md wrote its
+	// logo.pdf over the logo, and preamble.md its .tex over the preamble.
+	workAssetRe = regexp.MustCompile(`^(?i:preamble|before|after|spans|slide-art|logo.*|docx-logo.*|fig\d+|\.mdbrand.*)$`)
+)
+
+// workStem is the name the document's own files take in the work directory:
+// its own when TeX can take it and nothing of the build's has it, so that
+// --work shows informe.tex for informe.md; a fixed one otherwise.
+func workStem(input string) string {
+	stem := strings.TrimSuffix(filepath.Base(input), filepath.Ext(input))
+	if !safeStemRe.MatchString(stem) || workAssetRe.MatchString(stem) {
+		return "mdbrand-document"
+	}
+	return stem
+}

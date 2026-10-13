@@ -346,14 +346,23 @@ func d2Source(f *doc.Fig, b *brand.Brand, scale float64, workDir string) (path s
 	if err != nil {
 		return "", false, err
 	}
-	sized := bytes.Contains(raw, []byte("font-size"))
-	themed := bytes.Contains(raw, []byte("theme-overrides"))
-	if sized && themed {
+	sized := d2KeyRe("font-size").Match(raw)
+	themed := d2KeyRe("theme-overrides").Match(raw)
+	// A relative import or icon resolves against the file d2 compiles, so
+	// that file must sit where its author wrote it: beside a side file, and
+	// beside the document for a fenced block, whose source is in the work
+	// directory — icon: ./x.png in a fenced block was looked for there.
+	relative := d2RelativeRe.Match(raw)
+	base := f.BaseDir
+	if base == "" {
+		base = filepath.Dir(f.SrcPath)
+	}
+	if sized && themed && (!relative || base == filepath.Dir(f.SrcPath)) {
 		return f.SrcPath, false, nil
 	}
 	dir := workDir
-	if bytes.ContainsRune(raw, '@') {
-		dir = filepath.Dir(f.SrcPath)
+	if relative {
+		dir = base
 	}
 	gen := filepath.Join(dir, fmt.Sprintf(".mdbrand-fig%02d.d2", f.Index))
 	body := bytes.TrimRight(raw, "\n")
@@ -373,6 +382,17 @@ func d2Source(f *doc.Fig, b *brand.Brand, scale float64, workDir string) (path s
 	}
 	return gen, true, nil
 }
+
+// d2KeyRe finds key used as a key on a line that is not a comment: the
+// substring alone, in a comment or a label, turned the sizing off.
+func d2KeyRe(key string) *regexp.Regexp {
+	return regexp.MustCompile(`(?m)^[^#\n]*\b` + regexp.QuoteMeta(key) + `\s*:`)
+}
+
+// d2RelativeRe finds what d2 resolves against the compiled file's directory:
+// an import (x: @lib, ...@lib) or an icon that is not a URL. Any @ used to
+// count — an e-mail address in a label wrote a file beside the source.
+var d2RelativeRe = regexp.MustCompile(`(?m)^[^#\n]*(?::\s*|\.\.\.)@[\w./"'-]|^[^#\n]*\bicon\s*:\s*["']?(?:\.{1,2}/|[\w-]+[/.])`)
 
 // recursiveGlobRe is a shape glob that descends without limit: `**.style…`.
 // The edge form `(** -> **)` starts with a parenthesis and is not matched.

@@ -27,7 +27,7 @@ var (
 // slides beside the notes are the slides the audience sees.
 func renderNotes(p *prepared, out string) error {
 	o, work, rep := p.o, p.work, p.rep
-	stem := strings.TrimSuffix(filepath.Base(o.Input), filepath.Ext(o.Input))
+	stem := workStem(o.Input)
 	deck, err := os.ReadFile(filepath.Join(work, stem+".tex"))
 	if err != nil {
 		return err

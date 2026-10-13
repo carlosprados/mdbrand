@@ -168,3 +168,21 @@ func TestCount(t *testing.T) {
 		}
 	}
 }
+
+// A picture alone in its paragraph is a Figure whose caption repeats the
+// image's alt text: one {{words}} in the Markdown, seen once. An inline
+// image's alt is the only copy and counts.
+func TestPlaceholdersInAFigureCountOnce(t *testing.T) {
+	str := `{"t":"Str","c":"{{words}}"}`
+	img := `{"t":"Image","c":[["",[],[]],[` + str + `],["x.png",""]]}`
+	ast := `{"pandoc-api-version":[1,23],"meta":{},"blocks":[` +
+		`{"t":"Figure","c":[["",[],[]],[null,[{"t":"Plain","c":[` + str + `]}]],[{"t":"Plain","c":[` + img + `]}]]},` +
+		`{"t":"Para","c":[` + img + `]}]}`
+	_, seen, err := Count([]byte(ast), Rules{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seen != 2 {
+		t.Errorf("seen %d placeholders, want 2: the figure's once, the inline image's once", seen)
+	}
+}

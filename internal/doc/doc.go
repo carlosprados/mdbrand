@@ -292,10 +292,17 @@ type Fig struct {
 
 var (
 	fenceRe = regexp.MustCompile(`^` + "```" + `+\s*(d2|vega|vegalite|vl)\b([^\n]*)$`)
-	imgRe   = regexp.MustCompile(`!\[([^\]]*)\]\(([^)\s]+\.(?:d2|vl\.json|vl\.yaml|vega\.json|svg))\)(\{[^}]*\})?`)
+	// A path as written, bare or in <…> (which may hold spaces), and an
+	// optional title: a figure written either way was left to pandoc.
+	imgRe = regexp.MustCompile(`!\[([^\]]*)\]\((<[^>\n]+\.(?i:d2|vl\.json|vl\.yaml|vega\.json|svg)>|[^)\s<]+\.(?i:d2|vl\.json|vl\.yaml|vega\.json|svg))(?:\s+(?:"[^"]*"|'[^']*'))?\)(\{[^}]*\})?`)
 	// Pictures that go to LaTeX as they are. Only their path needs settling.
-	picRe  = regexp.MustCompile(`(!\[[^\]]*\]\()([^)\s]+\.(?:png|jpe?g|pdf))((?:\s+"[^"]*")?\))`)
-	attrRe = regexp.MustCompile(`(\w+)\s*=\s*"([^"]*)"|(\w+)\s*=\s*(\S+)`)
+	picRe = regexp.MustCompile(`(!\[[^\]]*\]\()(<[^>\n]+\.(?i:png|jpe?g|pdf)>|[^)\s<]+\.(?i:png|jpe?g|pdf))((?:\s+(?:"[^"]*"|'[^']*'))?\))`)
+	// A reference image, ![alt][label] or ![label], and the definition its
+	// path is in: [label]: path "title". .PNG, <…> and references reached
+	// xelatex unresolved, as its own "file not found".
+	imgRefRe = regexp.MustCompile(`!\[([^\]]*)\](?:\[([^\]]*)\])?`)
+	refDefRe = regexp.MustCompile(`(?m)^( {0,3}\[([^\]]+)\]:[ \t]*)(<[^>\n]+>|\S+)(.*)$`)
+	attrRe   = regexp.MustCompile(`(\w+)\s*=\s*"([^"]*)"|(\w+)\s*=\s*(\S+)`)
 )
 
 func normKind(k string) string {
@@ -338,7 +345,7 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 	// a sample of Markdown in a fence, `![](x.d2)` in a sentence — and stays
 	// as written.
 	body = replaceOutsideCode(imgRe, body, func(m []string) string {
-		p := m[2]
+		p := strings.Trim(m[2], "<>")
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(docDir, p)
 		}
@@ -379,10 +386,10 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 	// happened to exist there would have been the wrong picture.
 	var missing []string
 	// In code it is an example, and printed this machine's absolute path.
-	body = replaceOutsideCode(picRe, body, func(m []string) string {
-		p := m[2]
+	settle := func(written string) (string, bool) {
+		p := strings.Trim(written, "<>")
 		if strings.Contains(p, "://") {
-			return m[0]
+			return written, false
 		}
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(docDir, p)
@@ -392,16 +399,69 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 		}
 		f.Refs = append(f.Refs, p)
 		if _, err := os.Stat(p); err != nil {
-			missing = append(missing, m[2])
+			missing = append(missing, written)
 		}
+		// In <…> with forward slashes: a directory with a space in it broke
+		// the link, and a Windows path's backslashes read as escapes.
+		return "<" + filepath.ToSlash(p) + ">", true
+	}
+	body = replaceOutsideCode(picRe, body, func(m []string) string {
+		p, _ := settle(m[2])
 		return m[1] + p + m[3]
 	})
+	body, err = settleRefPictures(body, settle)
+	if err != nil {
+		return "", nil, fmt.Errorf("%s: %w", f.Path, err)
+	}
 	if len(missing) > 0 {
 		return "", nil, fmt.Errorf("%s: pictures not found (paths resolve against the document): %s",
 			f.Path, strings.Join(missing, ", "))
 	}
 
 	return body, figs, nil
+}
+
+// settleRefPictures resolves the definitions reference images use, as pass 3
+// resolves inline ones. Only a label an image uses is touched: [spec]: x.pdf
+// behind an ordinary link is a link, and stays as written. A figure source
+// behind a reference would reach pandoc unrendered, so it stops the build.
+func settleRefPictures(body string, settle func(string) (string, bool)) (string, error) {
+	code := mdtext.Protected(body)
+	labels := map[string]bool{}
+	for _, ix := range imgRefRe.FindAllStringSubmatchIndex(body, -1) {
+		end := ix[1]
+		if mdtext.Inside(code, ix[0]) || end < len(body) && body[end] == '(' {
+			continue // inline, pass 3's
+		}
+		label := body[ix[2]:ix[3]]
+		if ix[4] >= 0 && ix[5] > ix[4] {
+			label = body[ix[4]:ix[5]]
+		}
+		labels[strings.ToLower(strings.TrimSpace(label))] = true
+	}
+	if len(labels) == 0 {
+		return body, nil
+	}
+	var figure []string
+	out := replaceOutsideCode(refDefRe, body, func(m []string) string {
+		if !labels[strings.ToLower(strings.TrimSpace(m[2]))] {
+			return m[0]
+		}
+		target := strings.Trim(m[3], "<>")
+		switch strings.ToLower(filepath.Ext(target)) {
+		case ".png", ".jpg", ".jpeg", ".pdf":
+			p, _ := settle(m[3])
+			return m[1] + p + m[4]
+		case ".svg", ".d2", ".json", ".yaml":
+			figure = append(figure, m[3])
+		}
+		return m[0]
+	})
+	if len(figure) > 0 {
+		return "", fmt.Errorf("a figure linked by reference is not rendered: %s — link it inline, ![caption](%s)",
+			strings.Join(figure, ", "), figure[0])
+	}
+	return out, nil
 }
 
 // extractFenced is the first pass: each d2 or Vega-Lite fence becomes a

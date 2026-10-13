@@ -1,6 +1,7 @@
 package build
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"os"
@@ -105,7 +106,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	}
 
 	// The document pandoc will read: original front matter, rewritten body.
-	stem := strings.TrimSuffix(filepath.Base(o.Input), filepath.Ext(o.Input))
+	stem := workStem(o.Input)
 	mdName := stem + ".md"
 	source, err := writePDFSource(filepath.Join(work, mdName), o.Input, d.FrontMatter, body)
 	if err != nil {
@@ -148,11 +149,8 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if d.Meta.HasTOC() {
 		passes = 3
 	}
-	for i := 0; i < passes; i++ {
-		o.logf("  xelatex pass %d/%d", i+1, passes)
-		if _, err := run.Cmd(work, "xelatex", "-interaction=nonstopmode", "-halt-on-error", stem+".tex"); err != nil {
-			return fmt.Errorf("xelatex failed: %w", err)
-		}
+	if err := runXeLaTeX(o, work, stem, passes); err != nil {
+		return err
 	}
 
 	// Every check below reads this log; without it they would all pass.
@@ -177,6 +175,36 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 		return err
 	}
 	rep.Outputs = append(rep.Outputs, Output{Format: "pdf", Path: out, Pages: sc.Pages, built: filepath.Join(work, stem+".pdf")})
+	return nil
+}
+
+// runXeLaTeX typesets stem.tex in work, passes times, and names a fatal
+// error a document can cause in the document's terms.
+func runXeLaTeX(o Options, work, stem string, passes int) error {
+	for i := 0; i < passes; i++ {
+		o.logf("  xelatex pass %d/%d", i+1, passes)
+		if _, err := run.Cmd(work, "xelatex", "-interaction=nonstopmode", "-halt-on-error", stem+".tex"); err != nil {
+			if known := fatalLaTeX(filepath.Join(work, stem+".log")); known != nil {
+				return known
+			}
+			return fmt.Errorf("xelatex failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// fatalLaTeX names, in the document's terms, an error that stops xelatex and
+// that a document can cause; nil for anything else, which is reported raw.
+func fatalLaTeX(logPath string) error {
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		return nil
+	}
+	if bytes.Contains(log, []byte("! LaTeX Error: Too deeply nested.")) {
+		return fmt.Errorf(`a list nests deeper than LaTeX can set — four levels of bullets or numbers,
+six of both together — and xelatex stopped on it. Flatten it: a heading over
+the outer levels, or a table for what is really a grid`)
+	}
 	return nil
 }
 

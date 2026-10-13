@@ -37,18 +37,27 @@ func Count(ast []byte, r Rules) (words, placeholders int, err error) {
 
 // countPlaceholders visits every Str, whatever the criterion skips: a {{words}}
 // inside an uncounted table is still substituted.
-func countPlaceholders(x any) int {
+func countPlaceholders(x any) int { return placeholdersIn(x, false) }
+
+// placeholdersIn counts, leaving out an image's alt text inside a figure:
+// pandoc makes a picture alone in its paragraph a Figure whose caption is the
+// alt text again, so one {{words}} written in the Markdown was seen twice and
+// the build stopped on the disagreement.
+func placeholdersIn(x any, inFigure bool) int {
 	n := 0
 	switch v := x.(type) {
 	case []any:
 		for _, e := range v {
-			n += countPlaceholders(e)
+			n += placeholdersIn(e, inFigure)
 		}
 	case node:
 		if s, ok := v["c"].(string); ok && v["t"] == "Str" {
 			return len(placeholderRe.FindAllString(s, -1))
 		}
-		n += countPlaceholders(v["c"])
+		if c, ok := v["c"].([]any); ok && v["t"] == "Image" && inFigure && len(c) == 3 {
+			return 0 // [attr, alt, target]: the alt is the caption's copy
+		}
+		n += placeholdersIn(v["c"], inFigure || v["t"] == "Figure")
 	}
 	return n
 }

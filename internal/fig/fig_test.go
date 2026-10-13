@@ -264,3 +264,32 @@ func TestFitsBoxStopsWhatLaTeXWouldShrink(t *testing.T) {
 		t.Errorf("a slide's height is the frame check's: %v", err)
 	}
 }
+
+// What d2Source reads off a .d2: sizing and theme as keys, never in a comment
+// or a label, and only the references d2 resolves against the file.
+func TestD2SourceHeuristics(t *testing.T) {
+	sized := d2KeyRe("font-size")
+	for src, want := range map[string]bool{
+		"a.style.font-size: 20":           true,
+		"*.style: {font-size: 20}":        true,
+		"# font-size: 20, says a comment": false,
+		`a: "font-size"`:                  false,
+	} {
+		if got := sized.MatchString(src); got != want {
+			t.Errorf("sized(%q) = %v", src, got)
+		}
+	}
+	for src, want := range map[string]bool{
+		"x: @lib":                          true,
+		"...@shared/styles":                true,
+		"a: {icon: ./x.png}":               true,
+		"a.icon: icons/db.svg":             true,
+		"a.icon: https://icons.org/db.svg": false,
+		`b: "ops@example.org"`:             false,
+		"# mail me@example.org, icon: ./x": false,
+	} {
+		if got := d2RelativeRe.MatchString(src); got != want {
+			t.Errorf("relative(%q) = %v", src, got)
+		}
+	}
+}

@@ -271,7 +271,7 @@ func TestExtractFigsSettlesPictures(t *testing.T) {
 	if len(figs) != 1 || figs[0].Kind != "svg" || !filepath.IsAbs(figs[0].SrcPath) {
 		t.Fatalf("the .svg should be one figure of kind svg with an absolute path, got %+v", figs)
 	}
-	wantPNG := "![raster](" + filepath.Join(dir, "img/b.png") + " \"t\"){width=50%}"
+	wantPNG := "![raster](<" + filepath.ToSlash(filepath.Join(dir, "img/b.png")) + "> \"t\"){width=50%}"
 	if !strings.Contains(out, wantPNG) {
 		t.Errorf("raster picture not made absolute; body:\n%s", out)
 	}
@@ -418,7 +418,7 @@ func TestExtractFigsLeavesCodeAsWritten(t *testing.T) {
 	if len(figs) != 0 {
 		t.Errorf("got %d figures from code samples", len(figs))
 	}
-	if strings.Count(body, dir) != 1 || !strings.HasSuffix(body, "![Logo]("+filepath.Join(dir, "logo.png")+")\n") {
+	if strings.Count(body, dir) != 1 || !strings.HasSuffix(body, "![Logo](<"+filepath.ToSlash(filepath.Join(dir, "logo.png"))+">)\n") {
 		t.Errorf("body =\n%s", body)
 	}
 }
@@ -440,5 +440,33 @@ func TestLiftAbstract(t *testing.T) {
 	}
 	if _, _, err := LiftAbstract("abstract: [a, b]"); err == nil {
 		t.Error("a list as abstract passed")
+	}
+}
+
+// A picture written in capitals, in <…> with a space, or by reference was left
+// to xelatex, which failed on it by itself; each resolves now, written back in
+// <…> with forward slashes. A reference behind an ordinary link is a link.
+func TestExtractFigsSettlesEveryPictureForm(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "A.PNG", "PNG")
+	write(t, dir, "my pic.png", "PNG")
+	md := "![a](A.PNG) ![b](<my pic.png>) ![c][logo] [the spec][spec]\n\n[logo]: A.PNG \"t\"\n[spec]: spec.pdf\n"
+	f, err := Read(write(t, dir, "in.md", md))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _, err := f.ExtractFigs(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	abs := func(n string) string { return "<" + filepath.ToSlash(filepath.Join(dir, n)) + ">" }
+	for _, want := range []string{"![a](" + abs("A.PNG") + ")", "![b](" + abs("my pic.png") + ")", "[logo]: " + abs("A.PNG") + ` "t"`, "[spec]: spec.pdf"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("body lacks %q:\n%s", want, body)
+		}
+	}
+	f, _ = Read(write(t, dir, "fig.md", "![d][arq]\n\n[arq]: arq.d2\n"))
+	if _, _, err := f.ExtractFigs(t.TempDir()); err == nil || !strings.Contains(err.Error(), "link it inline") {
+		t.Errorf("a figure by reference: %v", err)
 	}
 }

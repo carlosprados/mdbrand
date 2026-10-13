@@ -481,3 +481,21 @@ func TestPandocWarnings(t *testing.T) {
 		t.Errorf("warnings = %q", rep.Warnings)
 	}
 }
+
+// A document's work files keep its name when TeX can take it and the build
+// has no file of that name; logo.md wrote over the logo and a % ended the job
+// name, so those get a fixed one.
+func TestWorkStem(t *testing.T) {
+	for in, want := range map[string]string{
+		"docs/informe-2026_v2.md": "informe-2026_v2",
+		"logo.md":                 "mdbrand-document",
+		"Preamble.md":             "mdbrand-document",
+		"fig03.md":                "mdbrand-document",
+		"informe 50% ~final.md":   "mdbrand-document",
+		"figura.md":               "figura",
+	} {
+		if got := workStem(in); got != want {
+			t.Errorf("workStem(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

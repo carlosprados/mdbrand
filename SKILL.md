@@ -228,7 +228,8 @@ To show a fence or a picture link as an example, put it inside code (a
   nl, da and pt; a dated chart in a language without them (gl, eu) stops.
 - **Pictures:** an `.svg` made elsewhere is treated as a figure (sized, checked
   for legibility); PNG, JPEG and PDF keep their markup. A missing picture stops
-  the build by name; a PNG or JPEG stretched under 72 ppi stops it too (under
+  the build by name (inline, by reference, or `<path with spaces>`); a PNG or
+  JPEG stretched under 72 ppi stops it too (under
   150 warns), naming the width that prints well — use a larger original.
 - **No `|md|` blocks in d2**: they become `<foreignObject>`, which the PDF
   route drops in silence, so the build refuses them.
