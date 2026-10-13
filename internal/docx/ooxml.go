@@ -26,6 +26,19 @@ var (
 		"w", "kern", "position", "sz", "szCs", "highlight", "u", "effect", "bdr", "shd", "fitText",
 		"vertAlign", "rtl", "cs", "em", "lang", "eastAsianLayout", "specVanish", "oMath",
 	}
+	// A cell's and a table's properties are ordered too: a spanned cell came
+	// out <w:tcW/><w:tcBorders/><w:gridSpan/>, which Word refuses. A row's
+	// are a choice in the schema, in any order, and are not listed.
+	tcPrOrder = []string{
+		"cnfStyle", "tcW", "gridSpan", "hMerge", "vMerge", "tcBorders", "shd", "noWrap", "tcMar",
+		"textDirection", "tcFitText", "vAlign", "hideMark", "headers", "cellIns", "cellDel",
+		"cellMerge", "tcPrChange",
+	}
+	tblPrOrder = []string{
+		"tblStyle", "tblpPr", "tblOverlap", "bidiVisual", "tblStyleRowBandSize", "tblStyleColBandSize",
+		"tblW", "jc", "tblCellSpacing", "tblInd", "tblBorders", "shd", "tblLayout", "tblCellMar",
+		"tblLook", "tblCaption", "tblDescription", "tblPrChange",
+	}
 )
 
 type elem struct{ tag, xml string }
@@ -105,8 +118,10 @@ func setChildren(inner string, set []elem, order []string) string {
 }
 
 var (
-	pPrBlockRe = regexp.MustCompile(`(?s)<w:pPr>(.*?)</w:pPr>`)
-	rPrBlockRe = regexp.MustCompile(`(?s)<w:rPr>(.*?)</w:rPr>`)
+	pPrBlockRe   = regexp.MustCompile(`(?s)<w:pPr>(.*?)</w:pPr>`)
+	rPrBlockRe   = regexp.MustCompile(`(?s)<w:rPr>(.*?)</w:rPr>`)
+	tcPrBlockRe  = regexp.MustCompile(`(?s)<w:tcPr>(.*?)</w:tcPr>`)
+	tblPrBlockRe = regexp.MustCompile(`(?s)<w:tblPr>(.*?)</w:tblPr>`)
 )
 
 // misordered names the first property block in a part that Word would refuse:
@@ -133,17 +148,23 @@ func misordered(xml string) string {
 		}
 		return ""
 	}
-	if bad := check(pPrBlockRe, pPrOrder); bad != "" {
-		return bad
+	for _, c := range []struct {
+		re    *regexp.Regexp
+		order []string
+	}{{pPrBlockRe, pPrOrder}, {rPrBlockRe, rPrOrder}, {tcPrBlockRe, tcPrOrder}, {tblPrBlockRe, tblPrOrder}} {
+		if bad := check(c.re, c.order); bad != "" {
+			return bad
+		}
 	}
-	return check(rPrBlockRe, rPrOrder)
+	return ""
 }
 
 // foreignRe finds an element outside the w: namespace — w14:, mc: and the
 // like — which children does not read and a rebuild would drop.
 var foreignRe = regexp.MustCompile(`</?(?:[A-Za-vx-z][A-Za-z0-9]*|w[0-9][A-Za-z0-9]*):`)
 
-// normalize writes every <w:pPr> and <w:rPr> in a part in schema order, the
+// normalize writes every <w:pPr>, <w:rPr>, <w:tcPr> and <w:tblPr> in a part
+// in schema order, the
 // last of a repeated element winning. pandoc does not always: 3.1 writes
 // <w:bCs/> before <w:b/>. A block holding a foreign element is left as it is.
 func normalize(xml string) string {
@@ -158,5 +179,7 @@ func normalize(xml string) string {
 	}
 	fix(rPrBlockRe, "rPr", rPrOrder)
 	fix(pPrBlockRe, "pPr", pPrOrder)
+	fix(tcPrBlockRe, "tcPr", tcPrOrder)
+	fix(tblPrBlockRe, "tblPr", tblPrOrder)
 	return xml
 }

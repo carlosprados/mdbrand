@@ -301,6 +301,9 @@ stays the reference; offer the `.docx` when someone needs to edit or comment.
   readers have (Google Docs: Google Fonts only). Without it the build stops and
   prints the block to add. Never put a licensed face there.
 - A picture linked as PDF stops a `.docx` build: export it as SVG or PNG.
+- Raw LaTeX is left out of the `.docx` with a warning; a formula Word cannot
+  take (custom macro, non-amsmath environment) stops it. `abstract:` and
+  `numbersections:` carry over.
 - Google Docs: `gog drive upload x.docx --convert-to doc`.
 - It is one-way: carry edits made in Word or Docs back into the `.md`
   (`pandoc x.docx -t markdown` helps to see them).

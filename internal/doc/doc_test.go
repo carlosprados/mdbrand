@@ -422,3 +422,23 @@ func TestExtractFigsLeavesCodeAsWritten(t *testing.T) {
 		t.Errorf("body =\n%s", body)
 	}
 }
+
+// pandoc printed the abstract above the cover; it leaves the front matter for
+// the body. Without one, the front matter comes back byte for byte.
+func TestLiftAbstract(t *testing.T) {
+	front := "title: Informe\nabstract: |\n  Uno *dos*.\n\n  Tres.\nlang: es"
+	rest, abs, err := LiftAbstract(front)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if abs != "Uno *dos*.\n\nTres." || strings.Contains(rest, "abstract") || !strings.Contains(rest, "lang: es") {
+		t.Errorf("rest %q, abstract %q", rest, abs)
+	}
+	plain := "title: \"Informe\"  # kept as written\nlang: es"
+	if rest, abs, _ := LiftAbstract(plain); rest != plain || abs != "" {
+		t.Errorf("a front matter without abstract changed: %q", rest)
+	}
+	if _, _, err := LiftAbstract("abstract: [a, b]"); err == nil {
+		t.Error("a list as abstract passed")
+	}
+}

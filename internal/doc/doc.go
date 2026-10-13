@@ -29,6 +29,10 @@ type Meta struct {
 	TOC      *bool  `yaml:"toc"`
 	TOCDepth int    `yaml:"toc-depth"`
 	Lang     string `yaml:"lang"`
+	// pandoc's LaTeX template reads numbersections as a variable; the .docx
+	// writer reads only the flag, so a numbered PDF came with an unnumbered
+	// .docx.
+	NumberSections bool `yaml:"numbersections"`
 
 	// Citations. These are pandoc's own metadata names and stay at the top
 	// level rather than moving under `mdbrand:`, so a document already written
@@ -524,4 +528,36 @@ func (m Meta) Printed() (display, body []string) {
 	display = append([]string{m.Title, o.ShortTitle, m.Subtitle, m.AuthorString(), m.Date,
 		o.Reference, o.Confidential, o.Place, o.Signature}, o.To...)
 	return display, []string{o.Greeting}
+}
+
+// LiftAbstract takes abstract: out of the front matter and returns it as
+// Markdown. pandoc's LaTeX template prints the abstract before the
+// include-before body, so it came above the cover, and the .docx's repair
+// dropped it with the title block. Each writer places it after its cover
+// instead. A front matter without one comes back as it was, byte for byte.
+func LiftAbstract(front string) (rest, abstract string, err error) {
+	var root yaml.Node
+	if err := yaml.Unmarshal([]byte(front), &root); err != nil || len(root.Content) == 0 {
+		return front, "", err
+	}
+	m := root.Content[0]
+	if m.Kind != yaml.MappingNode {
+		return front, "", nil
+	}
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value != "abstract" {
+			continue
+		}
+		v := m.Content[i+1]
+		if v.Kind != yaml.ScalarNode {
+			return "", "", fmt.Errorf("abstract: write it as text — a block scalar (abstract: |) for several paragraphs")
+		}
+		m.Content = append(m.Content[:i], m.Content[i+2:]...)
+		out, err := yaml.Marshal(&root)
+		if err != nil {
+			return "", "", err
+		}
+		return strings.TrimRight(string(out), "\n"), strings.TrimSpace(v.Value), nil
+	}
+	return front, "", nil
 }

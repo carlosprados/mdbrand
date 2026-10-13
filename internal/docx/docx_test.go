@@ -281,3 +281,29 @@ func TestConfidentialRoomOnA4(t *testing.T) {
 		t.Errorf("room on A4 at 22mm = %d characters, want 40..45", got)
 	}
 }
+
+// A spanned cell's gridSpan sits between its width and its borders in the
+// schema; writing both first made a file Word refuses, and misordered must
+// see a cell's and a table's properties as it sees a paragraph's.
+func TestCellPropsKeepSchemaOrder(t *testing.T) {
+	cell := `<w:tc><w:tcPr><w:gridSpan w:val="2"/><w:vAlign w:val="top"/></w:tcPr><w:p/></w:tc>`
+	got := setCellProp(cell, `<w:tcW w:w="100" w:type="dxa"/>`, `<w:tcBorders><w:bottom w:val="single"/></w:tcBorders>`)
+	want := `<w:tc><w:tcPr><w:tcW w:w="100" w:type="dxa"/><w:gridSpan w:val="2"/><w:tcBorders><w:bottom w:val="single"/></w:tcBorders><w:vAlign w:val="top"/></w:tcPr><w:p/></w:tc>`
+	if got != want {
+		t.Errorf("got  %s\nwant %s", got, want)
+	}
+	if misordered(got) != "" {
+		t.Errorf("a well-ordered cell reported: %s", got)
+	}
+	for _, bad := range []string{
+		`<w:tcPr><w:tcBorders/><w:gridSpan w:val="2"/></w:tcPr>`,
+		`<w:tblPr><w:tblW w:w="0"/><w:tblStyle w:val="Table"/></w:tblPr>`,
+	} {
+		if misordered(bad) == "" {
+			t.Errorf("not reported: %s", bad)
+		}
+		if fixed := normalize(bad); misordered(fixed) != "" {
+			t.Errorf("normalize left it out of order: %s", fixed)
+		}
+	}
+}

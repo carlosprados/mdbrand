@@ -40,9 +40,16 @@ func Repair(b []byte, f Fix) ([]byte, []string, error) {
 		doc = fillTOC(doc)
 	}
 	doc = dropPictureDescr(doc)
-	doc = styledRuns(doc, AccentStyle, f.Look.accent())
-	doc = styledRuns(doc, "Hyperlink", f.Look.Link)
 	p.set("word/document.xml", doc)
+	// Notes hold accents and links as well, in parts of their own: the
+	// colour reached the body's alone, and a footnote's link printed black
+	// once Google Docs dropped the character style.
+	for _, part := range []string{"word/document.xml", "word/footnotes.xml", "word/endnotes.xml"} {
+		if x := p.get(part); x != "" {
+			x = styledRuns(x, AccentStyle, f.Look.accent())
+			p.set(part, styledRuns(x, "Hyperlink", f.Look.Link))
+		}
+	}
 	if n := p.get("word/numbering.xml"); n != "" {
 		p.set("word/numbering.xml", bullets(n, f.Look.Body))
 	}
@@ -153,8 +160,6 @@ var (
 	tblWRe  = regexp.MustCompile(`<w:tblW\b[^>]*/>`)
 	gridRe  = regexp.MustCompile(`(?s)<w:tblGrid>.*?</w:tblGrid>`)
 	trPrRe  = regexp.MustCompile(`(?s)<w:trPr\s*/>|<w:trPr>.*?</w:trPr>`)
-	tcWRe   = regexp.MustCompile(`<w:tcW\b[^>]*/>`)
-	tcBdrRe = regexp.MustCompile(`(?s)<w:tcBorders>.*?</w:tcBorders>`)
 )
 
 // tables sizes, rules and keeps every table.
@@ -385,23 +390,23 @@ func setWidths(tbl string, widths []int) string {
 	})
 }
 
-// setCellProp puts width first and borders after it, the order the schema
-// requires, replacing any of either already there.
+// setCellProp sets a cell's width or borders, replacing either already there,
+// and writes its properties back in schema order: a spanned cell's gridSpan
+// sits between the two, and putting both first made a file Word refuses.
 func setCellProp(cell, width, borders string) string {
 	return tcPrRe.ReplaceAllStringFunc(cell, func(pr string) string {
 		inner := strings.TrimSuffix(strings.TrimPrefix(pr, "<w:tcPr>"), "</w:tcPr>")
 		if strings.HasPrefix(pr, "<w:tcPr ") || pr == "<w:tcPr/>" {
 			inner = ""
 		}
-		w, bd := width, borders
-		if w == "" {
-			w = tcWRe.FindString(inner)
+		var set []elem
+		if width != "" {
+			set = append(set, elem{"tcW", width})
 		}
-		if bd == "" {
-			bd = tcBdrRe.FindString(inner)
+		if borders != "" {
+			set = append(set, elem{"tcBorders", borders})
 		}
-		inner = tcBdrRe.ReplaceAllString(tcWRe.ReplaceAllString(inner, ""), "")
-		return "<w:tcPr>" + w + bd + inner + "</w:tcPr>"
+		return "<w:tcPr>" + setChildren(inner, set, tcPrOrder) + "</w:tcPr>"
 	})
 }
 
