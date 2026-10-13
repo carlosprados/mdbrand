@@ -8,21 +8,29 @@
 -- the words would simply print black. mdbrand reads the report from stderr
 -- and stops the build, naming .accent.
 
-local refused = { "color", "colour", "style" }
+-- Matched whatever the case: pandoc keeps Color= as written, and drops it.
+local refused = { color = true, colour = true, style = true, bgcolor = true, background = true }
 
 local function report(el, what)
-  local text = pandoc.utils.stringify(el):gsub("%s+", " ")
+  local text = el.text or pandoc.utils.stringify(el)
+  text = text:gsub("%s+", " ")
   io.stderr:write("MDBRAND-SPAN " .. what .. "\t" .. text .. "\n")
 end
 
 local function check(el)
-  for _, k in ipairs(refused) do
-    local v = el.attributes[k]
-    if v then
+  for k, v in pairs(el.attributes) do
+    if refused[k:lower()] then
       report(el, k .. '="' .. v .. '"')
     end
   end
 end
+
+-- Any element that takes attributes drops these alike: a heading, inline
+-- code, a code block or a link with {color=red} printed in black, exit 0.
+function Header(el) check(el) end
+function Code(el) check(el) end
+function CodeBlock(el) check(el) end
+function Link(el) check(el) end
 
 function Span(el)
   check(el)

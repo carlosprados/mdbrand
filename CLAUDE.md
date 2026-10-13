@@ -215,9 +215,10 @@ Do not relax one without understanding what it cost.
     character the source does not hold stops the build.
     → `internal/build/build_test.go`, the brackets check in `testdata/torture.md`.
 
-17. **A colour pandoc would drop is refused.** `color=`, `colour=` and
-    `style=` vanish on both writers, so the words printed black and the build
-    exited 0. `[words]{.accent}` is the one colour, the brand's
+17. **A colour pandoc would drop is refused.** `color=`, `colour=`,
+    `style=`, `bgcolor=` and `background=`, in any case, vanish on both
+    writers from a span, div, heading, code or link, so the words printed
+    black and the build exited 0. `[words]{.accent}` is the one colour, the brand's
     `colors.accent` (its primary by default), through
     `internal/build/spans.lua` for both outputs; the filter reports everything
     else on stderr and the build stops naming `.accent`. It also reports each
