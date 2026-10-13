@@ -121,9 +121,47 @@ func judgeNotes(log, deck string) error {
 		fmt.Fprintf(&w, "\n    %-40s %3.0f line(s) too long", frameTitle(lines, line), math.Ceil(pt/noteLinePt))
 	}
 	if n == 0 {
-		return nil
+		return wideNotes(log, lines)
 	}
 	return fmt.Errorf(`%d speaker note(s) run past the bottom of their page:%s
   A note has room for %.0f lines beside its slide. Cut it to what you need to
   say, or split the slide and its note with another ## heading`, n, w.String(), math.Floor(tex.NotesHeightMM/mmPerPt/noteLinePt))
+}
+
+var noteEndRe = regexp.MustCompile(`^MDBRAND-NOTE-END line=(\d+)`)
+
+// wideNotes stops on a note holding a word wider than its column, which runs
+// off the sheet. The deck has already stopped on any slide this wide, so a
+// line this wide in the notes' log is a note's, set when its \note is read and
+// so before the mark notes.tex.tmpl writes at its page; one from the output
+// routine is the footer's.
+func wideNotes(log string, deck []string) error {
+	var w strings.Builder
+	n := 0
+	widest := 0.0
+	for _, ln := range strings.Split(log, "\n") {
+		if m := overRe.FindStringSubmatch(ln); m != nil && !strings.Contains(ln, `\output is active`) {
+			if v, err := strconv.ParseFloat(m[1], 64); err == nil && v > 5 {
+				widest = max(widest, v)
+			}
+			continue
+		}
+		m := noteEndRe.FindStringSubmatch(ln)
+		if m == nil {
+			continue
+		}
+		if widest > 0 {
+			line, _ := strconv.Atoi(m[1])
+			n++
+			fmt.Fprintf(&w, "\n    %-40s %5.1f mm too wide", frameTitle(deck, line), widest*mmPerPt)
+		}
+		widest = 0
+	}
+	if n == 0 {
+		return nil
+	}
+	return fmt.Errorf(`%d speaker note(s) hold a word wider than the note's column, which runs off the
+sheet:%s
+  Shorten it, or split it: code and long names do not break, a link written
+  as <https://…> does`, n, w.String())
 }

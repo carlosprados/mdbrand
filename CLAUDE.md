@@ -246,8 +246,17 @@ Do not relax one without understanding what it cost.
     for any table, numbered every caption until the deck set its label
     format itself. A cover ground is held to WCAG contrast: 4.5:1 for its
     type, 3:1 for each fill of an SVG logo.
+    Width too: a word too wide for a column ran across the one beside it,
+    exit 0. Its `Overfull \hbox` names a line of beamer's `.vrb` for a
+    fragile frame, so the footline writes each slide's title and number to
+    the log, and the mark right before the page's `[N` takes the warnings
+    since the last page. A figure in a `::: column` is sized for pandoc's
+    share of it (0.48 when no width), not for the frame. The footer's text
+    is measured against the logo and "99 / 99" at `\begin{document}`, and a
+    note's own overflow stops `--to notes`.
     → `internal/build/slides_test.go`, `internal/brand/slides_test.go`,
-    `internal/tex/tex_test.go`, `testdata/slides.md`, `traps/slide-*.md`.
+    `internal/tex/tex_test.go`, `internal/build/notes_test.go`,
+    `testdata/slides.md`, `traps/slide-*.md`, `traps/notes-wide.md`.
 
 19. **A bundle says which mdbrand it needs, and no key in it is dropped.** A
     bundle is shared and the reader's binary is not the author's: v0.16

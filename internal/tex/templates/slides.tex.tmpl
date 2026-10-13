@@ -67,16 +67,41 @@
 \newcommand{\mdbrandMarkCover}{\expandafter\gdef\csname mdbrandCover\the\value{page}\endcsname{}}
 \newcommand{\mdbrandIfCover}[2]{\ifcsname mdbrandCover\the\value{page}\endcsname #1\else #2\fi}
 
+% A line too wide for a slide runs into the margin, across a column beside it
+% or off the page, and the log names a line of a file beamer wrote for a
+% fragile frame. So the footline writes the slide's number and title to the
+% log: it is set from the output routine more than once per page, and the
+% pass that ships the page is the one right before the log's [N, after that
+% page's body and its warnings. Not at \begin{document}, before any frame.
+% The title goes first and the number last: the log wraps at 79 columns, and
+% the short line is the one that must sit right above the [N.
+\newcommand{\mdbrandSlideMark}{\ifdefined\insertframetitle
+  \typeout{MDBRAND-TITLE \detokenize\expandafter{\insertframetitle}}%
+  \typeout{MDBRAND-SLIDE \insertframenumber}\fi}
+
 % "8 / 9": beamer counts slides, not pages, so a slide with pauses is one; the
 % covers count too, so a number is the one the audience can ask for. The total
 % comes from the .aux, and every build runs xelatex at least twice.
-\setbeamertemplate{footline}{\mdbrandIfCover{}{%
+\setbeamertemplate{footline}{\mdbrandSlideMark\mdbrandIfCover{}{%
   \hbox to\paperwidth{\hskip{{.SlideMarginMM}}mm\begingroup\color{brandRule}\rule{\dimexpr\paperwidth-{{.SlideMarginMM}}mm*2\relax}{0.3pt}\endgroup\hss}%
   \vskip1.2mm
   \hbox to\paperwidth{\hskip{{.SlideMarginMM}}mm\raisebox{-0.2mm}{\brandLogo{ {{- .Brand.Slides.LogoWidth -}} }}\hfill
     \begingroup\brandDisplay\fontsize{7}{8}\selectfont\color{brandText}\brandConfidential\brandRunningTitle\quad\insertframenumber\,/\,\inserttotalframenumber\endgroup
     \hskip{{.SlideMarginMM}}mm}%
   \vskip3mm}}
+% The footer's logo and its line of text share one \hbox to\paperwidth, and a
+% long running title or confidentiality label pushes the slide number off the
+% page without a word. Measured once the fonts are loaded, against the logo,
+% two margins, a 4mm gap and the widest number, "99 / 99"; mdbrand stops the
+% build on the marker, naming short_title and the label.
+\newsavebox\mdbrandFootTextBox
+\newsavebox\mdbrandFootLogoBox
+\AtBeginDocument{%
+  \sbox\mdbrandFootTextBox{\brandDisplay\fontsize{7}{8}\selectfont\brandConfidential\brandRunningTitle\quad 99\,/\,99}%
+  \sbox\mdbrandFootLogoBox{\brandLogo{ {{- .Brand.Slides.LogoWidth -}} }}%
+  \ifdim\dimexpr\wd\mdbrandFootTextBox+\wd\mdbrandFootLogoBox+4mm+{{.SlideMarginMM}}mm*2\relax>\paperwidth
+    \typeout{MDBRAND-FOOT-TOOWIDE over=\the\dimexpr\wd\mdbrandFootTextBox+\wd\mdbrandFootLogoBox+4mm+{{.SlideMarginMM}}mm*2-\paperwidth\relax}%
+  \fi}
 
 {{if .Brand.Slides.Dark -}}
 \setbeamertemplate{background canvas}{\mdbrandIfCover{%

@@ -134,3 +134,54 @@ func TestSpanFilterNamesTheAccentOnlyWhenItDiffers(t *testing.T) {
 		}
 	}
 }
+
+// A deck's footline writes each slide's title and number several times a
+// page; the warnings since the last page belong to the mark that ships the
+// next one — the one before its [N, logo lines between — and an overlay's
+// repeat is the same slide. The footer's own, from the output routine, is not.
+func TestSlideOverflowsByTheMarkThatShips(t *testing.T) {
+	log := `MDBRAND-TITLE {Fine\ifnum \beamer@autobreakcount >0 \relax {}\space \beamer@ins
+ertcontinuationcount \fi }
+MDBRAND-SLIDE 2
+[2
+]
+MDBRAND-TITLE {Fine\ifnum \beamer@autobreakcount >0 \relax {}\space \beamer@ins
+MDBRAND-SLIDE 3
+Overfull \hbox (38.9pt too wide) in paragraph at lines 345--345
+Overfull \hbox (3.0pt too wide) in paragraph at lines 346--346
+Overfull \hbox (60.0pt too wide) has occurred while \output is active
+MDBRAND-TITLE {Two --- columns\ifnum \beamer@autobreakcount >0 \relax {}\space
+MDBRAND-SLIDE 3
+File: logo.pdf Graphic file (type pdf)
+<use logo.pdf>
+[3
+]
+Overfull \hbox (40.0pt too wide) in paragraph at lines 345--345
+MDBRAND-TITLE {Two --- columns\ifnum \beamer@autobreakcount >0 \relax {}\space
+MDBRAND-SLIDE 3
+[4
+]`
+	got := slideOverflows(strings.Split(log, "\n"))
+	if len(got) != 1 || got[0].Num != "3" || got[0].Pt != 40 || got[0].Title != "Two — columns" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+// pandoc gives a column its width= as a share of the line, and 0.48 when it
+// has none; a figure in a nested div is still in its column, and one in a
+// code sample is not a figure at all.
+func TestColumnSharesFollowPandoc(t *testing.T) {
+	body := ":::: columns\n::: column\n@@MDBRAND_FIG_0@@\n:::\n" +
+		"::: {.column width=\"30%\"}\n::: note\nsee @@MDBRAND_FIG_1@@\n:::\n:::\n::::\n" +
+		"```\n::: column\n@@MDBRAND_FIG_9@@\n```\n\n@@MDBRAND_FIG_2@@\n"
+	got := columnShares(body)
+	want := map[string]float64{"@@MDBRAND_FIG_0@@": 0.48, "@@MDBRAND_FIG_1@@": 0.3}
+	if len(got) != len(want) {
+		t.Fatalf("got %v", got)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s: %g, want %g", k, got[k], v)
+		}
+	}
+}

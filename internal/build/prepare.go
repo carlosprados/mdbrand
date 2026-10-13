@@ -155,12 +155,20 @@ func (p *prepared) fill(inputs *[]string) error {
 				strings.Join(missing, ", ")))
 		}
 	}
+	var shares map[string]float64
+	if p.style == "slides" {
+		shares = columnShares(body)
+	}
 	for _, f := range figs {
 		if f.Kind == "vega" {
 			*inputs = append(*inputs, fig.DataRefs(f)...)
 		}
 		o.logf("  fig %s", filepath.Base(f.SrcPath))
-		res, ferr := fig.Render(f, figBrand, p.work, box, Datasets(p.store, d.Meta.Lang))
+		figBox := box
+		if share, ok := shares[f.Placeholder]; ok {
+			figBox.WidthMM = box.WidthMM * share
+		}
+		res, ferr := fig.Render(f, figBrand, p.work, figBox, Datasets(p.store, d.Meta.Lang))
 		if ferr != nil {
 			return ferr
 		}

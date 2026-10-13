@@ -20,6 +20,9 @@
   \ifdim\dimexpr\ht\mdbrandNoteBox+\dp\mdbrandNoteBox\relax>{{.NotesHeightMM}}mm
     \typeout{MDBRAND-NOTE-TOOLONG line=\mdbrandNoteLine\space over=\the\dimexpr\ht\mdbrandNoteBox+\dp\mdbrandNoteBox-{{.NotesHeightMM}}mm\relax}%
   \fi
+  % A word too wide for the note's column runs off the sheet; TeX reported it
+  % when the \note was read, before this line, which names the slide.
+  \typeout{MDBRAND-NOTE-END line=\mdbrandNoteLine}%
   \vskip{{.NotesMarginMM}}mm
   \hbox to\paperwidth{\hskip{{.NotesMarginMM}}mm
     \vtop{\vskip0pt\hbox{\fcolorbox{brandRule}{white}{\insertslideintonotes{0.5}}}}\hskip{{.NotesMarginMM}}mm
