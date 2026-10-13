@@ -80,6 +80,9 @@ func VegaSpec(f *doc.Fig, ds *Datasets) (spec []byte, refs []string, err error) 
 		usedFields(v, used)
 		r.errs = mixedFields(r.named, used)
 	}
+	if len(r.errs) == 0 && len(r.missing) == 0 && len(r.remote) == 0 {
+		r.errs = unknownFields(v)
+	}
 
 	if len(r.errs) > 0 {
 		return nil, r.refs, fmt.Errorf("%s: %s", figName(f), strings.Join(r.errs, "\n  "))
@@ -364,6 +367,10 @@ func renderVega(f *doc.Fig, b *brand.Brand, out string, ds *Datasets) error {
 	if err != nil {
 		return err
 	}
+	var settled any
+	if err := json.Unmarshal(spec, &settled); err != nil {
+		return err
+	}
 	if spec, err = themed(spec, b); err != nil {
 		return err
 	}
@@ -382,6 +389,10 @@ func renderVega(f *doc.Fig, b *brand.Brand, out string, ds *Datasets) error {
 	if strings.Contains(log, "Loading failed") {
 		return fmt.Errorf("%s: vl2svg could not load the chart's data, and would have drawn it empty:\n%s",
 			figName(f), strings.TrimSpace(log))
+	}
+	cols, _ := dataColumns(settled)
+	if errs := emptyExtents(log, cols); len(errs) > 0 {
+		return fmt.Errorf("%s: %s", figName(f), errs[0])
 	}
 	return nil
 }

@@ -526,8 +526,10 @@ Vega-Lite spec is filled with the records a table of `data.sedes` would show,
 numbers parsed by the same rule — so a Spanish spreadsheet's `1250,5` is a
 number in the chart exactly when it is one in the table. A field the chart plots
 that mixes numbers and text stops the build: Vega-Lite drops a value it cannot
-read as a number, draws the rest and exits 0. A name the spec declares itself
-under `datasets` is left alone.
+read as a number, draws the rest and exits 0. So does a field it plots that the
+data does not have — `sedes` for `sede` drew one bar labelled undefined — named
+with the nearest column. A name the spec declares itself under `datasets` is
+left alone.
 
 It is declared, not programmed: equality is the only filter and there is one
 sort key, with no loops, conditions or expressions. Anything that needs them is
