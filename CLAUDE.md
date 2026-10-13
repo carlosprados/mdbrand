@@ -90,6 +90,12 @@ Do not relax one without understanding what it cost.
    same spec width 33% apart on the page.
 5. **`<foreignObject>` is refused before rendering.** `rsvg-convert` drops it
    silently, so a d2 `|md|` block would vanish from the PDF with no warning.
+   It reads the SVG's copy in the work directory, where a relative
+   `<image href>` led nowhere: a photo in a linked SVG, or a Vega image mark,
+   left an empty frame. Every picture an SVG links is resolved against the
+   source's directory and inlined as a data URI; a missing or remote one stops.
+   → `internal/fig/images_test.go`, `testdata/svg-image.md`,
+   `traps/svg-image-missing.md`.
 6. **Settings resolve flag > front matter > configuration**, through
    `build.Pick`. Inverting this made a document declaring `brand: none` build
    with the reader's configured brand.

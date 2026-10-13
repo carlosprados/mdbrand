@@ -338,6 +338,21 @@ if [ $status -eq 0 ]; then
 	done
 fi
 
+# A picture inside a figure — an <image> in a linked SVG, a Vega image mark —
+# was left behind in the source's directory when rsvg-convert read the copy in
+# the work directory, and the PDF had an empty frame. Both must print.
+echo
+echo "testdata/svg-image.md — pictures inside figures"
+out="$("$bin" build "$root/testdata/svg-image.md" --work "$work/svg-image" -o "$work/svg-image.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	n="$(pdfimages -list "$work/svg-image.pdf" | tail -n +3 | wc -l)"
+	[ "$n" -ge 2 ] && ok "both pictures are in the PDF" || bad "the PDF holds $n of the 2 pictures"
+fi
+
 # ------------------------------------------------------------------- the deck
 # style slides: a beamer deck from the deck bundle, which is set in DejaVu so
 # it builds anywhere and carries every slides key. Each check is a defect the
@@ -539,6 +554,7 @@ traps=(
 	"dead-anchor.md|fail|#setup — did you mean #set-up?|--to docx --brand none"
 	"raw-html.md|fail|width=\"200\"> — write ![caption](picture.png)"
 	"raw-html.md|fail|<br> — write a backslash at the end of the line|--to docx --brand none"
+	"svg-image-missing.md|fail|no-such.png: not found at"
 	"undefined-ref.md|fail|\\ref{tab:costes}"
 	"table-row-tall.md|fail|taller than a page"
 	"fig-width-tall.md|fail|Lower width= to 88mm"

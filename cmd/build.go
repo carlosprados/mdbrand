@@ -95,9 +95,11 @@ Raw HTML stops it too, each tag named with its Markdown — <br>, <b>, <img>,
 <table> vanish from both outputs; an HTML comment is fine.
 
 A picture linked as .svg is treated as a figure — checked for <foreignObject>,
-sized for legible labels and converted by rsvg-convert. PNG, JPEG and PDF
-pictures keep their markup; every relative path resolves against the document,
-and one that is not there stops the build by name.
+sized for legible labels and converted by rsvg-convert; a picture it links
+with <image href> is embedded from beside it, and one that is not there stops
+the build, as does a Vega image mark's. PNG, JPEG and PDF pictures keep their
+markup; every relative path resolves against the document, and one that is not
+there stops the build by name.
 
 Citations need no flag either — declaring a bibliography in the front matter is
 what turns them on (or the entries themselves, under references:):
