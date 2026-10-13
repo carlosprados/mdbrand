@@ -784,7 +784,9 @@ mm, cm, in or pt, or as a share of the measure (`width=80%`), and anything else
 stops the build. An explicit width overrides the sizing, so the build checks
 what it leads to: wider than the measure, or taller than the page — where
 LaTeX would shrink the figure to fit, labels and all, in silence — stops it,
-naming the width that fits.
+naming the width that fits. Inside code — a ````` ````markdown ````` sample like the
+one above, a `~~~` block, a code span — a fence or a link is an example and
+prints as written.
 
 An **`.svg` rendered elsewhere** goes through the same door: linked as
 `![caption](figs/x.svg)`, it is checked, sized for legible labels and converted
