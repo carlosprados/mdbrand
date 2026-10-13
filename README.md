@@ -793,6 +793,10 @@ An **`.svg` rendered elsewhere** goes through the same door: linked as
 by `rsvg-convert`, rather than handed to pandoc as `\includesvg` (which needs
 Inkscape). PNG, JPEG and PDF pictures stay as they are. Every relative picture
 path resolves against the document, and a missing one stops the build by name.
+A PNG or JPEG is measured where it was printed (`pdfimages`): a small picture
+stretched under 72 ppi stops the build, under 150 ppi it warns — LaTeX scales
+a 400-pixel screenshot to the measure without a word — and both name the width
+at which it would print at 150.
 
 **A chart's data** follows the same rule. `"data": {"url": "data/ventas.csv"}`
 resolves against the document in a fenced block, and against the spec's own
@@ -827,8 +831,12 @@ figures:
 
 **A chart speaks the document's language.** In a document whose `lang` writes
 a decimal comma (Spanish, Catalan, Galician, Basque, Portuguese, Italian,
-German, Dutch, Danish — the same list the tables use), axes print `30.000`, not
-`30,000`, and in Spanish months and days are `ene`, `lunes`. Vega has no way to
+German, Dutch, Danish, French — the same list the tables use), axes print
+`30.000` (`30 000` in French), not `30,000`, and months and days are in the
+language: `ene`, `janv.`, `Mrz` — Spanish, Catalan, German, French, Italian,
+Dutch, Danish and Portuguese, the last seven from d3's own tables. A chart of
+dates in a language without one (Galician, Basque) stops the build rather than
+print `Jan`. Vega has no way to
 take that from the spec: its CLIs overwrite a spec's `config.locale`, and
 `vl2svg -f/-t` pass the file's text where an object is wanted. So those charts
 are compiled with `vl2vg` and rendered with `vg2svg -f -t`, which works from

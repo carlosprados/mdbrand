@@ -104,6 +104,10 @@ func Separators(lang string) (thousands, decimal string) {
 		return ",", "."
 	case "es", "ca", "gl", "eu", "pt", "it", "de", "nl", "da":
 		return ".", ","
+	case "fr":
+		// A no-break space, as d3's fr-FR has it: a plain one would let a
+		// line break inside 10 000.
+		return "\u00a0", ","
 	}
 	return "", "."
 }

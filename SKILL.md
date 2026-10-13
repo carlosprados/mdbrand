@@ -224,10 +224,12 @@ To show a fence or a picture link as an example, put it inside code (a
   A CSV is read by mdbrand's own parser, as tables read it: `;` or `,`, and a
   decimal comma is a number where `lang` writes one.
   In a decimal-comma `lang` numbers print as that language writes them
-  (`30.000`), and in Spanish so do month names.
+  (`30.000`, `30 000` in French), and month names too in es, ca, de, fr, it,
+  nl, da and pt; a dated chart in a language without them (gl, eu) stops.
 - **Pictures:** an `.svg` made elsewhere is treated as a figure (sized, checked
   for legibility); PNG, JPEG and PDF keep their markup. A missing picture stops
-  the build by name.
+  the build by name; a PNG or JPEG stretched under 72 ppi stops it too (under
+  150 warns), naming the width that prints well — use a larger original.
 - **No `|md|` blocks in d2**: they become `<foreignObject>`, which the PDF
   route drops in silence, so the build refuses them.
 - **A chart field the data lacks fails the build** — a typo drew an empty

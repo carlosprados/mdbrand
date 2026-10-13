@@ -321,6 +321,22 @@ if [ $status -eq 0 ]; then
 	done
 fi
 
+# French: no thousands mark at all until fr had separators, and month names
+# only Spanish had. d3's own tables, embedded; the space is a no-break one.
+echo
+echo "testdata/locale-fr.md — a chart in French"
+out="$("$bin" build "$root/testdata/locale-fr.md" --work "$work/locale-fr" -o "$work/locale-fr.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	svg="$work/locale-fr/fig00.svg"
+	for want in $'>10\u00a0000<' ">janv.<" ">avr.<"; do
+		grep -qF -- "$want" "$svg" && ok "the chart prints ${want//[<>]/}" || bad "the chart lacks ${want//[<>]/}"
+	done
+fi
+
 # ------------------------------------------------------------- a csv by url
 # A chart whose data url pointed at a Spanish export drew one bar: Vega's CSV
 # reader splits on commas alone. The rows now come through the document's
@@ -576,6 +592,7 @@ traps=(
 	"chart-field-typo.md|fail|\"sedes\" — did you mean \"sede\"?"
 	"colour-attrs.md|fail|Color=\"red\" on \"Plazos\""
 	"colour-attrs.md|fail|background=\"black\" on \"make deploy\"|--to docx --brand none"
+	"picture-low-res.md|fail|tiny.png prints at 18 ppi on page 1"
 	"undefined-ref.md|fail|\\ref{tab:costes}"
 	"table-row-tall.md|fail|taller than a page"
 	"fig-width-tall.md|fail|Lower width= to 88mm"

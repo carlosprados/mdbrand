@@ -270,8 +270,11 @@ Do not relax one without understanding what it cost.
     decimal-comma `lang` compiles with vl2vg and renders with `vg2svg -f -t`,
     after a probe that renders `format(1000, ',')` and stops unless it reads
     `1.000`. English keeps vl2svg, byte for byte. Reported upstream as
-    vega/vega#4361 and vega/vega-lite#9955.
-    → `internal/fig/locale_test.go`, `testdata/locale.md`.
+    vega/vega#4361 and vega/vega-lite#9955. French printed `10,000` — fr had
+    no separators at all — and German `Jan`: month names came only for
+    Spanish. The others are d3-time-format's tables, embedded unchanged, and
+    a dated chart in a language with none stops rather than print English.
+    → `internal/fig/locale_test.go`, `testdata/locale.md`, `testdata/locale-fr.md`.
 
 21. **A figure takes the brand where its author did not choose.** Charts came
     out in Vega's blue and Noto Sans and diagrams in d2's, on pages in the
@@ -303,6 +306,15 @@ Do not relax one without understanding what it cost.
     upright bold and says nothing, so that one case still passes.
     → `internal/build/build_test.go`, `internal/brand/brand_test.go`,
     `traps/missing-style.md`.
+
+23. **A picture prints at a resolution its pixels can hold.** LaTeX scales a
+    PNG to the width it is given, and a 120-pixel picture across the measure
+    printed at 18 ppi, exit 0. `pdfimages -list` reads the placed ppi off the
+    finished PDF: under 72 stops, under 150 warns. Only the document's own
+    PNG and JPEG are judged, recognised by their size in pixels, because
+    rsvg-convert rasterises a figure's shadows at 72 ppi and five real
+    documents carry those.
+    → `internal/build/build_test.go`, `traps/picture-low-res.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

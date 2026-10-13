@@ -13,7 +13,8 @@ func TestLocaleForLang(t *testing.T) {
 	for lang, want := range map[string]string{
 		"": "", "en-GB": "", "en": "",
 		"es-ES": "-f -t", "es": "-f -t",
-		"de-DE": "-f", "pt": "-f", "ca": "-f",
+		"de-DE": "-f -t", "pt": "-f -t", "ca": "-f -t", "fr-FR": "-f -t",
+		"gl": "-f", // a decimal comma, and no month names to give
 	} {
 		args, err := localeArgs(t.TempDir(), lang)
 		if err != nil {
@@ -27,6 +28,25 @@ func TestLocaleForLang(t *testing.T) {
 		}
 		if got := strings.Join(flags, " "); got != want {
 			t.Errorf("lang %q: flags %q, want %q", lang, got, want)
+		}
+	}
+}
+
+// A chart of dates in a language with no month names stops: Vega would print
+// Jan on a Galician page. Numbers alone, or English, or a table, pass.
+func TestTimelessStopsDatesWithoutNames(t *testing.T) {
+	dated := map[string]any{"encoding": map[string]any{"x": map[string]any{"field": "d", "type": "temporal"}}}
+	unit := map[string]any{"encoding": map[string]any{"x": map[string]any{"field": "d", "timeUnit": "month"}}}
+	plain := map[string]any{"encoding": map[string]any{"x": map[string]any{"field": "n", "type": "quantitative"}}}
+	if timeless(dated, "gl") == nil || timeless(unit, "eu-ES") == nil {
+		t.Error("dates in Galician or Basque passed")
+	}
+	for _, c := range []struct {
+		v    any
+		lang string
+	}{{plain, "gl"}, {dated, "en-GB"}, {dated, ""}, {dated, "de-DE"}, {dated, "fr"}} {
+		if err := timeless(c.v, c.lang); err != nil {
+			t.Errorf("%s: %v", c.lang, err)
 		}
 	}
 }
