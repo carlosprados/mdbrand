@@ -33,7 +33,7 @@ func checkRequires(root *yaml.Node, name string) error {
 	want, ok := parseVersion(req)
 	if !ok {
 		return fmt.Errorf(`brand %q: requires: %q is not a version; write the oldest mdbrand
-the bundle works with, e.g. requires: "0.18"`, name, req)
+the bundle works with, e.g. requires: "0.26"`, name, req)
 	}
 	have, ok := parseVersion(ToolVersion)
 	if !ok || !less(have, want) {

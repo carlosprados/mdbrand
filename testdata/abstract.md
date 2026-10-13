@@ -1,5 +1,5 @@
 ---
-title: "Un informe con resumen"
+title: "Un informe con *resumen*"
 author: "Ana Ruiz"
 lang: es-ES
 numbersections: true

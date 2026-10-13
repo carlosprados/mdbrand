@@ -499,3 +499,22 @@ func TestWorkStem(t *testing.T) {
 		}
 	}
 }
+
+// Only a string with Markdown in it goes through pandoc: a plain title keeps
+// its .tex byte for byte, apostrophes and underscores inside words included.
+func TestMarkdownSyntax(t *testing.T) {
+	for s, want := range map[string]bool{
+		"*Hamlet* and power":                   true,
+		"The `go` tool":                        true,
+		"__strong__":                           true,
+		"OpenAI's 2025 recapitalisation":       false,
+		"file_name_v2 and Spain's water":       false,
+		"AI data centers, 50% of the load":     false,
+		"H~2~O":                                true,
+		"[Linked](https://example.org) report": true,
+	} {
+		if got := markdownSyntax.MatchString(s); got != want {
+			t.Errorf("%q: %v, want %v", s, got, want)
+		}
+	}
+}

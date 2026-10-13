@@ -300,3 +300,15 @@ func TestAccentColourDefinedOnlyWhenDeclared(t *testing.T) {
 		t.Error("a declared accent must be defined")
 	}
 }
+
+// A front matter string with Markdown prints as the LaTeX made of it; any
+// other is escaped as it always was.
+func TestDataEsc(t *testing.T) {
+	d := &Data{Inline: map[string]string{"*Hamlet* & co": `\emph{Hamlet} \& co`}}
+	if got := d.Esc("*Hamlet* & co"); got != `\emph{Hamlet} \& co` {
+		t.Errorf("rendered: %q", got)
+	}
+	if got := d.Esc("R&D 100%"); got != Escape("R&D 100%") {
+		t.Errorf("plain: %q", got)
+	}
+}

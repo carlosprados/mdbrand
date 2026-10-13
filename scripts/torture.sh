@@ -316,6 +316,10 @@ if [ $status -eq 0 ]; then
 	xml="$(unzip -p "$work/abstract.docx" word/document.xml)"
 	grep -qF 'El resumen va detrás' <<<"$xml" && ok "the .docx holds the abstract" || bad "the .docx lost the abstract"
 	grep -qE '<w:t[^>]*>1</w:t>.*Primera sección' <<<"$xml" && ok "the .docx numbers its sections" || bad "the .docx's sections are not numbered"
+	# title: "Un informe con *resumen*" printed its asterisks on the cover and
+	# in the header of both outputs.
+	pdftotext "$work/abstract.pdf" - | grep -qF '*resumen*' && bad "the PDF prints the title's Markdown" || ok "the PDF sets the title's Markdown"
+	grep -qF '*resumen*' <<<"$xml" && bad "the .docx prints the title's Markdown" || ok "the .docx drops the title's Markdown"
 fi
 
 # ----------------------------------------------------------------- the locale

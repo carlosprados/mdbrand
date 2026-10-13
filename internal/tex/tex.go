@@ -130,6 +130,10 @@ type Data struct {
 	FallbackFont  string         // fonts.fallback; "" when there is nothing to redirect
 	FallbackChars []FallbackChar // the characters redirected to it
 
+	// Inline holds front matter strings written in Markdown, as LaTeX pandoc
+	// made of them; Esc prints those and escapes every other string.
+	Inline map[string]string
+
 	HeaderTitle  string
 	Title        string
 	Subtitle     string
@@ -146,6 +150,16 @@ type Data struct {
 }
 
 var funcs = template.FuncMap{"texEscape": Escape}
+
+// Esc prints a front matter string: as the LaTeX its Markdown makes when it
+// has any — title: "*Hamlet* and power" printed its asterisks on the cover and
+// in the header — and escaped as plain text otherwise, byte for byte as before.
+func (d *Data) Esc(s string) string {
+	if t, ok := d.Inline[s]; ok {
+		return t
+	}
+	return Escape(s)
+}
 
 // Escape makes a plain string safe inside LaTeX.
 func Escape(s string) string {

@@ -88,7 +88,9 @@ Front matter drives everything, so a build needs no flags:
 		// cobra.OnInitialize cannot fail, so a config problem waits here.
 		// version prints whatever the configuration says.
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			if cmd.Name() == "version" {
+			// config init writes the file --config names, so that file not
+			// existing yet is the point, not an error.
+			if cmd.Name() == "version" || cmd.Name() == "init" && cmd.Parent() != nil && cmd.Parent().Name() == "config" {
 				return nil
 			}
 			return configErr
@@ -251,16 +253,21 @@ unknown key stops every command with exit 2.`,
 		Use:   "init",
 		Short: "Write a starter config file",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dir, err := configDir()
-			if err != nil {
+			// --config names the file to write, as it names the one to read;
+			// init wrote the default one whatever it said.
+			p := cfgFile
+			if p == "" {
+				dir, err := configDir()
+				if err != nil {
+					return err
+				}
+				p = filepath.Join(dir, "config.yaml")
+			}
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 				return err
 			}
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return err
-			}
-			p := filepath.Join(dir, "config.yaml")
 			if _, err := os.Stat(p); err == nil {
-				return fmt.Errorf("%s already exists", p)
+				return exit.AsUsage(fmt.Errorf("%s already exists: edit it, or write a new one elsewhere with --config", p))
 			}
 			body := fmt.Sprintf(`# mdbrand settings.
 # brands_dir is where brand bundles live. Keep it outside any code repository:
@@ -273,6 +280,10 @@ style: report
 
 # The criterion {{words}} counts by when a document does not set one: ib or all.
 wordcount: ib
+
+# What a build writes when neither --to nor the front matter says: pdf, docx,
+# notes (a deck's speaker notes), or several.
+formats: [pdf]
 `, defaultBrandsDir())
 			if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 				return err

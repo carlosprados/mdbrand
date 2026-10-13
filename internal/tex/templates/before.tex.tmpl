@@ -14,10 +14,10 @@
 \vfill
 {\color{brandPrimary}\rule{\textwidth}{1.6pt}}\par
 \vspace{9mm}
-{\brandDisplayBold\fontsize{27}{32}\selectfont\color{brandText}{{texEscape .Title}}\par}
+{\brandDisplayBold\fontsize{27}{32}\selectfont\color{brandText}{{.Esc .Title}}\par}
 {{if .Subtitle -}}
 \vspace{6mm}
-{\brandDisplay\fontsize{13}{18}\selectfont\color{brandText}{{texEscape .Subtitle}}\par}
+{\brandDisplay\fontsize{13}{18}\selectfont\color{brandText}{{.Esc .Subtitle}}\par}
 {{- end}}
 {{if .Reference -}}
 \vspace{5mm}
@@ -27,8 +27,8 @@
 {\color{brandRule}\rule{\textwidth}{0.4pt}}\par
 \vspace{3.5mm}
 {\brandDisplay\fontsize{9.5}{13}\selectfont\color{brandText}
-{{- if .Author}}{{texEscape .Author}}\par\vspace{1.2mm}{{end}}
-{{- if .Date}}{{texEscape .Date}}\par{{end}}
+{{- if .Author}}{{.Esc .Author}}\par\vspace{1.2mm}{{end}}
+{{- if .Date}}{{.Esc .Date}}\par{{end}}
 {{- if .Confidential}}\vspace{2.5mm}{\color{brandPrimary}{{texEscape .Confidential}}}\par{{end}}
 {{- if .Brand.Footer}}\vspace{2.5mm}{{texEscape .Brand.Footer}}\par{{end}}}
 \endgroup
@@ -39,16 +39,16 @@
 % from the first page, because it is read at a desk and not handed over.
 \begingroup
 \setlength{\parindent}{0pt}\raggedright
-{\brandDisplayBold\fontsize{19}{23}\selectfont\color{brandText}{{texEscape .Title}}\par}
+{\brandDisplayBold\fontsize{19}{23}\selectfont\color{brandText}{{.Esc .Title}}\par}
 {{if .Subtitle -}}
 \vspace{2.5mm}
-{\brandDisplay\fontsize{11}{15}\selectfont\color{brandText}{{texEscape .Subtitle}}\par}
+{\brandDisplay\fontsize{11}{15}\selectfont\color{brandText}{{.Esc .Subtitle}}\par}
 {{- end}}
 \vspace{3mm}
 {\color{brandPrimary}\rule{\textwidth}{1pt}}\par
 \vspace{2mm}
 {\brandDisplay\fontsize{9}{12}\selectfont\color{brandText}
-{{- if .Author}}{{texEscape .Author}}{{end}}{{if and .Author .Date}} \textperiodcentered{} {{end}}{{if .Date}}{{texEscape .Date}}{{end}}
+{{- if .Author}}{{.Esc .Author}}{{end}}{{if and .Author .Date}} \textperiodcentered{} {{end}}{{if .Date}}{{.Esc .Date}}{{end}}
 {{- if .Confidential}}{{if or .Author .Date}} \textperiodcentered{} {{end}}{\color{brandPrimary}{{texEscape .Confidential}}}{{end}}\par}
 \endgroup
 \vspace{7mm}
@@ -66,7 +66,7 @@
 \vspace{10mm}
 {{- end}}
 {\brandDisplay\fontsize{10}{14}\selectfont\color{brandText}
-{{- if .Place}}{{texEscape .Place}}{{if .Date}}, {{end}}{{end}}{{if .Date}}{{texEscape .Date}}{{end}}\par}
+{{- if .Place}}{{texEscape .Place}}{{if .Date}}, {{end}}{{end}}{{if .Date}}{{.Esc .Date}}{{end}}\par}
 % The letterhead page has no footer, so a one-page letter would carry the label
 % nowhere: it goes under the date.
 {{if .Confidential -}}
@@ -74,7 +74,7 @@
 {{- end}}
 \vspace{10mm}
 {{if .Title -}}
-{\brandDisplayBold\fontsize{12}{16}\selectfont\color{brandText}{{texEscape .Title}}\par}
+{\brandDisplayBold\fontsize{12}{16}\selectfont\color{brandText}{{.Esc .Title}}\par}
 \vspace{6mm}
 {{- end}}
 {{if .Greeting -}}

@@ -58,7 +58,7 @@
 {{- else}}
 \newcommand{\brandConfidential}{}
 {{- end}}
-\newcommand{\brandRunningTitle}{ {{- texEscape .HeaderTitle -}} }
+\newcommand{\brandRunningTitle}{ {{- .Esc .HeaderTitle -}} }
 
 % The title and section slides are covers: no footer, and the bundle's ground
 % when it declares one. beamer draws the background and the footer when the
@@ -127,13 +127,13 @@
   \vskip2mm\brandSlideLogo{ {{- .Brand.Slides.LogoWidthCover -}} }\par
   \vfill
   \begingroup\color{\mdbrandCoverAccent}\rule{20mm}{1.2pt}\endgroup\par\vskip5mm
-  \begingroup\brandDisplayBold\fontsize{24}{28}\selectfont {{texEscape .Title}}\par\endgroup
+  \begingroup\brandDisplayBold\fontsize{24}{28}\selectfont {{.Esc .Title}}\par\endgroup
 {{- if .Subtitle}}
-  \vskip3mm\begingroup\brandDisplay\fontsize{13}{17}\selectfont {{texEscape .Subtitle}}\par\endgroup
+  \vskip3mm\begingroup\brandDisplay\fontsize{13}{17}\selectfont {{.Esc .Subtitle}}\par\endgroup
 {{- end}}
   \vfill
   \begingroup\brandDisplay\fontsize{9}{12}\selectfont
-{{if .Author}}{{texEscape .Author}}{{end}}{{if and .Author .Date}}\quad\textperiodcentered\quad{}{{end}}{{if .Date}}{{texEscape .Date}}{{end}}
+{{if .Author}}{{.Esc .Author}}{{end}}{{if and .Author .Date}}\quad\textperiodcentered\quad{}{{end}}{{if .Date}}{{.Esc .Date}}{{end}}
 {{- if .Reference}}\par\vskip1mm {{texEscape .Reference}}{{end}}
 {{- if .Confidential}}\par\vskip1mm\begingroup\color{\mdbrandCoverAccent}{{texEscape .Confidential}}\endgroup{{end}}
 {{- if .Brand.Footer}}\par\vskip1mm {{texEscape .Brand.Footer}}{{end}}\par\endgroup

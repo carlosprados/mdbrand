@@ -70,6 +70,9 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if s := d.Meta.Options.Signature; s != "" {
 		data.SignatureLines = strings.Split(s, "\n")
 	}
+	if data.Inline, err = inlineMarkdown(work, "latex", data.HeaderTitle, data.Title, data.Subtitle, data.Author, data.Date); err != nil {
+		return err
+	}
 	if slides {
 		if err := slideFiles(b, work, data); err != nil {
 			return err
@@ -413,8 +416,10 @@ func judgeLog(sc scan, o Options, rep *Report) error {
 		return fmt.Errorf(`the font has no glyph for %d character(s) the document uses, so they
 would print as nothing at all and only this log would know:
   %s
-Fix the text (a ballpoint tick beats a missing ☐ anyway) or pick a font that
-covers it; override with --allow-missing-glyphs if you truly want the holes`,
+Fix the text (a ballpoint tick beats a missing ☐ anyway), pick a body font that
+covers it, or name a fonts.fallback in the bundle that does — it sets only the
+characters the body lacks; override with --allow-missing-glyphs if you truly
+want the holes`,
 			len(sc.Holes), strings.Join(sc.Holes, "\n  "))
 	}
 	if len(sc.Shapes) > 0 {
