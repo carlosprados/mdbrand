@@ -100,7 +100,10 @@ wrong: a logo that is a bitmap wearing an SVG coat, artwork sitting outside the
 viewBox, the invalid data:img/ MIME type that makes rsvg-convert render nothing,
 text kept as <foreignObject> (which rsvg-convert drops), a display font whose
 path no longer exists, colours that are not plain 6-digit hex, and a header
-whose declared height cannot hold the logo that goes in it.
+whose declared height cannot hold the logo that goes in it. Also: a key no
+version of mdbrand reads (a typo, named with the nearest real key), a
+requires: newer than this binary, and a deck's cover ground that its type or
+an SVG logo's fills cannot be read against.
 
 With no arguments, validates every installed bundle.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -180,7 +183,8 @@ Next:
   1. put the logo in %s as logo.svg — vector, not an SVG wrapping a PNG
   2. set colors.primary / text / rule to the brand's hex values, and colors.link
      if links should not print in the primary
-  3. optional: point fonts.display at the licensed brand font (by path, never copied)
+  3. optional: point fonts.display at the brand font — by path, or inside the
+     bundle only where its licence allows the bundle's distribution
   4. mdbrand brand validate %s
 `, filepath.Join(dir, "brand.yaml"), dir, args[0])
 			return nil

@@ -132,13 +132,15 @@ LaTeX packages, all on [CTAN](https://ctan.org):
 [etoolbox](https://ctan.org/pkg/etoolbox),
 [microtype](https://ctan.org/pkg/microtype),
 [caption](https://ctan.org/pkg/caption),
+[fvextra](https://ctan.org/pkg/fvextra) (code blocks),
+[Latin Modern](https://ctan.org/pkg/lm) (`lmodern`, which pandoc's template loads),
 [xcolor](https://ctan.org/pkg/xcolor) and, for a bundle that declares
 `fonts.fallback`, [newunicodechar](https://ctan.org/pkg/newunicodechar); for
 `style: slides`, the [beamer](https://ctan.org/pkg/beamer) class.
 On Debian/Ubuntu they arrive with:
 
 ```sh
-apt install texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-xetex
+apt install texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-xetex lmodern
 ```
 
 Required only if a document contains diagrams:
@@ -308,7 +310,9 @@ mdbrand:
 
 Everything under `mdbrand:` is checked: a key no option reads stops the build,
 naming the option it was probably meant to be. The rest of the front matter is
-pandoc's and passes through untouched.
+pandoc's and passes through untouched. Title, subtitle, author, date and
+`short_title` may carry inline Markdown — `title: "*Hamlet* and power"` — set
+on the cover and in the header of the PDF; the `.docx` prints their text.
 
 ```sh
 mdbrand new informe.md --title "…" --toc   # scaffold, front matter already right
@@ -639,13 +643,13 @@ the missing-glyph check, the text layer, `{{data…}}`, `{{words}}`,
   :::
   ```
 
-- The notes print on their own: `--to pdf,notes`, or `formats: [pdf, notes]`
-  in the front matter, writes `talk-notes.pdf` beside the deck — every slide at
-  half size with its note beside it, two to an A4 sheet, a slide with pauses
-  shown whole, numbered as the deck's footer numbers it. A slide without notes
-  keeps its page, with room to write by hand. A note has room for 17 lines,
-  and a longer one stops the build by the slide's title rather than run off
-  the sheet.
+- The notes print on their own: `--to pdf,notes`, or `formats: [pdf, notes]` in
+  the front matter, writes `<name>-notes.pdf` beside the deck (`talk-notes.pdf`
+  for `talk.md`) — every slide at half size with its note beside it, two to an
+  A4 sheet, a slide with pauses shown whole, numbered as the deck's footer
+  numbers it. A slide without notes keeps its page, with room to write by hand.
+  A note has room for 17 lines, and a longer one stops the build by the slide's
+  title rather than run off the sheet.
 
 - Pauses are pandoc's too: `. . .` on a line of its own, or `::: incremental`
   around a list to reveal it point by point. Each step is a page that keeps
@@ -911,7 +915,7 @@ Iterate on a diagram without rebuilding the document:
 
 ```console
 $ mdbrand diagrams informe.md
-brand amplia · measure 166.0 mm · text band 8.0–12.0 pt · max height 150 mm
+brand amplia · style report · measure 166.0 mm · text band 8.0–12.0 pt · max height 150 mm
 
 arquitectura.d2               37.7 × 62.8   mm   text 12.0 pt
 latencia.vl.json             126.7 × 60.2   mm   text 12.0 pt
@@ -944,7 +948,7 @@ mdbrand brand path amplia
 ```yaml
 name: amplia
 display_name: Amplía Soluciones S.L.
-requires: "0.17"               # optional; the oldest mdbrand this bundle works with
+requires: "0.26"               # optional; the oldest mdbrand this bundle works with
 logo: logo.svg                 # vector; an SVG wrapping a PNG will look soft
 logo_secondary: cliente.svg    # optional; right of the COVER only, same baseline
 
@@ -984,6 +988,7 @@ page:
 diagrams:
   d2_theme: 0                  # light: paper has no prefers-color-scheme
   d2_scale: 0.5                # mdbrand sizes d2 labels from this and max_text_pt
+  d2_pad: 8                    # d2's padding around a diagram, in its pixels
   min_text_pt: 8
   max_text_pt: 12
   max_height_mm: 150
@@ -1000,7 +1005,7 @@ footer: ""                     # optional line under the cover rule
 ```
 
 **A bundle is read by whatever mdbrand each reader has**, so it can say which
-it needs: with `requires: "0.17"`, an older mdbrand stops and names the release
+it needs: with `requires: "0.26"`, an older mdbrand stops and names the release
 to upgrade to, instead of skipping the settings it does not know and building
 a document without them. Set it to the release that introduced the newest
 setting the bundle uses. A key that no setting reads stops the build as well,

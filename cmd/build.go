@@ -92,8 +92,8 @@ page prints right, but copy-paste, search and plagiarism checkers read garbage.
 Contextual alternates are off for that reason — Inter's turned "(SD1)" into
 U+EE4E SD1 U+EE4F. Without pdftotext the build warns that it was not checked.
 
-[words]{.accent} sets words in the brand's primary colour, in the PDF and the
-.docx alike. color=, colour=, style=, bgcolor= or background= on a span, div,
+[words]{.accent} sets words in the bundle's colors.accent (its primary when it
+declares none), in the PDF and the .docx alike. color=, colour=, style=, bgcolor= or background= on a span, div,
 heading, code or link stops the build: pandoc drops those attributes in
 silence, so the words would print black.
 Raw HTML stops it too, each tag named with its Markdown — <br>, <b>, <img>,
@@ -167,14 +167,15 @@ filled table of contents Word updates on opening. A .docx carries no fonts, so
 a named bundle must declare fonts.office (body, display, mono), faces the
 readers have; the build stops without them, and refuses a .docx asking for any
 other face, or holding a picture linked as PDF. Raw LaTeX is left out of it
-with a warning, and a formula Word's equations cannot take stops it. For Google Docs, upload it
-converted: gog drive upload informe.docx --convert-to doc
+with a warning, and a formula Word's equations cannot take stops it. For Google
+Docs, upload it converted: gog drive upload informe.docx --convert-to doc
 
 --to notes, for a deck (style slides), writes its speaker notes beside it as
-talk-notes.pdf: every slide at half size with its ::: notes beside it, two to
-an A4 sheet, pauses collapsed, and room to write on a slide without notes.
---to pdf,notes writes the deck and its notes. A note too long for its page,
-or holding a word too wide for its column, stops the build by the slide's title.
+<name>-notes.pdf (talk-notes.pdf for talk.md): every slide at half size with
+its ::: notes beside it, two to an A4 sheet, pauses collapsed, and room to
+write on a slide without notes. --to pdf,notes writes the deck and its notes. A
+note too long for its page, or holding a word too wide for its column, stops
+the build by the slide's title.
 
 --watch keeps mdbrand running and rebuilds whenever a file the build read
 changes: the document, its linked figures and pictures, the bibliography and
@@ -243,12 +244,12 @@ file. Ctrl-C stops it.
 func printReport(out, errOut io.Writer, rep *build.Report) {
 	for _, o := range rep.Outputs {
 		if o.Format == "pdf" {
-			fmt.Fprintf(out, "%s  (%d pages, %d words by %s, brand %s, style %s)\n",
-				o.Path, o.Pages, rep.Words, rep.WordRule, rep.Brand, rep.Style)
+			fmt.Fprintf(out, "%s  (%s, %d words by %s, brand %s, style %s)\n",
+				o.Path, plural(o.Pages, "page"), rep.Words, rep.WordRule, rep.Brand, rep.Style)
 			continue
 		}
 		if o.Format == "notes" {
-			fmt.Fprintf(out, "%s  (%d A4 pages of speaker notes, brand %s)\n", o.Path, o.Pages, rep.Brand)
+			fmt.Fprintf(out, "%s  (%s of speaker notes, brand %s)\n", o.Path, plural(o.Pages, "A4 page"), rep.Brand)
 			continue
 		}
 		// A .docx has no page count of its own: whatever opens it paginates it.
@@ -288,4 +289,12 @@ func removeOnInterrupt() func() {
 		signal.Stop(ch)
 		close(done)
 	}
+}
+
+// plural is "1 page", "3 pages".
+func plural(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }

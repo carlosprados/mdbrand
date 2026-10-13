@@ -691,11 +691,12 @@ func Scaffold(brandsDir, name string) (string, error) {
 		return dir, err
 	}
 	tpl := fmt.Sprintf(`# %[1]s brand bundle — read by mdbrand.
-# Assets stay here; commercially licensed fonts are referenced by path and
-# never copied in, so this bundle can be shared without breaching a licence.
+# Assets stay here. A licensed font may live here only if the bundle's own
+# distribution respects its licence (a private or internal repository);
+# otherwise reference it by path and leave the file out.
 name: %[1]s
 display_name: %[1]s
-# requires: "0.18"   # optional: the oldest mdbrand this bundle works with; an
+# requires: "0.26"   # optional: the oldest mdbrand this bundle works with; an
 #                    # older one stops instead of skipping settings it lacks
 
 # Vector is what you want. An SVG that merely wraps a PNG will look soft on a
@@ -722,7 +723,8 @@ fonts:
   #     - $MDBRAND_FONT_DIR
   #     - ~/.local/share/fonts/gotham
   #   # If the font is installed the normal way, drop path entirely: mdbrand
-  #   # asks fontconfig where it is. Never copy the file into the bundle.
+  #   # asks fontconfig where it is. A relative path resolves in the bundle,
+  #   # for a font the bundle may carry under its licence.
   office:             # the faces a .docx asks for (--to docx): ones the readers
     body: Inter       # have, since a .docx carries no fonts; Google Docs offers
     display: Inter    # only Google Fonts. Never a licensed display face here.
@@ -745,7 +747,9 @@ page:
 
 diagrams:
   d2_theme: 0         # light: paper has no prefers-color-scheme
-  d2_scale: 0.5       # pairs with **.style.font-size: 32 in the .d2
+  d2_scale: 0.5       # d2's render scale; mdbrand sets the label sizes on a
+                      # copy of each .d2, so write no font-size in the source
+  d2_pad: 8           # d2's padding around a diagram, in its pixels
   min_text_pt: 8      # fail below this once scaled onto the page
   max_text_pt: 12     # and do not let a figure shout over the body text
   max_height_mm: 150  # a figure taller than this eats the page

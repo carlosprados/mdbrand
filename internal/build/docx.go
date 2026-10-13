@@ -63,6 +63,9 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		Greeting: d.Meta.Options.Greeting, Signature: d.Meta.Options.Signature,
 		TOC: d.Meta.HasTOC(), TOCDepth: d.Meta.TOCDepth, Lang: d.Meta.Lang,
 	}
+	if err := plainFront(work, &meta, &look); err != nil {
+		return err
+	}
 	if meta.Logo, err = docxLogoFile(b.LogoPath(), work, "docx-logo"); err != nil {
 		return err
 	}
@@ -314,4 +317,19 @@ func docxLength(key, v string) (float64, error) {
 		return 0, fmt.Errorf("%s: %w — the .docx needs mm, cm, in or pt, which the PDF reads as well", key, err)
 	}
 	return mm, nil
+}
+
+// plainFront sets front matter Markdown as its text: the cover and header are
+// built as OOXML here, and printed the asterisks of *Hamlet* as written.
+func plainFront(work string, meta *docx.Meta, look *docx.Look) error {
+	asText, err := inlineMarkdown(work, "plain", meta.Title, meta.Subtitle, meta.Author, meta.Date, look.RunningTitle)
+	if err != nil {
+		return err
+	}
+	for _, f := range []*string{&meta.Title, &meta.Subtitle, &meta.Author, &meta.Date, &look.RunningTitle} {
+		if t, ok := asText[*f]; ok {
+			*f = t
+		}
+	}
+	return nil
 }

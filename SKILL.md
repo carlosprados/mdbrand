@@ -109,7 +109,8 @@ mdbrand:
 
 A key under `mdbrand:` that no option reads stops the build with "did you
 mean". A title too long for the running header stops it asking for
-`short_title`.
+`short_title`. Title, subtitle, author and date may carry inline Markdown
+(`*Hamlet*`, `` `code` ``): the PDF sets it, the `.docx` prints its text.
 
 - `report` — cover with logo, header with logo from page 2, optional ToC.
 - `note` — no cover; title block plus header from page 1.
@@ -270,10 +271,10 @@ and figures. Start from `mdbrand example charla`.
   it point by point. A slide with pauses is one slide: one number, judged by
   its fullest step.
 - `::: notes` holds what to say; it never prints on a slide. With `notes` in
-  `formats` (`formats: [pdf, notes]`, or `--to pdf,notes`) the build also
-  writes `talk-notes.pdf`: every slide at half size beside its note, two to an
-  A4 sheet, pauses shown whole. A note has room for 17 lines; a longer one
-  stops the build by the slide's title.
+  `formats` (`formats: [pdf, notes]`, or `--to pdf,notes`) the build also writes
+  `<name>-notes.pdf` (`talk.md` → `talk-notes.pdf`): every slide at half size
+  beside its note, two to an A4 sheet, pauses shown whole. A note has room for
+  17 lines; a longer one stops the build by the slide's title.
 - The footer numbers slides out of the total (`8 / 24`), covers included.
 - Figures get 140 × 48 mm at most and a band of 8.5–14 pt: draw them wide and
   low (`direction: right`), with few edge labels.
@@ -318,7 +319,7 @@ merely wraps a bitmap, artwork outside the `viewBox`, a `data:` URI that
 converts to a blank page, a display font whose path moved, colours that are not
 6-digit hex, slide colours under WCAG contrast.
 
-- `requires: "0.17"` names the mdbrand a bundle needs; an older binary stops
+- `requires: "0.26"` names the mdbrand a bundle needs; an older binary stops
   and names the release to upgrade to. A key no setting reads stops every build
   with that bundle, by its dotted path and the nearest real key: fix the key,
   never delete `requires:` to get past it.

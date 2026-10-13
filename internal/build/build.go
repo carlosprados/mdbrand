@@ -585,3 +585,33 @@ func workStem(input string) string {
 	}
 	return stem
 }
+
+// markdownSyntax is what makes a front matter string Markdown rather than
+// plain text: emphasis, code, a link, a superscript or subscript, an escape.
+var markdownSyntax = regexp.MustCompile("[*`\\[^~\\\\]|(^|\\W)_|_(\\W|$)")
+
+// inlineMarkdown renders, through pandoc, each string that holds Markdown into
+// format (latex, or plain for a .docx's cover), keyed by the string as written.
+// A string without Markdown is left out, so its output does not move. Quotes
+// are kept as written: -smart would turn an apostrophe into a curly one.
+func inlineMarkdown(work, format string, ss ...string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, s := range ss {
+		if s == "" || !markdownSyntax.MatchString(s) {
+			continue
+		}
+		if _, done := out[s]; done {
+			continue
+		}
+		src := filepath.Join(work, ".mdbrand-inline.md")
+		if err := os.WriteFile(src, []byte(s), 0o644); err != nil {
+			return nil, err
+		}
+		r, err := run.Stdout(work, "pandoc", "-f", "markdown-smart-auto_identifiers", "-t", format, "--wrap=none", filepath.Base(src))
+		if err != nil {
+			return nil, err
+		}
+		out[s] = strings.TrimSpace(string(r))
+	}
+	return out, nil
+}
