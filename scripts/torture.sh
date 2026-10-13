@@ -592,6 +592,7 @@ traps=(
 	"chart-field-typo.md|fail|\"sedes\" — did you mean \"sede\"?"
 	"colour-attrs.md|fail|Color=\"red\" on \"Plazos\""
 	"colour-attrs.md|fail|background=\"black\" on \"make deploy\"|--to docx --brand none"
+	"picture-low-res.md|fail|tiny.png prints at 18 ppi on page 1"
 	"undefined-ref.md|fail|\\ref{tab:costes}"
 	"table-row-tall.md|fail|taller than a page"
 	"fig-width-tall.md|fail|Lower width= to 88mm"

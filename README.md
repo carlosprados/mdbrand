@@ -793,6 +793,10 @@ An **`.svg` rendered elsewhere** goes through the same door: linked as
 by `rsvg-convert`, rather than handed to pandoc as `\includesvg` (which needs
 Inkscape). PNG, JPEG and PDF pictures stay as they are. Every relative picture
 path resolves against the document, and a missing one stops the build by name.
+A PNG or JPEG is measured where it was printed (`pdfimages`): a small picture
+stretched under 72 ppi stops the build, under 150 ppi it warns — LaTeX scales
+a 400-pixel screenshot to the measure without a word — and both name the width
+at which it would print at 150.
 
 **A chart's data** follows the same rule. `"data": {"url": "data/ventas.csv"}`
 resolves against the document in a fenced block, and against the spec's own

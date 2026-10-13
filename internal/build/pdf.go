@@ -174,6 +174,9 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if err := checkTextLayer(work, stem+".pdf", md.String(), rep); err != nil {
 		return err
 	}
+	if err := checkResolution(work, stem+".pdf", p.d.Refs, rep); err != nil {
+		return err
+	}
 	rep.Outputs = append(rep.Outputs, Output{Format: "pdf", Path: out, Pages: sc.Pages, built: filepath.Join(work, stem+".pdf")})
 	return nil
 }

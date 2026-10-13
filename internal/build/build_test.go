@@ -441,3 +441,25 @@ func TestJudgeHeaderFailsOnlyPastTheGap(t *testing.T) {
 		t.Error("164pt past a 13pt gap built")
 	}
 }
+
+// A picture is found in pdfimages' list by its size in pixels, once per page;
+// its soft mask and the rasters of a figure's shadows are not the author's.
+func TestPlacedPPIFindsTheAuthorsPictures(t *testing.T) {
+	list := `page   num  type   width height color comp bpc  enc interp  object ID x-ppi y-ppi size ratio
+--------------------------------------------------------------------------------------------
+   1     0 image     120    40  rgb     3   8  image  no         9  0    18    18  100B 1.0%
+   1     1 smask     120    40  gray    1   8  image  no         9  0    18    18  100B 1.0%
+   2     2 image     120    40  rgb     3   8  image  no         9  0    18    18  100B 1.0%
+   2     3 image     120    40  rgb     3   8  image  no         9  0    18    18  100B 1.0%
+   3     4 image     600   180  rgb     3   8  image  no        12  0    92    92 6060B 1.9%
+   3     5 image     367   312  gray    1   1  image  yes       58  0    71    71   37B 0.3%
+   4     6 image     600   180  rgb     3   8  image  no        12  0   300   300 6060B 1.9%
+`
+	low, soft := placedPPI(list, map[[2]int]string{{120, 40}: "tiny.png", {600, 180}: "mid.png"})
+	if len(low) != 2 || !strings.HasPrefix(low[0], "tiny.png prints at 18 ppi on page 1") || !strings.Contains(low[1], "page 2") {
+		t.Errorf("low = %q", low)
+	}
+	if len(soft) != 1 || !strings.Contains(soft[0], "mid.png prints at 92 ppi on page 3 (600 px wide; at 101mm it would print at 150)") {
+		t.Errorf("soft = %q", soft)
+	}
+}

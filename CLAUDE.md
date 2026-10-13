@@ -307,6 +307,15 @@ Do not relax one without understanding what it cost.
     → `internal/build/build_test.go`, `internal/brand/brand_test.go`,
     `traps/missing-style.md`.
 
+23. **A picture prints at a resolution its pixels can hold.** LaTeX scales a
+    PNG to the width it is given, and a 120-pixel picture across the measure
+    printed at 18 ppi, exit 0. `pdfimages -list` reads the placed ppi off the
+    finished PDF: under 72 stops, under 150 warns. Only the document's own
+    PNG and JPEG are judged, recognised by their size in pixels, because
+    rsvg-convert rasterises a figure's shadows at 72 ppi and five real
+    documents carry those.
+    → `internal/build/build_test.go`, `traps/picture-low-res.md`.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.
