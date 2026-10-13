@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
@@ -50,7 +49,7 @@ func toolChecks() []check {
 	bin := func(name, hint string, required bool) {
 		c := check{name: name, hint: hint, required: required, ok: run.Have(name)}
 		if c.ok {
-			c.detail, _ = exec.LookPath(name)
+			c.detail = run.Path(name)
 		}
 		checks = append(checks, c)
 	}

@@ -496,16 +496,23 @@ func Datasets(store *data.Store, lang string) *fig.Datasets {
 	}
 }
 
+// wordRules is the criterion: --wordcount, then the front matter's, then the
+// configured default. A flag replaces the document's criterion whole, the
+// parts it adds included.
+func wordRules(o Options, d *doc.File) (words.Rules, error) {
+	include := d.Meta.Options.WordCount.Include
+	if o.WordCount != "" {
+		include = nil
+	}
+	return words.NewRules(Pick(o.WordCount, d.Meta.Options.WordCount.Base, o.DefaultWordCount), include)
+}
+
 // wordCount counts the body by the document's criterion and fills {{words}} in
 // the body, the front matter and the figure captions. It runs after figure
 // extraction, since pandoc would read a ```d2 fence as inline code and count
 // the diagram's source as prose.
 func wordCount(o Options, d *doc.File, body string, figs []*doc.Fig, work string, rep *Report) (string, error) {
-	include := d.Meta.Options.WordCount.Include
-	if o.WordCount != "" {
-		include = nil
-	}
-	rules, err := words.NewRules(Pick(o.WordCount, d.Meta.Options.WordCount.Base, o.DefaultWordCount), include)
+	rules, err := wordRules(o, d)
 	if err != nil {
 		return "", err
 	}

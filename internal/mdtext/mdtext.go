@@ -4,7 +4,10 @@
 // here, so they cannot disagree about where a code span ends.
 package mdtext
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 // Inside reports whether offset i falls in one of spans.
 func Inside(spans [][2]int, i int) bool {
@@ -16,79 +19,138 @@ func Inside(spans [][2]int, i int) bool {
 	return false
 }
 
-// Protected finds fenced code blocks, inline code and $…$ / $$…$$ math,
-// following pandoc's rules closely enough for the purpose: the word count checks
-// the number of substitutions against the placeholders pandoc itself saw in
-// prose, so a disagreement here fails loudly instead of printing {{words}}.
+// Protected finds code blocks, fenced or indented, inline code and $…$ /
+// $$…$$ math, following pandoc's rules closely enough for the purpose: the
+// word count checks the number of substitutions against the placeholders
+// pandoc itself saw in prose, so a disagreement here fails loudly instead of
+// printing {{words}}. Inline spans are sought only between blocks, since a
+// code block ends any paragraph that could hold one.
 func Protected(s string) [][2]int {
 	var spans [][2]int
-	fence := ""
-	fenceStart := 0
-	i := 0
+	at := 0
+	for _, b := range codeBlocks(s) {
+		spans = append(spans, inlineSpans(s[:b[0]], at)...)
+		spans = append(spans, b)
+		at = b[1]
+	}
+	return append(spans, inlineSpans(s, at)...)
+}
+
+// listLead is a line whose indented continuation belongs to it rather than
+// being code: a list item, a footnote, a definition.
+var listLead = regexp.MustCompile(`^([-*+]|\d+[.)]|\[\^[^\]]+\]:|:)(\s|$)`)
+
+// codeBlocks finds the fenced code blocks and the indented ones, in order. A
+// block runs to the end of its last line, newline excluded. An indented block
+// needs a blank line before it, as in pandoc, and is not one when the last
+// line written at the margin opened a list item, a footnote or a definition:
+// four spaces there continue it.
+func codeBlocks(s string) [][2]int {
+	var (
+		blocks [][2]int
+		fence  string
+		open   = -1 // start of the block being read, fenced or indented
+		last   int  // end of the indented block's last indented line
+		blank  = true
+		lead   bool
+	)
+	for start := 0; start < len(s); {
+		end := strings.IndexByte(s[start:], '\n')
+		if end < 0 {
+			end = len(s)
+		} else {
+			end += start
+		}
+		line := s[start:end]
+		trimmed := strings.TrimLeft(line, " ")
+		isBlank := strings.TrimSpace(line) == ""
+		switch {
+		case fence != "":
+			if t := strings.TrimSpace(trimmed); strings.HasPrefix(t, fence) && strings.Trim(t, fence[:1]) == "" {
+				blocks = append(blocks, [2]int{open, end})
+				fence, open = "", -1
+			}
+		case len(line)-len(trimmed) <= 3 && Fence(trimmed) != "":
+			if open >= 0 {
+				blocks = append(blocks, [2]int{open, last})
+			}
+			fence, open = Fence(trimmed), start
+		case open >= 0 && indented(line):
+			last = end
+		case open >= 0 && !isBlank:
+			blocks = append(blocks, [2]int{open, last})
+			open = -1
+		case open < 0 && blank && !isBlank && indented(line) && !lead:
+			open, last = start, end
+		}
+		if !isBlank && !indented(line) && fence == "" {
+			lead = listLead.MatchString(trimmed)
+		}
+		blank = isBlank
+		start = end + 1
+	}
+	switch {
+	case fence != "":
+		blocks = append(blocks, [2]int{open, len(s)})
+	case open >= 0:
+		blocks = append(blocks, [2]int{open, last})
+	}
+	return blocks
+}
+
+// indented reports a line set four columns in, a tab counting to the next
+// stop: the indent of a code block.
+func indented(line string) bool {
+	col := 0
+	for _, c := range []byte(line) {
+		switch c {
+		case ' ':
+			col++
+		case '\t':
+			col += 4 - col%4
+		default:
+			return false
+		}
+		if col >= 4 {
+			return true
+		}
+	}
+	return false
+}
+
+// inlineSpans finds inline code and math in s from offset i on. s ends where
+// the prose does, so no span is closed past it.
+func inlineSpans(s string, i int) [][2]int {
+	var spans [][2]int
 	for i < len(s) {
-		atLineStart := i == 0 || s[i-1] == '\n'
-		if atLineStart {
-			line := s[i:]
-			if j := strings.IndexByte(line, '\n'); j >= 0 {
-				line = line[:j]
-			}
-			trimmed := strings.TrimLeft(line, " ")
-			if fence == "" && len(line)-len(trimmed) <= 3 {
-				if f := Fence(trimmed); f != "" {
-					fence, fenceStart = f, i
-					i += len(line)
-					continue
-				}
-			} else if fence != "" {
-				t := strings.TrimSpace(trimmed)
-				if strings.HasPrefix(t, fence) && strings.Trim(t, fence[:1]) == "" {
-					spans = append(spans, [2]int{fenceStart, i + len(line)})
-					fence = ""
-				}
-				i += len(line)
-				if i < len(s) {
-					i++
-				}
-				continue
-			}
-		}
-		if fence != "" {
-			i++
-			continue
-		}
+		stop := 0
 		switch s[i] {
 		case '\\':
 			i += 2
 			continue
 		case '`':
 			run := countRun(s[i:], '`')
-			tick := strings.Repeat("`", run)
-			if end := closingRun(s[i+run:], tick); end >= 0 {
-				stop := i + run + end + run
-				spans = append(spans, [2]int{i, stop})
-				i = stop
+			if end := closingRun(s[i+run:], strings.Repeat("`", run)); end >= 0 {
+				stop = i + run + end + run
+			} else {
+				i += run
 				continue
 			}
-			i += run
-			continue
 		case '$':
 			if strings.HasPrefix(s[i:], "$$") {
 				if end := strings.Index(s[i+2:], "$$"); end >= 0 {
-					stop := i + 2 + end + 2
-					spans = append(spans, [2]int{i, stop})
-					i = stop
-					continue
+					stop = i + 2 + end + 2
 				}
-			} else if stop := inlineMathEnd(s, i); stop > 0 {
-				spans = append(spans, [2]int{i, stop})
-				i = stop
-				continue
+			} else {
+				stop = inlineMathEnd(s, i)
 			}
 		}
+		if stop > 0 {
+			spans = append(spans, [2]int{i, stop})
+			i = stop
+			continue
+		}
 		i++
-	}
-	if fence != "" {
-		spans = append(spans, [2]int{fenceStart, len(s)})
 	}
 	return spans
 }
