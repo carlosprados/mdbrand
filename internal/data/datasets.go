@@ -1,6 +1,7 @@
 package data
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/words"
@@ -22,7 +23,24 @@ func (s *Store) Records(name, lang string) ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	recs, _, err := records(n, src)
+	return typedRecords(n, src, lang)
+}
+
+// FileRecords reads one data file as a chart's rows, through the parser
+// Records uses: a chart whose "data": {"url": "x.csv"} points at a Spanish
+// spreadsheet gets its separator sniffed and its decimal commas read as
+// numbers where lang writes them, rather than Vega's comma-only CSV reader
+// splitting nothing and drawing one bar.
+func FileRecords(path, lang string) ([]map[string]any, error) {
+	n, err := load(path)
+	if err != nil {
+		return nil, err
+	}
+	return typedRecords(n, filepath.Base(path), lang)
+}
+
+func typedRecords(n *yaml.Node, shown, lang string) ([]map[string]any, error) {
+	recs, _, err := records(n, shown)
 	if err != nil {
 		return nil, err
 	}

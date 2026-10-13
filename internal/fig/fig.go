@@ -53,7 +53,7 @@ type Result struct {
 
 // Render renders one figure and computes its placement. box is the room the
 // document gives it; ds supplies a chart's named data, and may be nil.
-func Render(f *doc.Fig, b *brand.Brand, workDir string, box tex.Box, ds Datasets) (*Result, error) {
+func Render(f *doc.Fig, b *brand.Brand, workDir string, box tex.Box, ds *Datasets) (*Result, error) {
 	if _, err := os.Stat(f.SrcPath); err != nil {
 		return nil, fmt.Errorf("figure %d: %w", f.Index, err)
 	}

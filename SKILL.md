@@ -219,6 +219,8 @@ fails the build with the width that fits — leave it out unless you need it.
 - **Chart data** may be a file: `"data": {"url": "data/ventas.csv"}` resolves
   against the document (fence) or the spec (side file). A missing file or an
   `https://` URL stops the build — `vl2svg` would draw empty axes and exit 0.
+  A CSV is read by mdbrand's own parser, as tables read it: `;` or `,`, and a
+  decimal comma is a number where `lang` writes one.
   In a decimal-comma `lang` numbers print as that language writes them
   (`30.000`), and in Spanish so do month names.
 - **Pictures:** an `.svg` made elsewhere is treated as a figure (sized, checked

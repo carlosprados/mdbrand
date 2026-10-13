@@ -27,16 +27,20 @@ import (
 
 var schemeRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*:`)
 
-// Datasets supplies the rows for a spec's "data": {"name": …}: the document's
-// data namespace, read the way its tables read it. nil where there is no
+// Datasets supplies a chart's rows the way the document's tables read them:
+// Named for a spec's "data": {"name": …}, from the document's data namespace;
+// File for a local CSV its "data": {"url": …} points at. nil where there is no
 // document to read from.
-type Datasets func(name string) ([]map[string]any, error)
+type Datasets struct {
+	Named func(name string) ([]map[string]any, error)
+	File  func(path string) ([]map[string]any, error)
+}
 
 // VegaSpec returns the figure's spec as JSON with every local data url made
 // absolute and every named dataset filled in from ds, and the data files it
 // names — absolute, whether they exist or not, since watch mode must watch the
 // missing one: creating it is the fix.
-func VegaSpec(f *doc.Fig, ds Datasets) (spec []byte, refs []string, err error) {
+func VegaSpec(f *doc.Fig, ds *Datasets) (spec []byte, refs []string, err error) {
 	raw, err := os.ReadFile(f.SrcPath)
 	if err != nil {
 		return nil, nil, err
@@ -129,7 +133,7 @@ func DataRefs(f *doc.Fig) []string {
 
 type dataURLs struct {
 	base    string
-	ds      Datasets
+	ds      *Datasets
 	own     map[string]bool // names the spec's own datasets declare
 	named   map[string][]map[string]any
 	refs    []string
@@ -192,7 +196,43 @@ func (r *dataURLs) url(m map[string]any) {
 		r.missing = append(r.missing, u+"  →  "+p)
 		return
 	}
+	if r.inline(m, u, p) {
+		return
+	}
 	m["url"] = "file://" + filepath.ToSlash(p)
+}
+
+// inline replaces a local CSV's url with its rows, read by the document's own
+// parser. Vega's CSV reader splits on commas alone: a Spanish export, `;`
+// between fields and `,` in the numbers, came out as one column, and the chart
+// drew Ávila alone, exit 0. Read here, the separator is sniffed, a decimal
+// comma is a number where lang writes one, and a field left mixing numbers and
+// text stops the build as it does for a named dataset.
+func (r *dataURLs) inline(m map[string]any, u, p string) bool {
+	if r.ds == nil || r.ds.File == nil {
+		return false
+	}
+	if ext := strings.ToLower(filepath.Ext(p)); ext != ".csv" && ext != ".tsv" {
+		return false
+	}
+	rows, err := r.ds.File(p)
+	if err != nil {
+		r.errs = append(r.errs, err.Error())
+		return true
+	}
+	delete(m, "url")
+	// The rows arrive typed; a parse of its own still applies to them, but
+	// how to split the text no longer does.
+	if fm, ok := m["format"].(map[string]any); ok {
+		delete(fm, "type")
+		delete(fm, "delimiter")
+		if len(fm) == 0 {
+			delete(m, "format")
+		}
+	}
+	m["values"] = rows
+	r.named[u] = rows
+	return true
 }
 
 // name fills a Vega-Lite "data": {"name": …} from the document's data. Only
@@ -208,11 +248,11 @@ func (r *dataURLs) name(m map[string]any) {
 			return
 		}
 	}
-	if r.ds == nil {
+	if r.ds == nil || r.ds.Named == nil {
 		r.errs = append(r.errs, fmt.Sprintf("the chart names its data %q, which only a document's data files can supply", n))
 		return
 	}
-	rows, err := r.ds(n)
+	rows, err := r.ds.Named(n)
 	if err != nil {
 		r.errs = append(r.errs, err.Error())
 		return
@@ -262,7 +302,11 @@ func mixedFields(named map[string][]map[string]any, used map[string]bool) []stri
 				case float64:
 					nums++
 				case string:
-					texts = append(texts, strconv.Quote(t))
+					// A blank cell is no value, not text: a column of seat
+					// counts with a few empty labels is all numbers.
+					if strings.TrimSpace(t) != "" {
+						texts = append(texts, strconv.Quote(t))
+					}
 				}
 			}
 			if nums > 0 && len(texts) > 0 {
@@ -315,7 +359,7 @@ func vegaToSVG(dir, src, out, lang string) (string, error) {
 }
 
 // renderVega renders a copy of the spec whose data urls have been settled.
-func renderVega(f *doc.Fig, b *brand.Brand, out string, ds Datasets) error {
+func renderVega(f *doc.Fig, b *brand.Brand, out string, ds *Datasets) error {
 	spec, _, err := VegaSpec(f, ds)
 	if err != nil {
 		return err
