@@ -21,9 +21,10 @@ func TestExpand(t *testing.T) {
 		// written after a ~.
 		"~/$MDBRAND_TEST_CLIENT/brands": filepath.Join(home, "acme", "brands"),
 		"  ~/fonts ":                    filepath.Join(home, "fonts"),
-		// An unset variable must collapse to nothing rather than to a
-		// plausible path: "/gotham" could exist and would be the wrong font.
-		"$MDBRAND_UNSET_XYZ": "",
+		// An unset variable stays as written. Collapsed to nothing, it made
+		// "/gotham", which could exist and would be the wrong font.
+		"$MDBRAND_UNSET_XYZ/gotham": "${MDBRAND_UNSET_XYZ}/gotham",
+		"$MDBRAND_UNSET_XYZ":        "${MDBRAND_UNSET_XYZ}",
 		// Another user's home is not ours to guess.
 		"~other/fonts": "~other/fonts",
 	} {

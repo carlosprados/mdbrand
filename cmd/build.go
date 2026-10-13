@@ -200,6 +200,7 @@ file. Ctrl-C stops it.
 				o.Log = func(f string, a ...any) { fmt.Fprintf(cmd.ErrOrStderr(), f+"\n", a...) }
 			}
 			if !watching {
+				defer removeOnInterrupt()()
 				rep, err := build.Run(o)
 				if err != nil {
 					return err
@@ -263,5 +264,28 @@ func printReport(out, errOut io.Writer, rep *build.Report) {
 	}
 	if rep.Kept {
 		fmt.Fprintf(errOut, "  work dir kept: %s\n", rep.WorkDir)
+	}
+}
+
+// removeOnInterrupt removes the build's work directories on Ctrl-C or
+// SIGTERM and exits as the shell would, 130: the default ends the process
+// without a defer, and the directories stayed behind. The tools it runs share
+// the terminal's process group and get the signal themselves. It returns the
+// function that stops listening.
+func removeOnInterrupt() func() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-ch:
+			build.RemoveTempDirs()
+			os.Exit(130)
+		case <-done:
+		}
+	}()
+	return func() {
+		signal.Stop(ch)
+		close(done)
 	}
 }

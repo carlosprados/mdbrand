@@ -551,9 +551,9 @@ func (b *Brand) DisplayFontHint() string {
 	if len(d.Path) > 0 {
 		expanded := make([]string, 0, len(d.Path))
 		for _, c := range d.Path {
-			// An unset variable expands to nothing; saying so beats printing a
-			// blank entry, because "set that variable" is one of the fixes.
-			if e := b.resolveFontDir(c); e == "" {
+			// An unset variable is left as written; saying so beats printing
+			// it bare, because "set that variable" is one of the fixes.
+			if e := b.resolveFontDir(c); e == "" || strings.Contains(e, "${") {
 				expanded = append(expanded, c+" (not set)")
 			} else {
 				expanded = append(expanded, e)

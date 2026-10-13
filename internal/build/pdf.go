@@ -155,7 +155,11 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 		}
 	}
 
-	logRaw, _ := os.ReadFile(filepath.Join(work, stem+".log"))
+	// Every check below reads this log; without it they would all pass.
+	logRaw, err := os.ReadFile(filepath.Join(work, stem+".log"))
+	if err != nil {
+		return fmt.Errorf("xelatex left no log to check: %w", err)
+	}
 	sc := scanLog(string(logRaw))
 	sc.HeadSepPt = headSepPt(b)
 	if err := judgeLog(sc, o, rep); err != nil {

@@ -64,7 +64,11 @@ func renderNotes(p *prepared, out string) error {
 		}
 	}
 
-	logRaw, _ := os.ReadFile(filepath.Join(work, name+".log"))
+	// Every check below reads this log; without it they would all pass.
+	logRaw, err := os.ReadFile(filepath.Join(work, name+".log"))
+	if err != nil {
+		return fmt.Errorf("xelatex left no log to check: %w", err)
+	}
 	log := string(logRaw)
 	// The deck's own log has judged the slides; the notes run sets them
 	// again for the thumbnails, so only what the notes add is read here.

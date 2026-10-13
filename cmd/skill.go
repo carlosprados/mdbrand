@@ -120,6 +120,22 @@ the link.`,
 				fmt.Sprintf("\n\n<!-- installed by mdbrand %s -->\n", version())
 
 			out := cmd.OutOrStdout()
+			// The directory may be the link rather than the file: skills/mdbrand
+			// pointing at a checkout made SKILL.md look like a plain file, and
+			// --force wrote over the repository's own. The same rule as for the
+			// file, one level up.
+			if st, err := os.Lstat(target); err == nil && st.Mode()&os.ModeSymlink != 0 {
+				dest, _ := os.Readlink(target)
+				if !force {
+					return fmt.Errorf(`%s is a symlink to %s
+  Installing would write through it and edit the SKILL.md there. If this is a
+  checkout of mdbrand, the symlink is what you want and there is nothing to do;
+  pass --force to replace it with a directory of its own`, target, dest)
+				}
+				if err := os.Remove(target); err != nil {
+					return err
+				}
+			}
 			// Lstat, not Stat: a symlink must be seen as a symlink, or writing
 			// follows it into whatever it points at.
 			if st, err := os.Lstat(file); err == nil {

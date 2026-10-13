@@ -47,7 +47,15 @@ func judgeFrames(frames []frameOver, texSrc string, figs []*fig.Result, minPt fl
 	}
 	for _, line := range order {
 		overMM := tallest[line] * mmPerPt
-		fmt.Fprintf(&w, "\n    %-40s %5.1f mm too tall", frameTitle(lines, line), overMM)
+		title := frameTitle(lines, line)
+		fmt.Fprintf(&w, "\n    %-40s %5.1f mm too tall", title, overMM)
+		// A cover cannot be split: what fills it is the front matter.
+		switch {
+		case title == "the title slide":
+			w.WriteString("\n        shorten the title, subtitle, author or date in the front matter")
+		case strings.HasPrefix(title, "the section slide"):
+			w.WriteString("\n        shorten the section's # heading")
+		}
 		if on := frameFigures(lines, line); len(on) == 1 && byFile[on[0]] != nil {
 			w.WriteString(figureRoom(byFile[on[0]], overMM, minPt))
 		}
