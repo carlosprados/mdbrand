@@ -537,6 +537,8 @@ traps=(
 	"cite-no-source.md|fail|@fig:arq read as pandoc-crossref|--to docx --brand none"
 	"dead-anchor.md|fail|#setup — did you mean #set-up?"
 	"dead-anchor.md|fail|#setup — did you mean #set-up?|--to docx --brand none"
+	"raw-html.md|fail|width=\"200\"> — write ![caption](picture.png)"
+	"raw-html.md|fail|<br> — write a backslash at the end of the line|--to docx --brand none"
 	"undefined-ref.md|fail|\\ref{tab:costes}"
 	"table-row-tall.md|fail|taller than a page"
 	"fig-width-tall.md|fail|Lower width= to 88mm"

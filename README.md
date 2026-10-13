@@ -1057,6 +1057,12 @@ nearest anchor that exists. Fix the link, or give the heading the anchor you
 meant: `# Set-up {#setup}`. A raw `\ref{…}` or `\cite{…}` to a label or key
 nothing defines stops the build as well; it would print `??` or `[?]`.
 
+**`raw HTML that neither the PDF nor the .docx prints`** — pandoc drops HTML
+when it writes LaTeX or Word: an `<img>` or a `<table>` vanishes whole, a
+`<br>` joins its lines, `<b>` prints plain. Each tag is named with the Markdown
+that prints it: a backslash at the end of the line, `**bold**`,
+`![caption](x.png)`, a pipe table. An HTML comment passes.
+
 **`a table row is taller than a page`** — a row cannot break across pages, so
 LaTeX sets it anyway and cuts it at the foot: the rest of the cell and every
 row after it never print. Split the text over several rows, or move it into

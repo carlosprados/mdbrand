@@ -324,6 +324,9 @@ converts to a blank page, a display font whose path moved, colours that are not
   that exists: a heading's anchor is its text in lower case with hyphens
   (`# Set-up` is `#set-up`), or give it one: `# Set-up {#setup}`. A raw
   `\ref{…}` or `\cite{…}` to nothing fails too — it would print `??`.
+- **Raw HTML fails the build** — `<br>`, `<b>`, `<img>`, `<table>`: neither
+  output prints it. Write the Markdown the message names (a trailing `\` for a
+  break, `**bold**`, `![caption](x.png)`, a pipe table). Comments pass.
 - **A style the body face lacks fails the build** — italic, bold or small caps
   that would print in the regular face. For italic or bold the bundle declares
   `fonts.synthesize: [italic]` (or `[bold]`), or changes `fonts.body`; small

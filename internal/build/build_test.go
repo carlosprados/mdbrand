@@ -367,6 +367,31 @@ func TestAnchorProblemsNameTheNearest(t *testing.T) {
 	}
 }
 
+// Raw HTML, as spans.lua reports it, stops the build once per tag with its
+// Markdown form; a table's rows and cells are the table's, not lines of their own.
+func TestHTMLProblemsNameTheMarkdownForm(t *testing.T) {
+	out := "MDBRAND-HTML br\t<br>\nMDBRAND-HTML br\t<br/>\nMDBRAND-HTML table\t<table>\n" +
+		"MDBRAND-HTML tr\t<tr>\nMDBRAND-HTML td\t<td>\nMDBRAND-HTML marquee\t<marquee>\n"
+	err := htmlProblems(out)
+	if err == nil {
+		t.Fatal("no error for raw HTML")
+	}
+	msg := err.Error()
+	for _, want := range []string{"<br> — write a backslash", "<table> — write a pipe table", "<marquee> — write it in Markdown"} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("message lacks %q:\n%s", want, msg)
+		}
+	}
+	for _, not := range []string{"<br/>", "<tr>", "<td>"} {
+		if strings.Contains(msg, not) {
+			t.Errorf("message repeats %q:\n%s", not, msg)
+		}
+	}
+	if err := htmlProblems("MDBRAND-ACCENT\n"); err != nil {
+		t.Errorf("no HTML report must pass: %v", err)
+	}
+}
+
 // A raw \ref or \cite to nothing prints "??" or "[?]", and the final pass's log
 // is the only witness. The wording is LaTeX's own, wrapped as the log wraps it.
 func TestScanLogFindsUndefinedReferences(t *testing.T) {
