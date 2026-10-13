@@ -228,6 +228,8 @@ fails the build with the width that fits — leave it out unless you need it.
   the build by name.
 - **No `|md|` blocks in d2**: they become `<foreignObject>`, which the PDF
   route drops in silence, so the build refuses them.
+- **A chart field the data lacks fails the build** — a typo drew an empty
+  chart, or one bar labelled undefined; the message names the nearest column.
 - **A picture inside a figure** — `<image href>` in a linked SVG, a Vega
   `image` mark's `url` — resolves against the SVG's or the document's
   directory and is embedded; a missing or remote one stops the build.

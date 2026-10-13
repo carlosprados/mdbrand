@@ -144,8 +144,12 @@ Do not relax one without understanding what it cost.
     block — and prefixes that base even to an absolute path. So every
     `data.url` is resolved against `Fig.BaseDir`, checked, and handed over as
     `file://`; a remote URL is refused. `Loading failed` in its output fails
-    the build as well.
-    → `internal/fig/vega_test.go`, and `testdata/traps/missing-data.md`.
+    the build as well. A field name that misses the data draws the same
+    nothing — one bar labelled undefined, or none — so a plotted field must
+    be one of the data's columns where they are all known and no transform
+    derives more, and Vega's `Infinite extent for field` fails everywhere.
+    → `internal/fig/vega_test.go`, `internal/fig/fields_test.go`,
+    `testdata/traps/missing-data.md`, `traps/chart-field-typo.md`.
 
 13. **A data value prints as its characters, and a path that leads nowhere
     stops the build.** Values are held as YAML nodes so `0.10` is not

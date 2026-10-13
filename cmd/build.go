@@ -57,7 +57,8 @@ against the spec's own file when it is linked. A missing file or a remote URL
 stops the build: vl2svg alone would draw an empty chart and exit 0. A CSV is
 read the way a table reads it — separator sniffed, a decimal comma a number
 where lang writes one — and a plotted field left mixing numbers and text stops
-the build, where Vega's own reader split on commas and drew one bar.
+the build, where Vega's own reader split on commas and drew one bar. So does a
+field the chart plots that its data does not have, named with the nearest.
 
 Label sizes are mdbrand's to set: it appends the font-size globs to a copy of
 the .d2 before compiling it, so the source stays as you wrote it and a vars
