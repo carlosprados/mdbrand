@@ -111,6 +111,20 @@ func TestCSVRefuses(t *testing.T) {
 	}
 }
 
+// A separator inside a quoted header name does not count: a header reading
+// "Coste, €";"Sede" is split on the semicolon, not the comma in the quotes.
+func TestSniffDelimiterSkipsQuotedNames(t *testing.T) {
+	for in, want := range map[string]rune{
+		"\"Coste, €\";\"Sede, ciudad\";b\n": ';',
+		"\"a;b\",c\n":                       ',',
+		"a\tb\t\"c,d\"\n":                   '\t',
+	} {
+		if got, err := sniffDelimiter([]byte(in)); err != nil || got != want {
+			t.Errorf("sniffDelimiter(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+}
+
 // The store must report what it looked for as well as what it read: the
 // file that is missing is the one whose creation should rebuild.
 func TestRefsIncludeMissing(t *testing.T) {

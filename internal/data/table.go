@@ -237,17 +237,63 @@ func render(n *yaml.Node, shown string, spec *tableSpec, lang string) (string, e
 	if err != nil {
 		return "", err
 	}
-	fieldSet := map[string]bool{}
-	for _, f := range fields {
-		fieldSet[f] = true
+	need := fieldCheck(shown, fields)
+	if recs, err = selectRecords(recs, spec, shown, need); err != nil {
+		return "", err
 	}
-	needField := func(what, f string) error {
-		if fieldSet[f] {
+	if spec.Sort != "" {
+		field, desc := strings.CutPrefix(spec.Sort, "-")
+		if err := need("sort", field); err != nil {
+			return "", err
+		}
+		if err := sortRecords(recs, field, desc, lang); err != nil {
+			return "", err
+		}
+	}
+	cols, header, err := tableColumns(spec.Columns, fields, need)
+	if err != nil {
+		return "", err
+	}
+	_, dec := words.Separators(lang)
+	cells, numeric, err := tableCells(recs, cols, dec, lang, shown)
+	if err != nil {
+		return "", err
+	}
+	align := alignments(cols, numeric)
+
+	// After alignment: the total row's blank cells must not turn a number
+	// column left-aligned.
+	if len(spec.Total) > 0 {
+		row, num, err := totalRow(recs, cols, spec.Total, dec, lang, shown)
+		if err != nil {
+			return "", err
+		}
+		cells, numeric = append(cells, row), append(numeric, num)
+	}
+	if spec.Transpose {
+		return transposed(header, cells, numeric, len(recs), spec.Caption), nil
+	}
+	return pipeTable(header, cells, align, spec.Caption), nil
+}
+
+// fieldCheck stops a spec naming a field the data does not have, listing the
+// ones it has.
+func fieldCheck(shown string, fields []string) func(what, f string) error {
+	set := map[string]bool{}
+	for _, f := range fields {
+		set[f] = true
+	}
+	return func(what, f string) error {
+		if set[f] {
 			return nil
 		}
 		return fmt.Errorf("%s: %s has no field %q; the fields are %s", what, shown, f, list(fields))
 	}
+}
 
+// selectRecords keeps the records rows: names, in its order, or those where:
+// matches, and refuses a table that would come out empty.
+func selectRecords(recs []record, spec *tableSpec, shown string, need func(what, f string) error) ([]record, error) {
 	switch {
 	case len(spec.Rows) > 0:
 		byID := map[string]record{}
@@ -260,7 +306,7 @@ func render(n *yaml.Node, shown string, spec *tableSpec, lang string) (string, e
 		for _, id := range spec.Rows {
 			r, ok := byID[id]
 			if !ok {
-				return "", fmt.Errorf("rows: %s has no %q; the ids are %s", shown, id, list(ids))
+				return nil, fmt.Errorf("rows: %s has no %q; the ids are %s", shown, id, list(ids))
 			}
 			picked = append(picked, r)
 		}
@@ -268,39 +314,39 @@ func render(n *yaml.Node, shown string, spec *tableSpec, lang string) (string, e
 	case len(spec.Where) > 0:
 		keys := make([]string, 0, len(spec.Where))
 		for k := range spec.Where {
-			if err := needField("where", k); err != nil {
-				return "", err
+			if err := need("where", k); err != nil {
+				return nil, err
 			}
 			keys = append(keys, k)
 		}
 		var kept []record
 		for _, r := range recs {
-			match := true
-			for _, k := range keys {
-				c, ok := r.cells[k]
-				match = match && ok && deref(c).Value == spec.Where[k]
-			}
-			if match {
+			if matches(r, keys, spec.Where) {
 				kept = append(kept, r)
 			}
 		}
 		recs = kept
 	}
 	if len(recs) == 0 {
-		return "", fmt.Errorf("where: no record of %s matches, so the table would be empty", shown)
+		return nil, fmt.Errorf("where: no record of %s matches, so the table would be empty", shown)
 	}
+	return recs, nil
+}
 
-	if spec.Sort != "" {
-		field, desc := strings.CutPrefix(spec.Sort, "-")
-		if err := needField("sort", field); err != nil {
-			return "", err
-		}
-		if err := sortRecords(recs, field, desc, lang); err != nil {
-			return "", err
+// matches reports whether r holds every value where asks for.
+func matches(r record, keys []string, where map[string]string) bool {
+	for _, k := range keys {
+		c, ok := r.cells[k]
+		if !ok || deref(c).Value != where[k] {
+			return false
 		}
 	}
+	return true
+}
 
-	cols := spec.Columns
+// tableColumns is the columns the spec names, or every field, and the header
+// each prints under.
+func tableColumns(cols []column, fields []string, need func(what, f string) error) ([]column, []string, error) {
 	if len(cols) == 0 {
 		for _, f := range fields {
 			cols = append(cols, column{Field: f})
@@ -308,8 +354,8 @@ func render(n *yaml.Node, shown string, spec *tableSpec, lang string) (string, e
 	}
 	header := make([]string, len(cols))
 	for i, c := range cols {
-		if err := needField("columns", c.Field); err != nil {
-			return "", err
+		if err := need("columns", c.Field); err != nil {
+			return nil, nil, err
 		}
 		header[i] = c.Label
 		if header[i] == "" {
@@ -317,8 +363,11 @@ func render(n *yaml.Node, shown string, spec *tableSpec, lang string) (string, e
 		}
 		header[i] = strings.ReplaceAll(header[i], "|", `\|`)
 	}
+	return cols, header, nil
+}
 
-	_, dec := words.Separators(lang)
+// tableCells prints every record's cells, and says which hold a number.
+func tableCells(recs []record, cols []column, dec, lang, shown string) ([][]string, [][]bool, error) {
 	cells := make([][]string, len(recs))
 	numeric := make([][]bool, len(recs))
 	for r, rec := range recs {
@@ -327,54 +376,52 @@ func render(n *yaml.Node, shown string, spec *tableSpec, lang string) (string, e
 		for c, col := range cols {
 			text, num, err := cell(rec, col, dec, lang)
 			if err != nil {
-				return "", fmt.Errorf("%s%s: %w", shown, formatPath([]string{rec.id}), err)
+				return nil, nil, fmt.Errorf("%s%s: %w", shown, formatPath([]string{rec.id}), err)
 			}
 			cells[r][c], numeric[r][c] = text, num
 		}
 	}
+	return cells, numeric, nil
+}
 
+// alignments is each column's alignment: the one written, or right for a
+// column of numbers and left for anything else.
+func alignments(cols []column, numeric [][]bool) []string {
 	align := make([]string, len(cols))
 	for c, col := range cols {
 		align[c] = col.Align
 		if align[c] == "" {
 			align[c] = "left"
-			if allNumeric(len(recs), func(r int) bool { return numeric[r][c] }) {
+			if allNumeric(len(numeric), func(r int) bool { return numeric[r][c] }) {
 				align[c] = "right"
 			}
 		}
 	}
+	return align
+}
 
-	// After alignment: the total row's blank cells must not turn a number
-	// column left-aligned.
-	if len(spec.Total) > 0 {
-		row, num, err := totalRow(recs, cols, spec.Total, dec, lang, shown)
-		if err != nil {
-			return "", err
-		}
-		cells, numeric = append(cells, row), append(numeric, num)
-	}
-
-	if spec.Transpose {
-		th := append([]string{header[0]}, column0(cells)...)
-		var body [][]string
-		for c := 1; c < len(cols); c++ {
-			row := []string{header[c]}
-			for r := range cells {
-				row = append(row, cells[r][c])
-			}
-			body = append(body, row)
-		}
-		talign := []string{"left"}
+// transposed prints records as columns: the first column's values become the
+// header, every other column a row. A row of numbers, or the total, aligns
+// right.
+func transposed(header []string, cells [][]string, numeric [][]bool, nrecs int, caption string) string {
+	th := append([]string{header[0]}, column0(cells)...)
+	var body [][]string
+	for c := 1; c < len(header); c++ {
+		row := []string{header[c]}
 		for r := range cells {
-			a := "left"
-			if r >= len(recs) || allNumeric(len(cols)-1, func(c int) bool { return numeric[r][c+1] }) {
-				a = "right"
-			}
-			talign = append(talign, a)
+			row = append(row, cells[r][c])
 		}
-		return pipeTable(th, body, talign, spec.Caption), nil
+		body = append(body, row)
 	}
-	return pipeTable(header, cells, align, spec.Caption), nil
+	talign := []string{"left"}
+	for r := range cells {
+		a := "left"
+		if r >= nrecs || allNumeric(len(header)-1, func(c int) bool { return numeric[r][c+1] }) {
+			a = "right"
+		}
+		talign = append(talign, a)
+	}
+	return pipeTable(th, body, talign, caption)
 }
 
 // totalRow sums the named columns over the records shown, exactly. A blank

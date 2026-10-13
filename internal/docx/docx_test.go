@@ -61,6 +61,29 @@ func TestColumnsKeepTheirNaturalWidth(t *testing.T) {
 	}
 }
 
+// When even the longest words do not fit side by side, each column keeps its
+// longest word whole and need says by how much the table overflows: the
+// caller warns on it. Sharing the shortfall out would break the words again.
+func TestColumnsTooWideKeepTheirWordsAndSayHowMuch(t *testing.T) {
+	words := []string{"supercalifragilistic", "antidisestablishment", "pneumonoultramicroscopic"}
+	var cells []string
+	sum := 0
+	for _, w := range words {
+		cells = append(cells, cell(w, false))
+		sum += setWidth(lineOf(w, false), 0.6) + cellPadTwips
+	}
+	measure := twips(40)
+	widths, need := columnWidths([]string{row(cells...)}, measure, 0.6)
+	if need != sum || need <= measure {
+		t.Fatalf("need = %d, want %d, past the %d measure", need, sum, measure)
+	}
+	for i, w := range words {
+		if min := setWidth(lineOf(w, false), 0.6) + cellPadTwips; widths[i] != min {
+			t.Errorf("column %d is %d twips, want its longest word's %d", i, widths[i], min)
+		}
+	}
+}
+
 // Code in a cell sets in the mono face, which is wider than prose: measured as
 // prose, `report` broke in Google Docs.
 func TestCodeInACellIsMeasuredInTheCodeFace(t *testing.T) {

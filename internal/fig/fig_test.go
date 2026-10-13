@@ -90,8 +90,48 @@ func TestLegibilityMaths(t *testing.T) {
 		t.Errorf("natural width = %.2f mm, want ~48.4 mm", got)
 	}
 	// Doubling the placed width doubles the printed label.
-	if got := font * unit * pxToPt * (2 * naturalMM / naturalMM); got != 24 {
-		t.Errorf("label at double width = %gpt, want 24pt", got)
+	_, _, pt := place(naturalMM, 0, 12, 2*naturalMM, 160, brand.Diagrams{})
+	if math.Abs(pt-24) > 1e-9 {
+		t.Errorf("label at double width = %gpt, want 24pt", pt)
+	}
+}
+
+// Invariant 3: a figure is placed at the widest width that keeps its labels
+// under max_text_pt and its height under max_height_mm, never wider than the
+// measure; an explicit width is the author's.
+func TestPlace(t *testing.T) {
+	d := brand.Diagrams{MaxTextPt: 12, MaxHeightMM: 100}
+	for _, tc := range []struct {
+		name                     string
+		natW, natH, pt, explicit float64
+		d                        brand.Diagrams
+		wantW, wantH, wantPt     float64
+	}{
+		{"small labels take the measure", 100, 50, 6, 0, d, 160, 80, 9.6},
+		{"labels hold it to max_text_pt", 100, 20, 10, 0, d, 120, 24, 12},
+		{"height holds it to max_height_mm", 100, 100, 6, 0, d, 100, 100, 6},
+		{"the tighter limit wins", 100, 100, 10, 0, d, 100, 100, 10},
+		{"an explicit width is kept", 100, 50, 6, 50, d, 50, 25, 3},
+		{"no font size: only the height limits", 100, 20, 0, 0, d, 160, 32, 0},
+		{"no limits: the measure", 100, 50, 6, 0, brand.Diagrams{}, 160, 80, 9.6},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w, h, pt := place(tc.natW, tc.natH, tc.pt, tc.explicit, 160, tc.d)
+			if math.Abs(w-tc.wantW) > 1e-9 || math.Abs(h-tc.wantH) > 1e-9 || math.Abs(pt-tc.wantPt) > 1e-9 {
+				t.Errorf("place = %g×%g mm at %gpt, want %g×%g mm at %gpt", w, h, pt, tc.wantW, tc.wantH, tc.wantPt)
+			}
+		})
+	}
+}
+
+// Invariant 5: rsvg-convert drops a <foreignObject> in silence.
+func TestRefuseForeignObject(t *testing.T) {
+	if err := refuseForeignObject(d2Scaled, "a.d2"); err != nil {
+		t.Errorf("plain SVG refused: %v", err)
+	}
+	err := refuseForeignObject(`<svg><foreignObject><p>md</p></foreignObject></svg>`, "a.d2")
+	if err == nil || !strings.Contains(err.Error(), "a.d2") || !strings.Contains(err.Error(), "|md|") {
+		t.Errorf("foreignObject: err = %v, want a refusal naming the file and |md|", err)
 	}
 }
 

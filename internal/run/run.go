@@ -30,6 +30,12 @@ func Have(bin string) bool {
 	return err == nil
 }
 
+// Path is where bin is found on PATH, or "" when it is not.
+func Path(bin string) string {
+	p, _ := exec.LookPath(bin)
+	return p
+}
+
 // env is what a tool is run with beyond the caller's environment. TeX wraps
 // its log at 79 columns, mid-word, and every reading of the log had to put
 // lines back together: "Output written on <a long name>.pdf (3 pages" broke

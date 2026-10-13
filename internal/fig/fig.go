@@ -99,13 +99,8 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, box tex.Box, ds *Dataset
 		}
 	}
 
-	// rsvg-convert drops <foreignObject> without a word, so a d2 |md| block
-	// disappears from the PDF and nothing says why.
-	if strings.Contains(src, "<foreignObject") {
-		return nil, fmt.Errorf(`%s renders a <foreignObject>, which rsvg-convert silently drops:
-  the node's text would be missing from the PDF and nothing would warn you.
-  In d2 this comes from a |md| … | block. Keep diagram labels short and put the
-  prose in the document body`, filepath.Base(f.SrcPath))
+	if err := refuseForeignObject(src, filepath.Base(f.SrcPath)); err != nil {
+		return nil, err
 	}
 	if err := RefuseMasks(src, filepath.Base(f.SrcPath)); err != nil {
 		return nil, err
@@ -122,29 +117,7 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, box tex.Box, ds *Dataset
 	// inline font-size:32 is really 16px on the page.
 	res := &Result{Fig: f, PDF: pdf, SVG: svg}
 	minFont, found := minFontSize(src)
-	naturalPt := minFont * unit * pxToPt
-
-	width := textWidthMM
-	switch {
-	case explicit > 0:
-		width = explicit
-	default:
-		if found && naturalPt > 0 && b.Diagrams.MaxTextPt > 0 {
-			width = math.Min(width, natWmm*(b.Diagrams.MaxTextPt/naturalPt))
-		}
-		if b.Diagrams.MaxHeightMM > 0 && natHmm > 0 {
-			width = math.Min(width, natWmm*(b.Diagrams.MaxHeightMM/natHmm))
-		}
-	}
-	if width <= 0 {
-		width = textWidthMM
-	}
-
-	res.WidthMM = width
-	res.HeightMM = natHmm * (width / natWmm)
-	if found {
-		res.TextPt = naturalPt * (width / natWmm)
-	}
+	res.WidthMM, res.HeightMM, res.TextPt = place(natWmm, natHmm, minFont*unit*pxToPt, explicit, textWidthMM, b.Diagrams)
 	if explicit > 0 {
 		if err := fitsBox(res, box, natWmm, natHmm); err != nil {
 			return nil, err
@@ -173,6 +146,43 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, box tex.Box, ds *Dataset
 			res.HeightMM, b.Diagrams.MaxHeightMM)
 	}
 	return res, nil
+}
+
+// refuseForeignObject stops an SVG holding a <foreignObject>: rsvg-convert
+// drops it without a word, so a d2 |md| block disappears from the PDF and
+// nothing says why.
+func refuseForeignObject(src, name string) error {
+	if !strings.Contains(src, "<foreignObject") {
+		return nil
+	}
+	return fmt.Errorf(`%s renders a <foreignObject>, which rsvg-convert silently drops:
+  the node's text would be missing from the PDF and nothing would warn you.
+  In d2 this comes from a |md| … | block. Keep diagram labels short and put the
+  prose in the document body`, name)
+}
+
+// place is the width a figure prints at, its height there and the size its
+// smallest label then prints at (0 when the SVG names none). An explicit
+// width is the author's; otherwise the figure takes the measure, narrowed
+// until its labels are no larger than max_text_pt and its height no more than
+// max_height_mm. It is never widened past the measure.
+func place(natWmm, natHmm, naturalPt, explicit, measureMM float64, d brand.Diagrams) (w, h, textPt float64) {
+	w = measureMM
+	switch {
+	case explicit > 0:
+		w = explicit
+	default:
+		if naturalPt > 0 && d.MaxTextPt > 0 {
+			w = math.Min(w, natWmm*(d.MaxTextPt/naturalPt))
+		}
+		if d.MaxHeightMM > 0 && natHmm > 0 {
+			w = math.Min(w, natWmm*(d.MaxHeightMM/natHmm))
+		}
+	}
+	if w <= 0 {
+		w = measureMM
+	}
+	return w, natHmm * (w / natWmm), naturalPt * (w / natWmm)
 }
 
 // explicitWidth reads a width= the author wrote, in mm, or 0 when there is

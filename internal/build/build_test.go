@@ -518,3 +518,137 @@ func TestMarkdownSyntax(t *testing.T) {
 		}
 	}
 }
+
+// Invariant 6 at the call sites, which a test of Pick alone cannot see:
+// swapping the flag and the front matter in prepare passed every other test.
+// A brand that does not exist names itself in the error, so the bundle the
+// build reached for is read off the message.
+func TestPreparePrecedence(t *testing.T) {
+	front := func(b, s string) *doc.File {
+		return &doc.File{Meta: doc.Meta{Options: doc.Options{Brand: b, Style: s}}}
+	}
+	empty := t.TempDir()
+	for _, tc := range []struct {
+		name            string
+		flag, doc, conf string
+		want            string
+	}{
+		{"flag over document", "flagb", "docb", "confb", `"flagb"`},
+		{"document over configuration", "", "docb", "confb", `"docb"`},
+		{"configuration last", "", "", "confb", `"confb"`},
+	} {
+		t.Run("brand: "+tc.name, func(t *testing.T) {
+			o := Options{BrandsDir: empty, BrandName: tc.flag, DefaultBrand: tc.conf}
+			var in []string
+			_, err := prepare(o, front(tc.doc, ""), &in)
+			if err == nil || !strings.Contains(err.Error(), tc.want+" not found") {
+				t.Errorf("err = %v, want brand %s not found", err, tc.want)
+			}
+		})
+	}
+	for _, tc := range []struct {
+		name            string
+		flag, doc, conf string
+		want            string
+	}{
+		{"flag over document", "letter", "note", "slides", "letter"},
+		{"document over configuration", "", "note", "letter", "note"},
+		{"configuration over the built-in", "", "", "letter", "letter"},
+		{"built-in last", "", "", "", "report"},
+	} {
+		t.Run("style: "+tc.name, func(t *testing.T) {
+			o := Options{BrandName: "none", Style: tc.flag, DefaultStyle: tc.conf}
+			var in []string
+			p, err := prepare(o, front("", tc.doc), &in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer p.close()
+			if p.style != tc.want {
+				t.Errorf("style = %q, want %q", p.style, tc.want)
+			}
+		})
+	}
+}
+
+// A --wordcount flag replaces the document's criterion whole: keeping the
+// parts the front matter added would count by a criterion nobody asked for.
+func TestWordRulesPrecedence(t *testing.T) {
+	d := &doc.File{Meta: doc.Meta{Options: doc.Options{
+		WordCount: doc.WordCount{Base: "ib", Include: []string{"captions"}},
+	}}}
+	r, err := wordRules(Options{DefaultWordCount: "all"}, d)
+	if err != nil || r.Profile != "ib" || !r.Has("captions") {
+		t.Errorf("document over configuration: %+v, %v; want ib with captions", r, err)
+	}
+	r, err = wordRules(Options{WordCount: "ib", DefaultWordCount: "all"}, d)
+	if err != nil || r.Profile != "ib" || r.Has("captions") {
+		t.Errorf("flag: %+v, %v; want ib without the document's captions", r, err)
+	}
+	r, err = wordRules(Options{DefaultWordCount: "all"}, &doc.File{})
+	if err != nil || r.Profile != "all" {
+		t.Errorf("configuration: %+v, %v; want all", r, err)
+	}
+}
+
+// judgeLog is where a defect only the log saw becomes a failed build: each
+// finding must stop it or warn, by the fix it names, and a clean log must do
+// neither.
+func TestJudgeLog(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		sc      scan
+		o       Options
+		err     string // phrase the error must hold; "" for none
+		warning string // phrase a warning must hold; "" for none
+	}{
+		{name: "clean log"},
+		{name: "missing glyph", sc: scan{Holes: []string{"☐ in Inter"}}, err: "fonts.fallback"},
+		{name: "missing glyph allowed", sc: scan{Holes: []string{"☐ in Inter"}}, o: Options{AllowHoles: true}},
+		{name: "lost style", sc: scan{Shapes: []string{"Dosis: italic"}}, err: "fonts.synthesize"},
+		{name: "undefined reference", sc: scan{Undefined: []string{`\ref{x}`}}, err: `\label{`},
+		{name: "row taller than a page", sc: scan{TallRows: []string{"3"}}, err: "page 3"},
+		{name: "header past headsep", sc: scan{HeadShortPt: 9, HeadSepPt: 8}, err: "page.headheight"},
+		{name: "header inside headsep", sc: scan{HeadShortPt: 2, HeadSepPt: 8}, warning: "page.headheight by 2pt"},
+		{name: "confidential too wide", sc: scan{ConfOverPt: 3}, err: "mdbrand.confidential"},
+		{name: "deck footer too wide", sc: scan{FootOverPt: 3}, err: "slides' footer"},
+		{name: "header title too wide", sc: scan{TitleOverPt: 3}, err: "mdbrand.short_title"},
+		{name: "wide code", sc: scan{Wide: []wideCode{{Cols: 90, Fits: 80}}}, warning: "90 columns, where 80 fit"},
+		{name: "overfull line", sc: scan{Over: []overfull{{Pt: 7, Text: "longword"}}}, warning: `"longword"`},
+		{name: "overfull verbatim", sc: scan{Over: []overfull{{Pt: 7}}}, warning: "no quotable text"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rep := &Report{}
+			err := judgeLog(tc.sc, tc.o, rep)
+			switch {
+			case tc.err == "" && err != nil:
+				t.Errorf("err = %v, want none", err)
+			case tc.err != "" && (err == nil || !strings.Contains(err.Error(), tc.err)):
+				t.Errorf("err = %v, want one naming %q", err, tc.err)
+			}
+			warned := strings.Join(rep.Warnings, "\n")
+			switch {
+			case tc.warning == "" && warned != "":
+				t.Errorf("warnings = %q, want none", warned)
+			case tc.warning != "" && !strings.Contains(warned, tc.warning):
+				t.Errorf("warnings = %q, want one holding %q", warned, tc.warning)
+			}
+		})
+	}
+}
+
+// A variation selector has no glyph by design and is not a hole; the code
+// points either side of the range are.
+func TestScanLogSkipsVariationSelectorsOnly(t *testing.T) {
+	line := func(cp string) string {
+		return "Missing character: There is no x (U+" + cp + ") in font Inter/OT:script=latn;!\n"
+	}
+	sc := scanLog(line("FE00") + line("FE0F") + line("FDFF") + line("FE10"))
+	got := strings.Join(sc.Holes, "\n")
+	if strings.Contains(got, "FE00") || strings.Contains(got, "FE0F") {
+		t.Errorf("a variation selector reported as a hole:\n%s", got)
+	}
+	if !strings.Contains(got, "U+FDFF") || !strings.Contains(got, "U+FE10") {
+		t.Errorf("a code point outside the range was skipped:\n%s", got)
+	}
+}
