@@ -11,6 +11,7 @@ import (
 	"github.com/carlosprados/mdbrand/internal/build"
 	"github.com/carlosprados/mdbrand/internal/data"
 	"github.com/carlosprados/mdbrand/internal/doc"
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/tex"
 	"github.com/spf13/cobra"
@@ -35,11 +36,12 @@ cannot be placed inside that band is reported as an error with the fix.
   mdbrand diagrams arq.d2 --out figs/    render one and keep the PDF`,
 		Args: usageArgs(cobra.MinimumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			work, err := os.MkdirTemp("", "mdbrand-diagrams-")
+			defer removeOnInterrupt()()
+			work, err := build.TempDir("mdbrand-diagrams-")
 			if err != nil {
 				return err
 			}
-			defer os.RemoveAll(work)
+			defer build.RemoveTempDir(work)
 
 			src, err := collectFigs(args, work)
 			if err != nil {
@@ -110,6 +112,10 @@ type diagramSources struct {
 func collectFigs(args []string, work string) (*diagramSources, error) {
 	src := &diagramSources{sets: map[*doc.Fig]*fig.Datasets{}}
 	for _, a := range args {
+		// A path that is not there is the caller's mistake, as for build.
+		if _, err := os.Stat(a); err != nil {
+			return nil, exit.AsUsage(err)
+		}
 		if !strings.HasSuffix(a, ".md") {
 			p, err := filepath.Abs(a)
 			if err != nil {

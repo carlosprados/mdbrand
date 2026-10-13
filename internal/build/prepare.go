@@ -40,7 +40,7 @@ type prepared struct {
 // close removes the work directory unless it was asked to be kept.
 func (p *prepared) close() {
 	if !p.keep && p.work != "" {
-		os.RemoveAll(p.work)
+		RemoveTempDir(p.work)
 	}
 }
 
@@ -113,7 +113,7 @@ it, or open an issue for the knob you need:
 // the one --work names, which is kept.
 func workDir(asked string) (string, bool, error) {
 	if asked == "" {
-		work, err := os.MkdirTemp("", "mdbrand-")
+		work, err := TempDir("mdbrand-")
 		return work, false, err
 	}
 	if err := os.MkdirAll(asked, 0o755); err != nil {

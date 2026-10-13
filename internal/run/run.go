@@ -6,6 +6,7 @@ package run
 import (
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -29,11 +30,20 @@ func Have(bin string) bool {
 	return err == nil
 }
 
+// env is what a tool is run with beyond the caller's environment. TeX wraps
+// its log at 79 columns, mid-word, and every reading of the log had to put
+// lines back together: "Output written on <a long name>.pdf (3 pages" broke
+// before the count, and a long file name built a PDF of "0 pages".
+var env = map[string][]string{
+	"xelatex": {"max_print_line=100000"},
+}
+
 // Cmd runs bin in dir and returns its combined output. On failure the error
 // carries the last lines of that output, which is where tools put the reason.
 func Cmd(dir, bin string, args ...string) (string, error) {
 	c := exec.Command(bin, args...)
 	c.Dir = dir
+	c.Env = append(os.Environ(), env[bin]...)
 	out, err := c.CombinedOutput()
 	if err != nil {
 		return string(out), absent(fmt.Errorf("%s %s: %w\n%s", bin, strings.Join(args, " "), err, tail(string(out), 25)))

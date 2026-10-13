@@ -69,8 +69,14 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if meta.LogoSecondary, err = docxLogoFile(b.LogoSecondaryPath(), work, "docx-logo-secondary"); err != nil {
 		return err
 	}
-	meta.LogoWMM, _ = tex.ParseLenMM(b.Page.LogoWidthCover)
-	meta.LogoSecondaryWMM, _ = tex.ParseLenMM(b.Page.LogoWidthCoverSecondary)
+	// The .docx draws a logo at the width it can read, and one it could not
+	// read came out 0 mm wide — no logo on the cover, and no word about it.
+	if meta.LogoWMM, err = docxLength("page.logo_width_cover", b.Page.LogoWidthCover); err != nil {
+		return err
+	}
+	if meta.LogoSecondaryWMM, err = docxLength("page.logo_width_cover_secondary", b.Page.LogoWidthCoverSecondary); err != nil {
+		return err
+	}
 	if meta.Logo != "" {
 		if look.Logo, err = os.ReadFile(filepath.Join(work, meta.Logo)); err != nil {
 			return err
@@ -295,4 +301,17 @@ func missingGlyphs(cov brand.Charset, text string) []string {
 		}
 	}
 	return holes
+}
+
+// docxLength reads a bundle length the .docx needs in millimetres; an empty
+// one is a key the bundle leaves out.
+func docxLength(key, v string) (float64, error) {
+	if strings.TrimSpace(v) == "" {
+		return 0, nil
+	}
+	mm, err := tex.ParseLenMM(v)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w — the .docx needs mm, cm, in or pt, which the PDF reads as well", key, err)
+	}
+	return mm, nil
 }

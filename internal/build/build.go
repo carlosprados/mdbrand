@@ -15,6 +15,8 @@ package build
 import (
 	"errors"
 	"fmt"
+	"io/fs"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -300,6 +302,10 @@ func figTools(figs []*doc.Fig) []string {
 // renames it into place. A PDF viewer that reloads on change (zathura, evince)
 // read a truncated file when os.WriteFile was caught halfway through, and in
 // watch mode that happens on every build.
+//
+// The temporary is opened 0666, so the reader's umask decides who may read a
+// new output — a forced 0644 made a confidential PDF world-readable under a
+// umask of 077 — and an output already there keeps its own mode.
 func copyFile(src, dst string) error {
 	raw, err := os.ReadFile(src)
 	if err != nil {
@@ -309,23 +315,32 @@ func copyFile(src, dst string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, "."+filepath.Base(dst)+".*")
+	tmp, err := openTemp(dir, "."+filepath.Base(dst))
 	if err != nil {
 		return err
 	}
 	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(raw); err != nil {
-		tmp.Close()
-		return err
+	_, err = tmp.Write(raw)
+	if st, statErr := os.Stat(dst); err == nil && statErr == nil {
+		err = tmp.Chmod(st.Mode().Perm())
 	}
-	if err := tmp.Chmod(0o644); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
+	if err = errors.Join(err, tmp.Close()); err != nil {
 		return err
 	}
 	return os.Rename(tmp.Name(), dst)
+}
+
+// openTemp is os.CreateTemp with the mode a new file gets, 0666 less the
+// umask, where CreateTemp's 0600 would have to be widened by hand.
+func openTemp(dir, prefix string) (*os.File, error) {
+	for range 100 {
+		name := filepath.Join(dir, fmt.Sprintf("%s.%d", prefix, rand.Uint32()))
+		f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o666)
+		if !errors.Is(err, fs.ErrExist) {
+			return f, err
+		}
+	}
+	return nil, fmt.Errorf("no free temporary name for %s in %s", prefix, dir)
 }
 
 func mustAbs(p string) string {

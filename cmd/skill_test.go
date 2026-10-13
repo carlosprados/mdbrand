@@ -110,3 +110,35 @@ func TestSkillInstallRefusesToWriteThroughASymlink(t *testing.T) {
 		t.Error("--force left the symlink in place")
 	}
 }
+
+// The skill directory itself may be the link — skills/mdbrand pointing at a
+// checkout — and then SKILL.md looks like a plain file: --force wrote over
+// the repository's own copy.
+func TestSkillInstallRefusesASymlinkedDirectory(t *testing.T) {
+	old := SkillDoc
+	SkillDoc = fixture
+	t.Cleanup(func() { SkillDoc = old })
+
+	repo := t.TempDir()
+	source := filepath.Join(repo, "SKILL.md")
+	const original = "# the checkout's own copy\n"
+	if err := os.WriteFile(source, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(t.TempDir(), "mdbrand")
+	if err := os.Symlink(repo, dir); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if out, err := runSkill(t, "skill", "install", "--dir", dir); err == nil {
+		t.Fatalf("install through a symlinked directory was allowed:\n%s", out)
+	}
+	if out, err := runSkill(t, "skill", "install", "--dir", dir, "--force"); err != nil {
+		t.Fatalf("--force: %v\n%s", err, out)
+	}
+	if got, _ := os.ReadFile(source); string(got) != original {
+		t.Fatalf("--force wrote through the directory link: %q", got)
+	}
+	if st, err := os.Lstat(dir); err != nil || st.Mode()&os.ModeSymlink != 0 || !st.IsDir() {
+		t.Errorf("--force did not leave a directory of its own: %v %v", st, err)
+	}
+}
