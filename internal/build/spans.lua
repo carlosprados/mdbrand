@@ -98,3 +98,22 @@ function Pandoc(doc)
   end
   return nil
 end
+
+-- Raw HTML reaches neither output: the LaTeX and docx writers drop it, so an
+-- <img> or a <table> vanished whole, a <br> joined two lines and <b> printed
+-- its words plain, exit 0. Each opening tag is reported for the build to stop
+-- naming its Markdown form; a comment is left alone, since dropping it is the
+-- point, and so is a closing tag, which only repeats its opening one.
+local function rawHTML(el)
+  if el.format ~= "html" then
+    return nil
+  end
+  local tag = el.text:match("^<%s*([%a][%w]*)")
+  if tag then
+    io.stderr:write("MDBRAND-HTML " .. tag:lower() .. "\t" .. el.text:gsub("%s+", " ") .. "\n")
+  end
+  return nil
+end
+
+RawInline = rawHTML
+RawBlock = rawHTML

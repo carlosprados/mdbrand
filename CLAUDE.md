@@ -216,9 +216,11 @@ Do not relax one without understanding what it cost.
     accents have always printed, and a document that built must still build —
     both naming the darker shade of the same hue that passes. The filter names
     `brandAccent` only when the bundle declares one, so a bundle without it
-    keeps its `.tex` byte for byte.
+    keeps its `.tex` byte for byte. Raw HTML went the same way — an `<img>`
+    or `<table>` gone whole, `<b>` plain — so the filter reports each opening
+    tag, comments aside, and the build names its Markdown form.
     → `internal/build/build_test.go`, `internal/build/slides_test.go`,
-    `traps/span-colour.md`, `traps/accent-pale.md`.
+    `traps/span-colour.md`, `traps/accent-pale.md`, `traps/raw-html.md`.
 
 18. **A slide that does not fit stops the build, by its title.** beamer sets
     the excess over the footer or off the page and exits 0; the log's

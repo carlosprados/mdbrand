@@ -91,6 +91,8 @@ U+EE4E SD1 U+EE4F. Without pdftotext the build warns that it was not checked.
 [words]{.accent} sets words in the brand's primary colour, in the PDF and the
 .docx alike. A span or div with color=, colour= or style= stops the build:
 pandoc drops those attributes in silence, so the words would print black.
+Raw HTML stops it too, each tag named with its Markdown — <br>, <b>, <img>,
+<table> vanish from both outputs; an HTML comment is fine.
 
 A picture linked as .svg is treated as a figure — checked for <foreignObject>,
 sized for legible labels and converted by rsvg-convert. PNG, JPEG and PDF

@@ -43,7 +43,68 @@ func filterProblems(pandocOut string) error {
 	if err := spanProblems(pandocOut); err != nil {
 		return err
 	}
+	if err := htmlProblems(pandocOut); err != nil {
+		return err
+	}
 	return anchorProblems(pandocOut)
+}
+
+var htmlRe = regexp.MustCompile(`MDBRAND-HTML (\w+)\t([^\n]*)`)
+
+// htmlForms is the Markdown that prints what each HTML tag asked for.
+var htmlForms = map[string]string{
+	"br":     `a backslash at the end of the line`,
+	"b":      `**bold**`,
+	"strong": `**bold**`,
+	"i":      `*italic*`,
+	"em":     `*italic*`,
+	"u":      `[words]{.underline}`,
+	"s":      `~~struck~~`,
+	"del":    `~~struck~~`,
+	"sup":    `^superscript^`,
+	"sub":    `~subscript~`,
+	"code":   "`code`",
+	"kbd":    "`Ctrl-C`",
+	"img":    `![caption](picture.png)`,
+	"a":      `[words](https://…), or []{#anchor} to be linked to`,
+	"table":  "a pipe table, or a ```table block over a data file",
+	"hr":     `a line of three dashes, ---`,
+	"p":      `a blank line`,
+}
+
+var tableParts = map[string]bool{"thead": true, "tbody": true, "tfoot": true, "tr": true, "th": true, "td": true, "caption": true, "colgroup": true, "col": true}
+
+// htmlProblems stops raw HTML, which neither writer prints: an <img> or a
+// <table> vanishes, a <br> joins its lines, a <b> prints plain.
+func htmlProblems(pandocOut string) error {
+	ms := htmlRe.FindAllStringSubmatch(pandocOut, -1)
+	if len(ms) == 0 {
+		return nil
+	}
+	first := map[string]string{}
+	var tags []string
+	for _, m := range ms {
+		if tableParts[m[1]] && strings.Contains(pandocOut, "MDBRAND-HTML table\t") {
+			continue // the table's own line covers its rows and cells
+		}
+		if _, ok := first[m[1]]; !ok {
+			first[m[1]] = m[2]
+			tags = append(tags, m[1])
+		}
+	}
+	var lines []string
+	for _, t := range tags {
+		line := fmt.Sprintf("%s — write %s", ellipsize(first[t], 40), htmlForms[t])
+		if htmlForms[t] == "" {
+			line = fmt.Sprintf("%s — write it in Markdown", ellipsize(first[t], 40))
+		}
+		lines = append(lines, line)
+	}
+	return fmt.Errorf(`raw HTML that neither the PDF nor the .docx prints:
+  %s
+pandoc drops HTML when it writes LaTeX or Word, without a word: a picture or
+a table is gone, a line break joins its lines, bold prints plain. An HTML
+comment is fine`, strings.Join(lines, "\n  "))
 }
 
 var (
