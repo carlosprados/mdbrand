@@ -185,3 +185,41 @@ it needs to be, reaches %.1f:1`,
 	rep.Warnings = append(rep.Warnings, msg)
 	return nil
 }
+
+var (
+	texMathRe = regexp.MustCompile(`\[WARNING\] Could not convert TeX math (.*?), rendering as TeX`)
+	rawTeXRe  = regexp.MustCompile(`MDBRAND-RAWTEX (\S+)`)
+	warningRe = regexp.MustCompile(`(?m)^\[WARNING\] (.+)$`)
+)
+
+// pandocWarnings reads what pandoc said on its way. A formula the .docx's
+// equation writer cannot read was printed as its TeX source, so the reader
+// saw \mathbb{R} \foo{x}: that stops the build. Raw LaTeX a .docx cannot
+// hold is dropped, which a \newpage meant for the PDF only does on purpose:
+// that warns, by command. Every other warning was swallowed, on both writers,
+// and now reaches the reader; citations have their own check.
+func pandocWarnings(pandocOut string, rep *Report) error {
+	if ms := uniqueMatches(texMathRe, pandocOut); len(ms) > 0 {
+		for i, m := range ms {
+			ms[i] = "$" + ellipsize(m, 60) + "$"
+		}
+		return fmt.Errorf(`%d formula(s) the .docx cannot write as an equation, so it would print their
+TeX source as text:
+  %s
+Word's equations take the LaTeX that pandoc reads: a macro of the document's
+own, or an environment beyond amsmath's, is not in it. Write the formula with
+standard commands`, len(ms), strings.Join(ms, "\n  "))
+	}
+	if cmds := uniqueMatches(rawTeXRe, pandocOut); len(cmds) > 0 {
+		rep.Warnings = append(rep.Warnings, fmt.Sprintf(
+			"raw LaTeX the .docx cannot hold was left out of it: %s. Fine for a \\newpage meant for the PDF; anything that carries text or colour is missing from the .docx",
+			strings.Join(cmds, ", ")))
+	}
+	for _, m := range uniqueMatches(warningRe, pandocOut) {
+		if strings.HasPrefix(m, "Citeproc:") || strings.HasPrefix(m, "Could not convert TeX math") {
+			continue
+		}
+		rep.Warnings = append(rep.Warnings, "pandoc: "+m)
+	}
+	return nil
+}

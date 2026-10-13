@@ -300,6 +300,24 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	done
 fi
 
+# abstract: was printed above the cover, by pandoc's template, and dropped
+# from the .docx with the title block; numbersections numbered the PDF and
+# not the .docx.
+echo
+echo "testdata/abstract.md — the abstract after the cover, numbered sections"
+out="$("$bin" build "$root/testdata/abstract.md" --to pdf,docx -o "$work/abstract.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	pdftotext -f 1 -l 1 "$work/abstract.pdf" - | grep -qF "Resumen" && bad "the abstract is on the cover" || ok "the cover holds no abstract"
+	pdftotext -f 2 -l 2 "$work/abstract.pdf" - | grep -qF "El resumen va detrás" && ok "the abstract follows the cover" || bad "the abstract is not on page 2"
+	xml="$(unzip -p "$work/abstract.docx" word/document.xml)"
+	grep -qF 'El resumen va detrás' <<<"$xml" && ok "the .docx holds the abstract" || bad "the .docx lost the abstract"
+	grep -qE '<w:t[^>]*>1</w:t>.*Primera sección' <<<"$xml" && ok "the .docx numbers its sections" || bad "the .docx's sections are not numbered"
+fi
+
 # ----------------------------------------------------------------- the locale
 # A chart in a Spanish document wrote 30,000 and Jan. Its locale only reaches
 # Vega through vl2vg and vg2svg -f -t, and only from vega-cli 6.4.0; the

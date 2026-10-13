@@ -107,12 +107,8 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	// The document pandoc will read: original front matter, rewritten body.
 	stem := strings.TrimSuffix(filepath.Base(o.Input), filepath.Ext(o.Input))
 	mdName := stem + ".md"
-	var md strings.Builder
-	if d.FrontMatter != "" {
-		md.WriteString("---\n" + d.FrontMatter + "\n---\n\n")
-	}
-	md.WriteString(body)
-	if err := os.WriteFile(filepath.Join(work, mdName), []byte(md.String()), 0o644); err != nil {
+	source, err := writePDFSource(filepath.Join(work, mdName), o.Input, d.FrontMatter, body)
+	if err != nil {
 		return err
 	}
 
@@ -129,6 +125,9 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 		return err
 	}
 	if err := filterProblems(pandocOut); err != nil {
+		return err
+	}
+	if err := pandocWarnings(pandocOut, rep); err != nil {
 		return err
 	}
 	if err := accentContrast(b, pandocOut, slides, rep); err != nil {
@@ -167,7 +166,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 			return err
 		}
 	}
-	if err := checkTextLayer(work, stem+".pdf", md.String(), rep); err != nil {
+	if err := checkTextLayer(work, stem+".pdf", source, rep); err != nil {
 		return err
 	}
 	if err := checkResolution(work, stem+".pdf", p.d.Refs, rep); err != nil {
@@ -175,6 +174,26 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	}
 	rep.Outputs = append(rep.Outputs, Output{Format: "pdf", Path: out, Pages: sc.Pages, built: filepath.Join(work, stem+".pdf")})
 	return nil
+}
+
+// writePDFSource writes the Markdown pandoc reads: the front matter, less its
+// abstract, which goes first in the body — pandoc's template would print it
+// above the cover — and the rewritten body. It returns what it wrote.
+func writePDFSource(path, input, frontMatter, body string) (string, error) {
+	front, abstract, err := doc.LiftAbstract(frontMatter)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", input, err)
+	}
+	var md strings.Builder
+	if front != "" {
+		md.WriteString("---\n" + front + "\n---\n\n")
+	}
+	if abstract != "" {
+		// spans.lua sets it as LaTeX's abstract, after the cover.
+		md.WriteString("::: {.abstract}\n" + abstract + "\n:::\n\n")
+	}
+	md.WriteString(body)
+	return md.String(), os.WriteFile(path, []byte(md.String()), 0o644)
 }
 
 // judgeDeck stops a deck with a slide that does not fit its frame, by height

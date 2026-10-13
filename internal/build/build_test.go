@@ -463,3 +463,21 @@ func TestPlacedPPIFindsTheAuthorsPictures(t *testing.T) {
 		t.Errorf("soft = %q", soft)
 	}
 }
+
+// A formula the .docx prints as TeX stops it; raw LaTeX it drops warns by
+// command; pandoc's other warnings reach the reader, citations aside.
+func TestPandocWarnings(t *testing.T) {
+	out := "[WARNING] Could not convert TeX math \\foo{x}, rendering as TeX:\n  \\foo{x}\n"
+	if err := pandocWarnings(out, &Report{}); err == nil || !strings.Contains(err.Error(), `$\foo{x}$`) {
+		t.Errorf("err = %v", err)
+	}
+	rep := &Report{}
+	out = "MDBRAND-RAWTEX \\newpage\nMDBRAND-RAWTEX \\newpage\n[WARNING] Citeproc: citation x not found\n[WARNING] Duplicate note reference '1'\n"
+	if err := pandocWarnings(out, rep); err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(rep.Warnings, "|")
+	if strings.Count(got, `\newpage`) != 2 || !strings.Contains(got, "pandoc: Duplicate note reference '1'") || strings.Contains(got, "Citeproc") {
+		t.Errorf("warnings = %q", rep.Warnings)
+	}
+}

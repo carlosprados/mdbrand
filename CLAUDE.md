@@ -200,7 +200,14 @@ Do not relax one without understanding what it cost.
     here runs Word: pandoc 3.1 writes `<w:bCs/>` before `<w:b/>`.
     pandoc's bullets are private-use characters in Symbol and Wingdings, so
     Repair redraws every bulleted level in the body face; until it did, no
-    document with a list built as a .docx, and no fixture had one.
+    document with a list built as a .docx, and no fixture had one. A cell's
+    and a table's properties are held to the same order: a spanned cell came
+    out tcW, tcBorders, gridSpan. Notes are parts of their own and are
+    coloured like the body; code is checked against the mono face. pandoc's
+    LaTeX template prints `abstract:` before the include-before body — above
+    the cover — so mdbrand lifts it out of the front matter and puts it after
+    the cover in both outputs. A formula the .docx would print as TeX stops
+    it; raw LaTeX it drops warns.
     → `internal/docx/docx_test.go`, the docx section of `scripts/torture.sh`
     (read back through LibreOffice), `traps/pdf-picture.md`.
 

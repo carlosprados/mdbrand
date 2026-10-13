@@ -166,7 +166,8 @@ the PDF gives them, numbered captions, tables that never break a word, and a
 filled table of contents Word updates on opening. A .docx carries no fonts, so
 a named bundle must declare fonts.office (body, display, mono), faces the
 readers have; the build stops without them, and refuses a .docx asking for any
-other face, or holding a picture linked as PDF. For Google Docs, upload it
+other face, or holding a picture linked as PDF. Raw LaTeX is left out of it
+with a warning, and a formula Word's equations cannot take stops it. For Google Docs, upload it
 converted: gog drive upload informe.docx --convert-to doc
 
 --to notes, for a deck (style slides), writes its speaker notes beside it as

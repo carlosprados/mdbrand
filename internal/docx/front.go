@@ -22,26 +22,26 @@ type Meta struct {
 }
 
 // Labels are the words a document prints in its own language.
-type Labels struct{ Figure, Table, Contents string }
+type Labels struct{ Figure, Table, Contents, Abstract string }
 
 // LabelsFor follows babel's names, except that Spanish tables are Tabla: the
 // PDF overrides babel's Cuadro, and the two outputs must agree.
 func LabelsFor(lang string) Labels {
 	switch strings.ToLower(strings.SplitN(strings.SplitN(lang, "-", 2)[0], "_", 2)[0]) {
 	case "es":
-		return Labels{"Figura", "Tabla", "Índice"}
+		return Labels{"Figura", "Tabla", "Índice", "Resumen"}
 	case "ca":
-		return Labels{"Figura", "Taula", "Índex"}
+		return Labels{"Figura", "Taula", "Índex", "Resum"}
 	case "pt":
-		return Labels{"Figura", "Tabela", "Sumário"}
+		return Labels{"Figura", "Tabela", "Sumário", "Resumo"}
 	case "fr":
-		return Labels{"Figure", "Table", "Table des matières"}
+		return Labels{"Figure", "Table", "Table des matières", "Résumé"}
 	case "it":
-		return Labels{"Figura", "Tabella", "Indice"}
+		return Labels{"Figura", "Tabella", "Indice", "Sommario"}
 	case "de":
-		return Labels{"Abbildung", "Tabelle", "Inhaltsverzeichnis"}
+		return Labels{"Abbildung", "Tabelle", "Inhaltsverzeichnis", "Zusammenfassung"}
 	default:
-		return Labels{"Figure", "Table", "Contents"}
+		return Labels{"Figure", "Table", "Contents", "Abstract"}
 	}
 }
 

@@ -739,7 +739,16 @@ cells, every size is direct formatting. What carries over from the PDF:
   leaving fewer than three rows on one side of a page break;
 - a table of contents already filled in, which Word updates with page numbers
   when it opens the file;
+- `numbersections: true` and `abstract:` — the abstract after the cover or the
+  title block, in both outputs, titled in the document's language;
+- the accent and link colours in footnotes as in the body;
 - bare code blocks stepped down until they fit, as in the PDF.
+
+Raw LaTeX has no place in a Word file: it is left out, with a warning naming
+each command (fine for a `\newpage` meant for the PDF). A formula Word's
+equations cannot take — a macro of your own, an environment beyond amsmath —
+would print as its TeX source, so it stops the build. Code is checked against
+`fonts.office.mono` as prose is against the body face.
 
 What does not: XeLaTeX's hyphenation and justification, and the guarantee that
 the reader sees the faces you chose. **A `.docx` carries no fonts.** So a named

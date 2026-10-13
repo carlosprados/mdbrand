@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/doc"
 	"github.com/carlosprados/mdbrand/internal/docx"
 	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/imgsize"
@@ -89,9 +90,17 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	before, after := docx.Front(p.style, meta, look)
 	stem := strings.TrimSuffix(filepath.Base(o.Input), filepath.Ext(o.Input))
 	mdName := stem + ".docx.md"
+	front, abstract, err := doc.LiftAbstract(d.FrontMatter)
+	if err != nil {
+		return fmt.Errorf("%s: %w", o.Input, err)
+	}
 	var md strings.Builder
-	if d.FrontMatter != "" {
-		md.WriteString("---\n" + d.FrontMatter + "\n---\n\n")
+	if front != "" {
+		md.WriteString("---\n" + front + "\n---\n\n")
+	}
+	if abstract != "" {
+		before += "\n\n::: {custom-style=\"Abstract Title\"}\n" + docx.LabelsFor(d.Meta.Lang).Abstract +
+			"\n:::\n\n::: {custom-style=\"Abstract\"}\n" + abstract + "\n:::\n\n"
 	}
 	md.WriteString(before + body + "\n\n" + after)
 	if err := os.WriteFile(filepath.Join(work, mdName), []byte(md.String()), 0o644); err != nil {
@@ -125,6 +134,9 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		// The table of contents is the cover's to place, after the cover.
 		"-M", "toc=false",
 	}
+	if d.Meta.NumberSections {
+		args = append(args, "--number-sections")
+	}
 	cites, err := citeArgs(d, o.Input, inputs)
 	if err != nil {
 		return err
@@ -139,6 +151,9 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		return err
 	}
 	if err := filterProblems(pandocOut); err != nil {
+		return err
+	}
+	if err := pandocWarnings(pandocOut, rep); err != nil {
 		return err
 	}
 	if !p.pdfToo {
@@ -219,14 +234,20 @@ func docxLogoFile(src, work, stem string) (string, error) {
 // XeLaTeX's log; a .docx is set on the reader's machine, so the best this one
 // can do is ask fontconfig whether the faces, installed here, cover the text
 // each sets: the prose and a letter's greeting in the body face, the front
-// matter the cover, letterhead, header and footer print in the display face.
+// matter the cover, letterhead, header and footer print in the display face,
+// code in the mono face.
 // A face that is not installed cannot be checked; it is returned, so the
 // reader hears that rather than nothing.
 func docxGlyphs(l docx.Look, body string, display, plain []string, allow bool) ([]string, error) {
-	var prose strings.Builder
+	// Code is set in the mono face, and a face checked only against prose let
+	// a ✓ in a code block print as a box. Mathematics is Word's own.
+	var prose, code strings.Builder
 	last := 0
 	for _, sp := range mdtext.Protected(body) {
 		prose.WriteString(body[last:sp[0]])
+		if body[sp[0]] != '$' {
+			code.WriteString(body[sp[0]:sp[1]] + "\n")
+		}
 		last = sp[1]
 	}
 	prose.WriteString(body[last:])
@@ -234,7 +255,11 @@ func docxGlyphs(l docx.Look, body string, display, plain []string, allow bool) (
 	for _, set := range []struct{ face, role, text string }{
 		{l.Body, "body", strings.Join(append([]string{prose.String()}, plain...), "\n")},
 		{l.Display, "display", strings.Join(display, "\n")},
+		{l.Mono, "mono", code.String()},
 	} {
+		if strings.TrimSpace(set.text) == "" {
+			continue
+		}
 		cov, ok := brand.FontCharset(set.face)
 		if !ok {
 			if !slices.Contains(unchecked, set.face) {

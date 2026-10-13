@@ -62,6 +62,14 @@ end
 
 function Div(el)
   check(el)
+  -- The front matter's abstract, which mdbrand moves after the cover: as
+  -- LaTeX's own environment, so babel names it (Resumen, Abstract).
+  if el.classes:includes("abstract") and FORMAT ~= "docx" then
+    local out = pandoc.List({ pandoc.RawBlock("latex", "\\begin{abstract}") })
+    out:extend(el.content)
+    out:insert(pandoc.RawBlock("latex", "\\end{abstract}"))
+    return out
+  end
   if el.classes:includes("accent") then
     report(el, "a ::: {.accent} block")
   end
@@ -113,6 +121,13 @@ end
 -- naming its Markdown form; a comment is left alone, since dropping it is the
 -- point, and so is a closing tag, which only repeats its opening one.
 local function rawHTML(el)
+  -- A .docx has no LaTeX: \newpage, \vspace or a \textcolor of the author's
+  -- went missing from it without a word. Reported by command for a warning.
+  if FORMAT == "docx" and (el.format == "latex" or el.format == "tex") then
+    local cmd = el.text:match("\\[%a@]+") or el.text:sub(1, 30)
+    io.stderr:write("MDBRAND-RAWTEX " .. cmd .. "\n")
+    return nil
+  end
   if el.format ~= "html" then
     return nil
   end
