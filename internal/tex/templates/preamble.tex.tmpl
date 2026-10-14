@@ -14,6 +14,17 @@
 % Passed here because pandoc loads hyperref after this preamble.
 \PassOptionsToPackage{hyperfootnotes=false}{hyperref}
 
+% longtable starts every table with \@colroom set to the whole column, which
+% forgets a figure already placed at the top of the page: a figure placed
+% there, or after the table on the same page, printed past the foot of the
+% paper with the text below it, exit 0 (an observatorio report lost a chart
+% and a paragraph). LaTeX keeps \@colroom right without the reset. pandoc
+% loads longtable before this preamble; if the patch cannot apply, the
+% build's check on the log still stops a page that overflows.
+\makeatletter
+\patchcmd{\LT@start}{\global\@colroom\@colht}{}{}{}
+\makeatother
+
 % Tables: a full-size table in a 10pt document overflows the measure, and the
 % overflow is silent. footnotesize plus a little air is the shape that works.
 \AtBeginEnvironment{longtable}{\footnotesize}

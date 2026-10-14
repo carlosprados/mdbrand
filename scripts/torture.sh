@@ -350,6 +350,21 @@ if [ $status -eq 0 ]; then
 	[ "$(grep -o '<w:keepNext/>' <<<"$xml" | wc -l)" -eq 72 ] && ok "the .docx keeps each card's paragraphs with the next" || bad "the .docx does not keep the cards together"
 fi
 
+# floats beside a table: longtable forgot a figure at the top of its page, and
+# a later figure printed past the foot of the paper with the text below it,
+# exit 0. An observatorio report lost a chart and a paragraph that way.
+echo
+echo "testdata/floats-table.md — a table under a figure leaves the page whole"
+out="$("$bin" build "$root/testdata/floats-table.md" -o "$work/floats-table.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds, no page set past the paper"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	pdftotext "$work/floats-table.pdf" - | grep -qF "WITNESS paragraph after the fourth figure" &&
+		ok "the text after the last figure is on the page" || bad "the text after the last figure is off the page"
+fi
+
 # ----------------------------------------------------------------- the locale
 # A chart in a Spanish document wrote 30,000 and Jan. Its locale only reaches
 # Vega through vl2vg and vg2svg -f -t, and only from vega-cli 6.4.0; the
