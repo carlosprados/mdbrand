@@ -1,0 +1,12 @@
+# A square mark and no slides.logo_width_cover: drawn at the default 34 mm it
+# is 34 mm tall and fills the title slide by itself. The build must say so,
+# with the width that fits, rather than blame the title.
+name: square-logo
+display_name: Square
+logo: logo.svg
+colors:
+  primary: "1F4E79"
+  text: "3A3F44"
+  rule: "C0C0C0"
+fonts:
+  body: DejaVu Sans
