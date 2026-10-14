@@ -730,7 +730,7 @@ slides:
   logo: logo-dark.svg     # a variant of the mark for that ground; else the logo
   art: waves.svg          # bled to the right edge of the title and section slides
   logo_width: 12mm        # in every slide's footer
-  logo_width_cover: 34mm  # on the title slide
+  logo_width_cover: 34mm  # on the title slide; a square mark wants about 15mm
   diagrams:
     min_text_pt: 8.5
     max_text_pt: 14
@@ -742,6 +742,12 @@ stops a deck, and so does an SVG logo with any fill under 3:1 against it —
 `slides.logo` exists for that mark. A raster logo cannot be measured and earns
 a warning. A fault in this section stops only decks; `mdbrand brand validate`
 shows it for every bundle.
+
+A square or tall mark at the default 34 mm is 34 mm high, a third of the
+slide, and fills the title slide by itself. When the title slide does not fit
+and drawing the mark narrower would make the room, the build says so with the
+width that fits — `slides.logo_width_cover: 13mm` — rather than blame the
+title.
 
 ### Word and Google Docs
 

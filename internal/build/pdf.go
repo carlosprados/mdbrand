@@ -239,10 +239,29 @@ func judgeDeck(sc scan, texPath string, p *prepared, b *brand.Brand) error {
 	if err != nil {
 		return err
 	}
-	if err := judgeFrames(sc.Frames, string(typeset), p.results, b.Slides.Diagrams.MinTextPt); err != nil {
+	if err := judgeFrames(sc.Frames, string(typeset), p.results, b.Slides.Diagrams.MinTextPt, measureCoverLogo(b)); err != nil {
 		return err
 	}
 	return judgeSlideWidths(sc.SlideWide)
+}
+
+// measureCoverLogo reads the title slide's mark: its width from the bundle,
+// its shape from the file. Either unreadable, it is left unmeasured and the
+// advice falls back to the front matter.
+func measureCoverLogo(b *brand.Brand) coverLogo {
+	path := b.SlideLogoPath()
+	if path == "" {
+		return coverLogo{}
+	}
+	w, err := tex.ParseLenMM(b.Slides.LogoWidthCover)
+	if err != nil {
+		return coverLogo{}
+	}
+	a, err := imgsize.Aspect(path)
+	if err != nil {
+		return coverLogo{}
+	}
+	return coverLogo{Width: b.Slides.LogoWidthCover, WidthMM: w, Aspect: a}
 }
 
 // pdfBody is the body with each figure's placeholder replaced by its include.

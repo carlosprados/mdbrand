@@ -668,6 +668,7 @@ traps=(
 	"slide-wide.md|fail|slide 3 \"Two columns\""
 	"slide-column-figure.md|fail|It is 67×"
 	"slide-footer.md|fail|the slides' footer is"
+	"slide-cover-logo.md|fail|slides.logo_width_cover: 13mm|--brand square-logo --brands-dir $root/testdata/brands"
 	"notes-wide.md|fail|\"A slide\"|--to pdf,notes --brand none"
 	"list-deep.md|fail|a list nests deeper than LaTeX can set"
 	"accent-pale.md|fail|Set colors.accent|--brands-dir $root/testdata/brands"

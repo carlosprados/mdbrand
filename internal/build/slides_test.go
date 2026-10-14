@@ -56,10 +56,10 @@ func TestFrameTitleNamesTheSlide(t *testing.T) {
 
 func TestJudgeFramesIgnoresRounding(t *testing.T) {
 	src := "\\begin{frame}{A}\n\\end{frame}"
-	if err := judgeFrames([]frameOver{{Pt: 0.4, Line: 2}}, src, nil, 8.5); err != nil {
+	if err := judgeFrames([]frameOver{{Pt: 0.4, Line: 2}}, src, nil, 8.5, coverLogo{}); err != nil {
 		t.Errorf("under a point is rounding, not a defect: %v", err)
 	}
-	err := judgeFrames([]frameOver{{Pt: 28.45, Line: 2}}, src, nil, 8.5)
+	err := judgeFrames([]frameOver{{Pt: 28.45, Line: 2}}, src, nil, 8.5, coverLogo{})
 	if err == nil || !strings.Contains(err.Error(), `"A"`) || !strings.Contains(err.Error(), "10.0 mm") {
 		t.Errorf("want the slide named and the excess in mm, got %v", err)
 	}
@@ -68,7 +68,7 @@ func TestJudgeFramesIgnoresRounding(t *testing.T) {
 // beamer reports a slide with pauses once per overlay, all at its \end{frame}.
 func TestJudgeFramesCountsOverlaysOnce(t *testing.T) {
 	src := "\\begin{frame}{A}\n\\end{frame}"
-	err := judgeFrames([]frameOver{{Pt: 20, Line: 2}, {Pt: 28.45, Line: 2}, {Pt: 5, Line: 2}}, src, nil, 8.5)
+	err := judgeFrames([]frameOver{{Pt: 20, Line: 2}, {Pt: 28.45, Line: 2}, {Pt: 5, Line: 2}}, src, nil, 8.5, coverLogo{})
 	if err == nil || !strings.HasPrefix(err.Error(), "1 slide(s)") ||
 		strings.Count(err.Error(), `"A"`) != 1 || !strings.Contains(err.Error(), "10.0 mm") {
 		t.Errorf("want one slide, as tall as its tallest overlay, got %v", err)
@@ -85,12 +85,12 @@ func TestJudgeFramesSizesTheFigure(t *testing.T) {
 		WidthMM: 100, HeightMM: 48, TextPt: 10,
 	}}
 	over := []frameOver{{Pt: 10 / mmPerPt, Line: 3}}
-	err := judgeFrames(over, src, figs, 7)
+	err := judgeFrames(over, src, figs, 7, coverLogo{})
 	if err == nil || !strings.Contains(err.Error(), "width=79mm") || !strings.Contains(err.Error(), "7.9pt") ||
 		!strings.Contains(err.Error(), `"Where a job goes" (fig00.d2)`) {
 		t.Errorf("want the width that makes room and the labels' size, got %v", err)
 	}
-	err = judgeFrames(over, src, figs, 8.5)
+	err = judgeFrames(over, src, figs, 8.5, coverLogo{})
 	if err == nil || strings.Contains(err.Error(), "width=") || !strings.Contains(err.Error(), "a slide of its own") {
 		t.Errorf("under the floor no width will do, got %v", err)
 	}
@@ -182,6 +182,28 @@ func TestColumnSharesFollowPandoc(t *testing.T) {
 	for k, v := range want {
 		if got[k] != v {
 			t.Errorf("%s: %g, want %g", k, got[k], v)
+		}
+	}
+}
+
+// A square mark at the default 34 mm filled the title slide, and the advice
+// blamed the title. Measured on a real bundle: 18.4 mm over at 34 mm, and
+// 15 mm the widest that fits.
+func TestTitleSlideAdviceNamesTheLogo(t *testing.T) {
+	square := coverLogo{Width: "34mm", WidthMM: 34, Aspect: 1}
+	if got := titleSlideAdvice(18.4, square); !strings.Contains(got, "slides.logo_width_cover: 15mm") || !strings.Contains(got, "34 mm tall") {
+		t.Errorf("square logo: %q", got)
+	}
+	for name, logo := range map[string]coverLogo{
+		"no logo":                    {},
+		"shrinking it is not enough": square, // 30 mm over would leave a 4 mm mark
+	} {
+		over := 18.4
+		if logo.WidthMM > 0 {
+			over = 30
+		}
+		if got := titleSlideAdvice(over, logo); strings.Contains(got, "logo_width_cover") || !strings.Contains(got, "shorten the title") {
+			t.Errorf("%s: %q", name, got)
 		}
 	}
 }

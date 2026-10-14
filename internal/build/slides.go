@@ -22,8 +22,9 @@ const frameSlackPt = 1.0
 // page per overlay, each reported at the same \end{frame}: it is one slide,
 // as tall as its tallest overlay. A slide holding one figure is told the
 // width that makes room, since a figure with a paragraph above it is the
-// usual slide that does not fit; minPt is the deck's legibility floor.
-func judgeFrames(frames []frameOver, texSrc string, figs []*fig.Result, minPt float64) error {
+// usual slide that does not fit; minPt is the deck's legibility floor. logo
+// is the mark on the title slide, which a tall one can fill by itself.
+func judgeFrames(frames []frameOver, texSrc string, figs []*fig.Result, minPt float64, logo coverLogo) error {
 	var order []int
 	tallest := map[int]float64{}
 	for _, f := range frames {
@@ -52,7 +53,7 @@ func judgeFrames(frames []frameOver, texSrc string, figs []*fig.Result, minPt fl
 		// A cover cannot be split: what fills it is the front matter.
 		switch {
 		case title == "the title slide":
-			w.WriteString("\n        shorten the title, subtitle, author or date in the front matter")
+			w.WriteString(titleSlideAdvice(overMM, logo))
 		case strings.HasPrefix(title, "the section slide"):
 			w.WriteString("\n        shorten the section's # heading")
 		}
@@ -64,6 +65,39 @@ func judgeFrames(frames []frameOver, texSrc string, figs []*fig.Result, minPt fl
   Split the slide (another ## heading), cut what it says, or give a figure on
   it less height: a diagram that is wider than tall suits a 16:9 frame`, n, w.String())
 }
+
+// coverLogo is the mark on the title slide: the width the bundle draws it at,
+// as written and in mm, and its height over its width. Zero when there is
+// none, or it could not be measured.
+type coverLogo struct {
+	Width   string
+	WidthMM float64
+	Aspect  float64
+}
+
+// titleSlideAdvice says what fills a title slide that does not fit. A square
+// mark drawn at the default width is 34 mm tall, a third of the frame, and
+// the title was blamed while a shorter author changed nothing. When drawing
+// the mark narrower would free the room, the bundle setting that does so is
+// named with the widest width that fits; otherwise the front matter is.
+func titleSlideAdvice(overMM float64, logo coverLogo) string {
+	const text = "\n        shorten the title, subtitle, author or date in the front matter"
+	if logo.WidthMM <= 0 || logo.Aspect <= 0 {
+		return text
+	}
+	tall := logo.WidthMM * logo.Aspect
+	fit := math.Floor((tall - overMM) / logo.Aspect)
+	if fit < minCoverLogoMM {
+		return text
+	}
+	return fmt.Sprintf("\n        the logo is %.0f mm tall at slides.logo_width_cover %s: set\n"+
+		"        slides.logo_width_cover: %.0fmm in the bundle, or%s",
+		tall, logo.Width, fit, text)
+}
+
+// minCoverLogoMM is the narrowest mark worth proposing: under it the logo is
+// a speck, and the front matter is what has to give.
+const minCoverLogoMM = 10
 
 var includeRe = regexp.MustCompile(`\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}`)
 

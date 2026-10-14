@@ -311,7 +311,9 @@ and figures. Start from `mdbrand example charla`.
 - A deck refuses `docx`; a page refuses `notes`.
 - The bundle may add `slides: {background, foreground, logo, art, logo_width,
   logo_width_cover, diagrams: {min_text_pt, max_text_pt}}`; colours are held
-  to WCAG contrast and a failing pair stops the deck.
+  to WCAG contrast and a failing pair stops the deck. A square logo wants
+  `logo_width_cover` near 15mm; a title slide it overfills names the width
+  that fits.
 
 ## Word and Google Docs
 

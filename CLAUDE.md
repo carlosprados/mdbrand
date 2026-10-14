@@ -245,7 +245,9 @@ Do not relax one without understanding what it cost.
     `Overfull \vbox … at line N` points at the frame's `\end{frame}`, the
     title is read from its `\begin{frame}`, and the cover slides — which are
     not frame environments — are named as such rather than as the slide
-    before them. Figures on a slide are sized for the frame (140 × 48 mm,
+    before them. A title slide that a tall logo fills is told the
+    `slides.logo_width_cover` that fits, measured from the mark's shape: a
+    square one at the default 34 mm was 18 mm over, and the title was blamed. Figures on a slide are sized for the frame (140 × 48 mm,
     8.5–14 pt) and written with both width and height, because pandoc's
     beamer writer otherwise adds `keepaspectratio` and shrinks a tall one in
     silence. Display faces take `Ligatures=TeX` there, since pandoc writes a
@@ -263,7 +265,8 @@ Do not relax one without understanding what it cost.
     note's own overflow stops `--to notes`.
     → `internal/build/slides_test.go`, `internal/brand/slides_test.go`,
     `internal/tex/tex_test.go`, `internal/build/notes_test.go`,
-    `testdata/slides.md`, `traps/slide-*.md`, `traps/notes-wide.md`.
+    `testdata/slides.md`, `traps/slide-*.md` (`slide-cover-logo.md` with
+    `testdata/brands/square-logo`), `traps/notes-wide.md`.
 
 19. **A bundle says which mdbrand it needs, and no key in it is dropped.** A
     bundle is shared and the reader's binary is not the author's: v0.16
