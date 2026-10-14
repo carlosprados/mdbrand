@@ -1,6 +1,6 @@
 ---
 name: mdbrand
-description: Generate branded documents from Markdown with one command — A4 PDF reports, internal notes and letters with the client's logo on the cover and header; 16:9 slide decks for technical talks with printable speaker notes; the same document as a branded .docx for Word or Google Docs. D2 diagrams and Vega-Lite charts are rendered and sized legibly, tables and charts read YAML/JSON/CSV data files, citations resolve from a .bib, {{words}} counts to an essay's limit, and every trap that would print a defective PDF stops the build naming the fix. Ships worked examples to start from (mdbrand example). Use INSTEAD of hand-rolling pandoc/XeLaTeX invocations, LaTeX preambles, reference.docx files or diagram renders. Load when asked for a PDF, Word/.docx or Google Docs version, report, propuesta, oferta, informe, nota interna, memo, carta, ensayo, monografía, presentación, charla, slides or deck from Markdown; when a document needs a cover, letterhead or logo; when a diagram, chart or data table must go into a PDF; or when a pandoc PDF build misbehaves (missing characters, illegible or page-eating figures, blank logo).
+description: Generate branded documents from Markdown with one command — A4 PDF reports, internal notes and letters with the client's logo on the cover and header; 16:9 slide decks for technical talks with printable speaker notes; the same document as a branded .docx for Word or Google Docs, a deck as .pptx, or an .epub for an e-reader. D2 diagrams and Vega-Lite charts are rendered and sized legibly, tables and charts read YAML/JSON/CSV data files, citations resolve from a .bib, {{words}} counts to an essay's limit, and every trap that would print a defective PDF stops the build naming the fix. Ships worked examples to start from (mdbrand example). Use INSTEAD of hand-rolling pandoc/XeLaTeX invocations, LaTeX preambles, reference.docx files or diagram renders. Load when asked for a PDF, Word/.docx, Google Docs, PowerPoint or e-reader/.epub version, report, propuesta, oferta, informe, nota interna, memo, carta, ensayo, monografía, presentación, charla, slides or deck from Markdown; when a document needs a cover, letterhead or logo; when a diagram, chart or data table must go into a PDF; or when a pandoc PDF build misbehaves (missing characters, illegible or page-eating figures, blank logo).
 ---
 
 # mdbrand — branded documents from Markdown
@@ -100,7 +100,7 @@ mdbrand:
   reference: "Oferta AS-2164-26"  # report cover, optional
   confidential: "Confidencial"    # report: cover + footers; note: title + footers; letter: under the date; slides: footer
   short_title: "Oferta Acme"      # the running header's title when the real one is too long
-  formats: [pdf, docx]            # pdf (default) | docx | notes, in any combination
+  formats: [pdf, docx]            # pdf (default) | docx | notes | pptx | epub, in any combination
   wordcount: all                  # or {base: ib, include: [tables]}; default ib
   data: [precios/, extra.yaml, {tao: ../tao/data}]  # where {{data…}} reads; default data/ beside the document; a named root is data.tao.…
   # letter only: to: [lines], place:, greeting:, signature: | (one line per line)
@@ -351,6 +351,21 @@ reference — offer the `.pptx` when asked for an editable deck.
   one slide stop the build — split the slide.
 - Text that does not fit is estimated with LibreOffice (`soffice`) and warned
   about by slide title; `--to pdf,pptx` measures it on the PDF instead.
+
+## E-readers
+
+`--to epub` (or `formats: [pdf, epub]`) writes a `report` or `note` for an
+e-reader or Google Play Books: reflowed in the reader's face, nav as the
+contents, pop-up footnotes, figures re-placed for a 6" screen (80 × 100 mm)
+at 300 ppi; a Vega-Lite chart is redrawn narrower so its labels keep their
+size. Offer it when the owner wants to read a document, not print it.
+
+- Needs `epubcheck` installed; the package is validated and an error stops it.
+- `slides` and `letter` refuse it; no cover, no fonts, no footer, no
+  `reference`/`confidential`; raw LaTeX is left out with a warning.
+- Warnings, not errors (the screen is assumed): figure labels under the floor
+  on the column, chart series one grey on e-ink (order `figures.palette` by
+  lightness), code over 45 columns, tables wider than the column, MathML.
 
 ## Brand bundles
 

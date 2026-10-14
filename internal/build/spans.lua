@@ -8,6 +8,9 @@
 -- the words would simply print black. mdbrand reads the report from stderr
 -- and stops the build, naming .accent.
 
+-- pandoc's epub writers are epub3 and epub (2); mdbrand asks for epub3.
+local epub = FORMAT:match("^epub") ~= nil
+
 -- Matched whatever the case: pandoc keeps Color= as written, and drops it.
 local refused = { color = true, colour = true, style = true, bgcolor = true, background = true }
 
@@ -29,7 +32,72 @@ end
 -- code, a code block or a link with {color=red} printed in black, exit 0.
 function Header(el) check(el) end
 function Code(el) check(el) end
-function CodeBlock(el) check(el) end
+
+-- On an e-reader a code line wider than the screen wraps: each block's
+-- widest line is reported, and the build warns past what a 6" column holds.
+function CodeBlock(el)
+  check(el)
+  if epub then
+    local widest = 0
+    for line in (el.text .. "\n"):gmatch("([^\n]*)\n") do
+      widest = math.max(widest, utf8.len(line) or #line)
+    end
+    local first = el.text:match("^[^\n]*") or ""
+    io.stderr:write("MDBRAND-EPUB-CODE " .. widest .. "\t" .. first:sub(1, 50) .. "\n")
+  end
+end
+
+-- A table's columns are each as wide as their longest word, or the word
+-- breaks: reported by column, for the build to hold against the column.
+function Table(el)
+  if not epub then
+    return nil
+  end
+  local longest = {}
+  local function row(r)
+    for i, cell in ipairs(r.cells) do
+      for w in pandoc.utils.stringify(cell.contents):gmatch("%S+") do
+        longest[i] = math.max(longest[i] or 0, utf8.len(w) or #w)
+      end
+    end
+  end
+  for _, r in ipairs(el.head.rows) do row(r) end
+  for _, body in ipairs(el.bodies) do
+    for _, r in ipairs(body.body) do row(r) end
+  end
+  -- pandoc's widths are shares of the A4 measure; on a screen the content
+  -- sizes the columns. A cell may break a long word, or Play Books clips the
+  -- table; a column of short words (a number, a code) is kept whole, or 3%
+  -- of a phone's column broke "19" in two.
+  for i, spec in ipairs(el.colspecs) do
+    el.colspecs[i] = { spec[1], pandoc.ColWidthDefault }
+  end
+  local function mark(r)
+    for i, cell in ipairs(r.cells) do
+      if (longest[i] or 0) <= 5 then
+        cell.attr.classes:insert("whole")
+      end
+    end
+  end
+  for _, r in ipairs(el.head.rows) do mark(r) end
+  for _, body in ipairs(el.bodies) do
+    for _, r in ipairs(body.body) do mark(r) end
+  end
+  local cols = {}
+  for i = 1, #longest do
+    cols[i] = tostring(longest[i] or 0)
+  end
+  local name = pandoc.utils.stringify(el.caption.long or {}):gsub("%s+", " ")
+  if name == "" and el.head.rows[1] then
+    local heads = {}
+    for _, cell in ipairs(el.head.rows[1].cells) do
+      table.insert(heads, pandoc.utils.stringify(cell.contents))
+    end
+    name = "| " .. table.concat(heads, " | ") .. " |"
+  end
+  io.stderr:write("MDBRAND-EPUB-TABLE " .. table.concat(cols, ",") .. "\t" .. name:sub(1, 60) .. "\n")
+  return el
+end
 function Link(el) check(el) end
 
 function Span(el)
@@ -48,6 +116,10 @@ function Span(el)
   end
   if FORMAT == "docx" then
     el.attributes["custom-style"] = "Accent"
+    return el
+  end
+  -- The stylesheet colours the class.
+  if epub then
     return el
   end
   local out = pandoc.List({ pandoc.RawInline("latex", "\\textcolor{brandPrimary}{") })
@@ -109,6 +181,10 @@ local function keep(el)
     io.stderr:write("MDBRAND-KEEP-DECK\t" .. name .. "\n")
     return nil
   end
+  -- A reflowed page has no breaks of its own to keep a block from.
+  if epub then
+    return nil
+  end
   local nested = false
   el:walk({ RawBlock = function(r)
     if r.text:find("mdbrandKeepStart", 1, true) or r.text:find("_mdbrandKeep", 1, true) then
@@ -160,7 +236,7 @@ function Div(el)
   end
   -- The front matter's abstract, which mdbrand moves after the cover: as
   -- LaTeX's own environment, so babel names it (Resumen, Abstract).
-  if el.classes:includes("abstract") and FORMAT ~= "docx" then
+  if el.classes:includes("abstract") and FORMAT ~= "docx" and not epub then
     local out = pandoc.List({ pandoc.RawBlock("latex", "\\begin{abstract}") })
     out:extend(el.content)
     out:insert(pandoc.RawBlock("latex", "\\end{abstract}"))
@@ -242,7 +318,7 @@ end
 local function rawHTML(el)
   -- A .docx has no LaTeX: \newpage, \vspace or a \textcolor of the author's
   -- went missing from it without a word. Reported by command for a warning.
-  if FORMAT == "docx" and (el.format == "latex" or el.format == "tex") then
+  if (FORMAT == "docx" or epub) and (el.format == "latex" or el.format == "tex") then
     local cmd = el.text:match("\\[%a@]+") or el.text:sub(1, 30)
     io.stderr:write("MDBRAND-RAWTEX " .. cmd .. "\n")
     return nil

@@ -131,7 +131,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if err := filterProblems(pandocOut); err != nil {
 		return err
 	}
-	if err := pandocWarnings(pandocOut, rep); err != nil {
+	if err := pandocWarnings(pandocOut, "PDF", rep); err != nil {
 		return err
 	}
 	if err := accentContrast(b, pandocOut, slides, rep); err != nil {

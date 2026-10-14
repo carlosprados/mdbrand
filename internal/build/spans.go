@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
@@ -235,22 +236,29 @@ var (
 // hold is dropped, which a \newpage meant for the PDF only does on purpose:
 // that warns, by command. Every other warning was swallowed, on both writers,
 // and now reaches the reader; citations have their own check.
-func pandocWarnings(pandocOut string, rep *Report) error {
+func pandocWarnings(pandocOut, format string, rep *Report) error {
 	if ms := uniqueMatches(texMathRe, pandocOut); len(ms) > 0 {
 		for i, m := range ms {
 			ms[i] = "$" + ellipsize(m, 60) + "$"
 		}
-		return fmt.Errorf(`%d formula(s) the .docx cannot write as an equation, so it would print their
+		return fmt.Errorf(`%d formula(s) the %s cannot write as an equation, so it would print their
 TeX source as text:
   %s
-Word's equations take the LaTeX that pandoc reads: a macro of the document's
+Its equations take the LaTeX that pandoc reads: a macro of the document's
 own, or an environment beyond amsmath's, is not in it. Write the formula with
-standard commands`, len(ms), strings.Join(ms, "\n  "))
+standard commands`, len(ms), format, strings.Join(ms, "\n  "))
 	}
-	if cmds := uniqueMatches(rawTeXRe, pandocOut); len(cmds) > 0 {
+	cmds := uniqueMatches(rawTeXRe, pandocOut)
+	if format == ".epub" {
+		// A reflowed page has no breaks to force: these lose nothing there.
+		cmds = slices.DeleteFunc(cmds, func(c string) bool {
+			return c == `\newpage` || c == `\clearpage` || c == `\pagebreak` || c == `\cleardoublepage`
+		})
+	}
+	if len(cmds) > 0 {
 		rep.Warnings = append(rep.Warnings, fmt.Sprintf(
-			"raw LaTeX the .docx cannot hold was left out of it: %s. Fine for a \\newpage meant for the PDF; anything that carries text or colour is missing from the .docx",
-			strings.Join(cmds, ", ")))
+			"raw LaTeX the %s cannot hold was left out of it: %s. Fine for a \\newpage meant for the PDF; anything that carries text or colour is missing from the %s",
+			format, strings.Join(cmds, ", "), format))
 	}
 	for _, m := range uniqueMatches(warningRe, pandocOut) {
 		if strings.HasPrefix(m, "Citeproc:") || strings.HasPrefix(m, "Could not convert TeX math") {

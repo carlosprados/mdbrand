@@ -700,6 +700,44 @@ if [ $status -eq 0 ]; then
 	fi
 fi
 
+# -------------------------------------------------------------------- the epub
+# The document for an e-reader, beside the PDF: the PDF must not move for it,
+# and the package must validate (the build runs epubcheck), carry a date and
+# a language, the accent as a class, every figure, and the nav out of the
+# reading order.
+echo
+echo "testdata/torture.md --to pdf,epub — the document for an e-reader"
+out="$("$bin" build "$root/testdata/torture.md" --to pdf,epub -o "$work/torture-epub.pdf" 2>&1)"
+status=$?
+if [ $status -ne 0 ]; then
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+else
+	ok "builds, and epubcheck finds the package valid"
+	cmp -s <(pdftotext "$work/torture.pdf" -) <(pdftotext "$work/torture-epub.pdf" -) \
+		&& ok "the PDF is the same with an .epub beside it" || bad "the PDF changed when an .epub was built beside it"
+	opf="$(unzip -p "$work/torture-epub.epub" EPUB/content.opf)"
+	grep -q '<dc:date[^>]*>[0-9]' <<<"$opf" && ok "dc:date is a date" || bad "dc:date is empty"
+	grep -q '<dc:language>en' <<<"$opf" && ok "dc:language from lang" || bad "dc:language is wrong"
+	grep -q 'itemref idref="nav"' <<<"$opf" && bad "the nav is a page in the reading order" || ok "the nav is the reader's menu, not a page"
+	unzip -l "$work/torture-epub.epub" | grep -q 'toc.ncx' && ok "toc.ncx for EPUB 2 readers" || bad "no toc.ncx"
+	pages="$(unzip -p "$work/torture-epub.epub" 'EPUB/text/*.xhtml')"
+	grep -q 'class="accent"' <<<"$pages" && ok "[words]{.accent} kept as a class" || bad "the accent printed plain"
+	n="$(grep -o '<img src="../media/' <<<"$pages" | wc -l)"
+	[ "$n" -eq 6 ] && ok "six pictures, every figure" || bad "$n pictures, want 6"
+	grep -q 'mdbrandKeep\|\\textcolor' <<<"$pages" && bad "LaTeX in the .epub's text" || ok "no LaTeX in the text"
+fi
+
+# A chart sized for A4 is drawn again for the e-reader's column, narrower,
+# so its labels keep their size instead of shrinking with the picture.
+out="$("$bin" build "$root/testdata/data.md" --to epub -o "$work/data.epub" 2>&1)"
+if [ $? -ne 0 ]; then
+	bad "testdata/data.md --to epub failed"; printf '%s\n' "$out" | sed 's/^/        /'
+else
+	printf '%s\n' "$out" | grep -q "under the .*floor on an e-reader" \
+		&& bad "data.md's charts were shrunk, not drawn again: $(printf '%s\n' "$out" | grep floor)" \
+		|| ok "data.md's charts drawn again for the column, labels legible"
+fi
+
 # ------------------------------------------------------------------- the traps
 # file · expected exit (ok|fail) · a phrase the message must carry · extra args
 traps=(
@@ -770,6 +808,10 @@ traps=(
 	"pptx-three-columns.md|fail|a .pptx holds two|--to pptx --brand none"
 	"pptx-two-figures.md|fail|\"Two at once\" holds 2 figures|--to pptx --brand none"
 	"pptx-on-page.md|fail|a .pptx is a deck|--to pptx --brand none"
+	"epub-on-slides.md|fail|an .epub is a document an e-reader reflows|--to epub --brand none"
+	"epub-figure-wide.md|ok|on an e-reader's 80 mm column its smallest label prints at|--to epub --brand none"
+	"epub-grey-series.md|ok|fig00.vl.json #1565C0 and #5D6266 (L* 43 and 41)|--to epub --brand none"
+	"epub-math-heading.md|ok|the formulas are written as MathML|--to epub --brand none"
 	"keep-too-tall.md|fail|\"The long card\": "
 	"keep-slides.md|fail|::: {.keep} on a slide"
 	"keep-nested.md|fail|::: {.keep} inside another"
@@ -781,7 +823,7 @@ for t in "${traps[@]}"; do
 	IFS='|' read -r file want phrase extra <<<"$t"
 	# shellcheck disable=SC2086 — the extra arguments are meant to split.
 	ext=pdf
-	case "$extra" in *"--to docx"*) ext=docx ;; *"--to pptx"*) ext=pptx ;; esac
+	case "$extra" in *"--to docx"*) ext=docx ;; *"--to pptx"*) ext=pptx ;; *"--to epub"*) ext=epub ;; esac
 	out="$("$bin" build "$root/testdata/traps/$file" ${extra:---brand none} \
 		-o "$work/${file%.md}.$ext" 2>&1)"
 	status=$?

@@ -468,12 +468,12 @@ func TestPlacedPPIFindsTheAuthorsPictures(t *testing.T) {
 // command; pandoc's other warnings reach the reader, citations aside.
 func TestPandocWarnings(t *testing.T) {
 	out := "[WARNING] Could not convert TeX math \\foo{x}, rendering as TeX:\n  \\foo{x}\n"
-	if err := pandocWarnings(out, &Report{}); err == nil || !strings.Contains(err.Error(), `$\foo{x}$`) {
+	if err := pandocWarnings(out, ".docx", &Report{}); err == nil || !strings.Contains(err.Error(), `$\foo{x}$`) {
 		t.Errorf("err = %v", err)
 	}
 	rep := &Report{}
 	out = "MDBRAND-RAWTEX \\newpage\nMDBRAND-RAWTEX \\newpage\n[WARNING] Citeproc: citation x not found\n[WARNING] Duplicate note reference '1'\n"
-	if err := pandocWarnings(out, rep); err != nil {
+	if err := pandocWarnings(out, ".docx", rep); err != nil {
 		t.Fatal(err)
 	}
 	got := strings.Join(rep.Warnings, "|")

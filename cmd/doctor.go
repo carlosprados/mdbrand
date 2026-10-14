@@ -31,7 +31,8 @@ LaTeX packages. Required only if the document has diagrams: d2, vl2svg.
 Recommended: pdftotext, which reads each PDF back so a text layer that copies
 as garbage stops the build; without it a build warns that it was not checked.
 Optional: soffice (LibreOffice), which --to pptx uses to estimate the slides
-whose text does not fit.`,
+whose text does not fit. Required only for --to epub: epubcheck, which
+validates the package (Java).`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
 			fails := printChecks(out, append(toolChecks(), latexChecks()...))
@@ -69,6 +70,9 @@ func toolChecks() []check {
 	// --to pptx estimates which slides' text does not fit by rendering the
 	// deck in LibreOffice; without it the build says it did not look.
 	bin("soffice", "apt install libreoffice-impress-nogui  ·  https://www.libreoffice.org/download/download-libreoffice/", false)
+	// --to epub validates every package it writes: pandoc writes invalid
+	// ones at exit 0.
+	bin("epubcheck", "apt install epubcheck (brew install epubcheck)  ·  https://www.w3.org/publishing/epubcheck/", false)
 	return checks
 }
 

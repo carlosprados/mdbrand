@@ -107,7 +107,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err := pptxColumns(pandocOut); err != nil {
 		return err
 	}
-	if err := pandocWarnings(pandocOut, rep); err != nil {
+	if err := pandocWarnings(pandocOut, ".pptx", rep); err != nil {
 		return err
 	}
 	if !p.pdfToo {
