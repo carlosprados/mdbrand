@@ -25,6 +25,24 @@
 \patchcmd{\LT@start}{\global\@colroom\@colht}{}{}{}
 \makeatother
 
+{{- if gt .Brand.Page.HeadingLines 0}}
+% A heading needs its text below it on the same page. LaTeX keeps a heading
+% with the first two lines of its paragraph, so one whose first paragraph is
+% a single line sat at the foot of a page with that line, the rest overleaf.
+% Room for page.keep_heading_lines lines and the heading is reserved as
+% needspace does, the heading with the space around it counted as three
+% lines: two left a section heading alone with its line on testdata/headings.md.
+% Inside a ::: {.keep} box (\ifinner) the block decides.
+\newdimen\mdbrandHeadRoom
+\newcommand\mdbrandHeadingRoom{\ifinner\else\par
+  \mdbrandHeadRoom=\dimexpr {{.Brand.Page.HeadingLines}}\baselineskip+3\baselineskip\relax
+  \penalty-100
+  \ifdim\mdbrandHeadRoom>\dimexpr\pagegoal-\pagetotal\relax
+    \ifdim\dimexpr\pagegoal-\pagetotal\relax>0pt \vfil\penalty-10000\fi\fi\fi}
+\pretocmd{\section}{\mdbrandHeadingRoom}{}{}
+\pretocmd{\subsection}{\mdbrandHeadingRoom}{}{}
+\pretocmd{\subsubsection}{\mdbrandHeadingRoom}{}{}
+{{end}}
 % Tables: a full-size table in a 10pt document overflows the measure, and the
 % overflow is silent. footnotesize plus a little air is the shape that works.
 \AtBeginEnvironment{longtable}{\footnotesize}

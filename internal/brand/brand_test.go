@@ -353,3 +353,17 @@ func TestSynthesizeMapsToFontspecAndRefusesTheRest(t *testing.T) {
 		}
 	}
 }
+
+func TestKeepHeadingLinesRange(t *testing.T) {
+	b := Default()
+	if got := b.Page.HeadingLines(); got != DefaultKeepHeadingLines {
+		t.Errorf("absent = %d, want the default %d", got, DefaultKeepHeadingLines)
+	}
+	for _, n := range []int{-1, 11} {
+		b.Page.KeepHeadingLines = &n
+		probs, _ := b.Check()
+		if !strings.Contains(strings.Join(probs, "\n"), "page.keep_heading_lines") {
+			t.Errorf("%d lines accepted: %v", n, probs)
+		}
+	}
+}

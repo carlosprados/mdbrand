@@ -280,6 +280,9 @@ split it. Inside another `.keep`, or on a slide, it is refused. In a `.docx`
 every paragraph of the block keeps with the next, which Word and Google Docs
 honour; a .docx cannot be measured, so a long block there simply breaks.
 
+A heading starts the next page unless three lines of its text fit below it
+(bundle `page.keep_heading_lines`, `0` off), so none is left at the foot.
+
 ## Slides
 
 `style: slides` makes a 16:9 deck (160 × 90 mm) from the same Markdown, bundle
