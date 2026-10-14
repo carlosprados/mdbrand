@@ -31,26 +31,38 @@ type Store struct {
 	docDir string
 	dirs   []string          // directories whose files are namespaces
 	files  map[string]string // single files declared in mdbrand.data, by stem
+	named  map[string]string // named roots, directory or file, by name
 	cache  map[string]*yaml.Node
 	refs   map[string]bool
 }
+
+// Root is one entry of mdbrand.data. A named root's namespaces sit under its
+// name: {tao: ../tao/data} makes data/principios.yaml there data.tao.principios.
+type Root struct {
+	Name string
+	Path string
+}
+
+var rootNameRe = regexp.MustCompile(`^[\pL_][\pL\pN_-]*$`)
 
 // Open prepares the data roots for the document at docPath. With no declared
 // roots it is data/ beside the document, and it is not an error for that to be
 // absent until a path needs it. Declared roots replace the default, resolve
 // against the document, expand ~ and $VARS, and must exist: naming a directory
 // that is not there is a mistake worth stopping on.
-func Open(docPath string, declared []string) (*Store, error) {
+func Open(docPath string, declared []Root) (*Store, error) {
 	docDir, err := filepath.Abs(filepath.Dir(docPath))
 	if err != nil {
 		return nil, err
 	}
-	s := &Store{docDir: docDir, files: map[string]string{}, cache: map[string]*yaml.Node{}, refs: map[string]bool{}}
+	s := &Store{docDir: docDir, files: map[string]string{}, named: map[string]string{},
+		cache: map[string]*yaml.Node{}, refs: map[string]bool{}}
 	if len(declared) == 0 {
 		s.dirs = []string{filepath.Join(docDir, "data")}
 		return s, nil
 	}
-	for _, d := range declared {
+	for _, r := range declared {
+		d := r.Path
 		p := paths.Expand(d)
 		if !filepath.IsAbs(p) {
 			p = filepath.Join(docDir, p)
@@ -59,18 +71,33 @@ func Open(docPath string, declared []string) (*Store, error) {
 		if err != nil {
 			return nil, fmt.Errorf("mdbrand.data: %s: %w\n  Paths resolve against the document.", d, err)
 		}
+		if !st.IsDir() && !isDataFile(p) {
+			return nil, fmt.Errorf("mdbrand.data: %s is not a data file (%s)", d, strings.Join(exts, ", "))
+		}
+		if r.Name != "" {
+			if !rootNameRe.MatchString(r.Name) {
+				return nil, fmt.Errorf("mdbrand.data: %q cannot name a data root: a name is one word of letters, digits, _ and -, since it is written data.<name>.…", r.Name)
+			}
+			if _, ok := s.named[r.Name]; ok {
+				return nil, fmt.Errorf("mdbrand.data: two data roots are named %s", r.Name)
+			}
+			s.named[r.Name] = p
+			continue
+		}
 		if st.IsDir() {
 			s.dirs = append(s.dirs, p)
 			continue
-		}
-		if !isDataFile(p) {
-			return nil, fmt.Errorf("mdbrand.data: %s is not a data file (%s)", d, strings.Join(exts, ", "))
 		}
 		stem := stemOf(filepath.Base(p))
 		if prev, ok := s.files[stem]; ok {
 			return nil, fmt.Errorf("mdbrand.data: %s and %s would both be data.%s", prev, p, stem)
 		}
 		s.files[stem] = p
+	}
+	for name, p := range s.named {
+		if prev, ok := s.files[name]; ok {
+			return nil, fmt.Errorf("mdbrand.data: %s and the root named %s (%s) would both be data.%s", prev, name, p, name)
+		}
 	}
 	return s, nil
 }
@@ -152,60 +179,51 @@ func (s *Store) read(file string) (*yaml.Node, error) {
 }
 
 // resolveFile finds the file the leading segments name, in every root, and
-// returns the segments left over for inside it.
+// returns the segments left over for inside it. A name two roots answer to is
+// refused, a named root and an unnamed one included.
 func (s *Store) resolveFile(segs []string) (string, []string, error) {
-	type hit struct {
-		file string
-		rest []string
-	}
 	var hits []hit
 	var dead []string // where each root ran out, for the message
 	if p, ok := s.files[segs[0]]; ok {
 		s.refs[p] = true
 		hits = append(hits, hit{p, segs[1:]})
 	}
+	if p, ok := s.named[segs[0]]; ok {
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			s.refs[p] = true
+			hits = append(hits, hit{p, segs[1:]})
+		} else if len(segs) == 1 {
+			return "", nil, fmt.Errorf("data.%s is a data root, not a value; its files are %s", segs[0], available(p))
+		} else {
+			h, why, err := s.walk(p, segs[1:])
+			if err != nil {
+				return "", nil, err
+			}
+			if h != nil {
+				hits = append(hits, *h)
+			} else {
+				dead = append(dead, why)
+			}
+		}
+	}
 	for _, root := range s.dirs {
-		dir := root
-		for i, seg := range segs {
-			var found []string
-			for _, e := range exts {
-				p := filepath.Join(dir, seg+e)
-				if _, err := os.Stat(p); err == nil {
-					found = append(found, p)
-				}
-			}
-			sub := filepath.Join(dir, seg)
-			st, err := os.Stat(sub)
-			isDir := err == nil && st.IsDir()
-			if isDir {
-				found = append(found, sub+string(filepath.Separator))
-			}
-			if len(found) > 1 {
-				return "", nil, fmt.Errorf("%s could be any of %s; rename all but one", seg, strings.Join(found, ", "))
-			}
-			if !isDir && len(found) == 1 {
-				s.refs[found[0]] = true
-				hits = append(hits, hit{found[0], segs[i+1:]})
-				break
-			}
-			if isDir {
-				if i == len(segs)-1 {
-					return "", nil, fmt.Errorf("%s is a directory of data files, not a value; its files are %s", sub, available(sub))
-				}
-				dir = sub
-				continue
-			}
-			for _, e := range exts {
-				s.refs[filepath.Join(dir, seg+e)] = true
-			}
-			dead = append(dead, fmt.Sprintf("no %s.{yaml,yml,json,csv,tsv} in %s — %s", seg, dir, available(dir)))
-			break
+		h, why, err := s.walk(root, segs)
+		if err != nil {
+			return "", nil, err
+		}
+		if h != nil {
+			hits = append(hits, *h)
+		} else {
+			dead = append(dead, why)
 		}
 	}
 	switch len(hits) {
 	case 1:
 		return hits[0].file, hits[0].rest, nil
 	case 0:
+		if len(dead) == 0 {
+			return "", nil, fmt.Errorf("no data root answers to %s; the roots are %s", segs[0], strings.Join(s.Roots(), ", "))
+		}
 		return "", nil, fmt.Errorf("%s", strings.Join(dead, "\n  "))
 	}
 	names := make([]string, len(hits))
@@ -213,6 +231,51 @@ func (s *Store) resolveFile(segs []string) (string, []string, error) {
 		names[i] = h.file
 	}
 	return "", nil, fmt.Errorf("two data roots answer to it: %s", strings.Join(names, ", "))
+}
+
+type hit struct {
+	file string
+	rest []string
+}
+
+// walk follows segs down a root directory to the first data file they name.
+// With no file, why says where it ran out.
+func (s *Store) walk(root string, segs []string) (*hit, string, error) {
+	dir := root
+	for i, seg := range segs {
+		var found []string
+		for _, e := range exts {
+			p := filepath.Join(dir, seg+e)
+			if _, err := os.Stat(p); err == nil {
+				found = append(found, p)
+			}
+		}
+		sub := filepath.Join(dir, seg)
+		st, err := os.Stat(sub)
+		isDir := err == nil && st.IsDir()
+		if isDir {
+			found = append(found, sub+string(filepath.Separator))
+		}
+		if len(found) > 1 {
+			return nil, "", fmt.Errorf("%s could be any of %s; rename all but one", seg, strings.Join(found, ", "))
+		}
+		if !isDir && len(found) == 1 {
+			s.refs[found[0]] = true
+			return &hit{found[0], segs[i+1:]}, "", nil
+		}
+		if isDir {
+			if i == len(segs)-1 {
+				return nil, "", fmt.Errorf("%s is a directory of data files, not a value; its files are %s", sub, available(sub))
+			}
+			dir = sub
+			continue
+		}
+		for _, e := range exts {
+			s.refs[filepath.Join(dir, seg+e)] = true
+		}
+		return nil, fmt.Sprintf("no %s.{yaml,yml,json,csv,tsv} in %s — %s", seg, dir, available(dir)), nil
+	}
+	return nil, "", nil
 }
 
 // available lists the namespaces a directory offers, for a message.

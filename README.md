@@ -472,7 +472,11 @@ What it guards against:
 
 `mdbrand: {data: [../catalogo, tarifas.json]}` replaces `data/` with other
 directories or files, resolved against the document, so one catalogue serves
-several proposals. `mdbrand data propuesta.md` lists what the document can reach
+several proposals. A root given a name keeps its files apart from the
+document's own: with `data: [data, {tao: ../tao-te-king/data}]`, that project's
+`principios.yaml` is `{{data.tao.principios[p06].name}}`, `source:
+tao.principios` in a table and `"data": {"name": "tao.principios"}` in a chart.
+A name two roots answer to stops the build. `mdbrand data propuesta.md` lists what the document can reach
 and reads every file, and `mdbrand data propuesta.md 'data.maquinas[m5.large]'`
 shows one entry. Data files are watched by `build -w`.
 

@@ -24,6 +24,9 @@ func (s *Store) Roots() []string {
 	for _, p := range s.files {
 		out = append(out, p)
 	}
+	for name, p := range s.named {
+		out = append(out, name+": "+p)
+	}
 	sort.Strings(out)
 	return out
 }
@@ -36,7 +39,23 @@ func (s *Store) Namespaces() []Entry {
 	for stem, p := range s.files {
 		out = append(out, s.describe("data"+formatPath([]string{stem}), p))
 	}
-	for _, root := range s.dirs {
+	type root struct {
+		dir    string
+		prefix []string
+	}
+	roots := make([]root, 0, len(s.dirs)+len(s.named))
+	for _, d := range s.dirs {
+		roots = append(roots, root{d, nil})
+	}
+	for name, p := range s.named {
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			out = append(out, s.describe("data"+formatPath([]string{name}), p))
+			continue
+		}
+		roots = append(roots, root{p, []string{name}})
+	}
+	for _, r := range roots {
+		root := r.dir
 		filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
 			if err != nil || strings.HasPrefix(d.Name(), ".") && p != root {
 				if d != nil && d.IsDir() {
@@ -52,7 +71,7 @@ func (s *Store) Namespaces() []Entry {
 			if segs[0] == "." {
 				segs = segs[1:]
 			}
-			out = append(out, s.describe("data"+formatPath(segs), p))
+			out = append(out, s.describe("data"+formatPath(append(append([]string{}, r.prefix...), segs...)), p))
 			return nil
 		})
 	}

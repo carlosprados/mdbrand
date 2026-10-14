@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/carlosprados/mdbrand/internal/data"
 	"github.com/carlosprados/mdbrand/internal/mdtext"
 	"github.com/carlosprados/mdbrand/internal/suggest"
 	"gopkg.in/yaml.v3"
@@ -107,6 +108,38 @@ func (s *StringList) UnmarshalYAML(n *yaml.Node) error {
 	return fmt.Errorf("expected a path or a list of paths")
 }
 
+// DataRoots is mdbrand.data: a path, or a list whose entries are a path or
+// a mapping of names to paths. A named root's namespaces sit under its name,
+// so a second project's data/ is reached as data.<name>.… without its files
+// colliding with the document's own.
+type DataRoots []data.Root
+
+func (r *DataRoots) UnmarshalYAML(n *yaml.Node) error {
+	items := []*yaml.Node{n}
+	if n.Kind == yaml.SequenceNode {
+		items = n.Content
+	}
+	for _, it := range items {
+		switch it.Kind {
+		case yaml.ScalarNode:
+			if strings.TrimSpace(it.Value) != "" {
+				*r = append(*r, data.Root{Path: it.Value})
+			}
+		case yaml.MappingNode:
+			for i := 0; i+1 < len(it.Content); i += 2 {
+				k, v := it.Content[i], it.Content[i+1]
+				if v.Kind != yaml.ScalarNode {
+					return fmt.Errorf("data root %s: expected a path", k.Value)
+				}
+				*r = append(*r, data.Root{Name: k.Value, Path: v.Value})
+			}
+		default:
+			return fmt.Errorf("expected a path, or a mapping of a name to a path")
+		}
+	}
+	return nil
+}
+
 // Options are the mdbrand-specific keys, nested under `mdbrand:` so they never
 // collide with a pandoc variable.
 type Options struct {
@@ -118,7 +151,7 @@ type Options struct {
 	WordCount    WordCount `yaml:"wordcount"`
 	// Data replaces the default data/ beside the document with these
 	// directories or files, resolved against the document.
-	Data StringList `yaml:"data"`
+	Data DataRoots `yaml:"data"`
 	// Formats are the outputs to write: pdf, docx, or both. `to:` would have
 	// been pandoc's word for it, and it is the letter's recipient here.
 	Formats StringList `yaml:"formats"`

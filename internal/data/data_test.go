@@ -10,7 +10,7 @@ import (
 )
 
 // tree writes files under a temporary document directory and opens its store.
-func tree(t *testing.T, files map[string]string, declared ...string) (*Store, string) {
+func tree(t *testing.T, files map[string]string, declared ...Root) (*Store, string) {
 	t.Helper()
 	dir := t.TempDir()
 	for name, body := range files {
@@ -144,12 +144,69 @@ func TestDeclaredRootsReplaceDefault(t *testing.T) {
 		"data/a.yaml":        "x: default",
 		"../shared/a.yaml":   "x: shared",
 		"extra/tarifas.json": `{"hora": "65"}`,
-	}, "../shared", "extra/tarifas.json")
+	}, Root{Path: "../shared"}, Root{Path: "extra/tarifas.json"})
 	if v, err := s.Lookup("data.a.x"); err != nil || v.Text != "shared" {
 		t.Errorf("data.a.x = %q, %v; want the declared root, not data/", v.Text, err)
 	}
 	if v, err := s.Lookup("data.tarifas.hora"); err != nil || v.Text != "65" {
 		t.Errorf("a declared file is its own namespace: %q, %v", v.Text, err)
+	}
+}
+
+// A second project's data/ reached under a name: its files must not collide
+// with the document's own, and every reader of data — placeholders, tables,
+// charts, the listing — must see it the same way.
+func TestNamedRoots(t *testing.T) {
+	s, _ := tree(t, map[string]string{
+		"data/principios.yaml":        "p01: {name: propio}",
+		"../tao/data/principios.yaml": "p06: {name: Wu wei}",
+		"../tao/data/sub/textos.csv":  "id,es\nt1,El agua\n",
+		"../precios.csv":              "id;eur\na;1,5\n",
+	}, Root{Path: "data"}, Root{Name: "tao", Path: "../tao/data"}, Root{Name: "precios", Path: "../precios.csv"})
+	for expr, want := range map[string]string{
+		"data.principios.p01.name":      "propio",
+		"data.tao.principios[p06].name": "Wu wei",
+		"data.tao.sub.textos[t1].es":    "El agua",
+	} {
+		if v, err := s.Lookup(expr); err != nil || v.Text != want {
+			t.Errorf("%s = %q, %v; want %q", expr, v.Text, err, want)
+		}
+	}
+	if recs, err := s.Records("tao.principios", "es"); err != nil || len(recs) != 1 || recs[0]["name"] != "Wu wei" {
+		t.Errorf("a chart's data name through a named root: %v, %v", recs, err)
+	}
+	var names []string
+	for _, e := range s.Namespaces() {
+		names = append(names, e.Name)
+	}
+	if got := strings.Join(names, " "); got != "data.precios data.principios data.tao.principios data.tao.sub.textos" {
+		t.Errorf("namespaces = %s", got)
+	}
+	for expr, want := range map[string]string{
+		"data.tao":          "is a data root, not a value",
+		"data.tao.nada.x":   "no nada.{yaml",
+		"data.precios.nada": "no entry with id",
+	} {
+		if _, err := s.Lookup(expr); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v; want %q", expr, err, want)
+		}
+	}
+
+	// The document's own data/ holding tao.yaml answers to data.tao too.
+	clash, _ := tree(t, map[string]string{
+		"data/tao.yaml":      "x: 1",
+		"../tao/data/x.yaml": "y: 2",
+	}, Root{Path: "data"}, Root{Name: "tao", Path: "../tao/data"})
+	if _, err := clash.Lookup("data.tao.x.y"); err == nil || !strings.Contains(err.Error(), "two data roots answer") {
+		t.Errorf("a name two roots answer to: %v", err)
+	}
+	for _, roots := range [][]Root{
+		{{Name: "a.b", Path: "."}},
+		{{Name: "t", Path: "."}, {Name: "t", Path: "."}},
+	} {
+		if _, err := Open(filepath.Join(t.TempDir(), "doc.md"), roots); err == nil {
+			t.Errorf("%v opened", roots)
+		}
 	}
 }
 
