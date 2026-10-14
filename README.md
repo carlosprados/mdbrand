@@ -606,6 +606,17 @@ inside another, or on a slide (which never breaks), is refused. In the
 lines together, which Word and Google Docs both honour; the layout there is
 the reader's, so a block too long for a page breaks where Word puts it.
 
+### Headings stay with their text
+
+LaTeX keeps a heading with two lines of its first paragraph, so a heading
+whose first paragraph is a single line could sit at the foot of a page with
+that line, the rest overleaf. mdbrand reserves room before every heading: if
+the heading and three lines of text do not fit, it starts the next page. The
+bundle's `page.keep_heading_lines` sets the number of lines; `0` turns it off.
+Inside a `::: {.keep}` block the block decides. Slides and the `.docx` are
+unaffected: a slide never breaks, and Word keeps headings with the next
+paragraph by its own styles.
+
 ### Styles
 
 | Style | Shape |
@@ -1012,6 +1023,8 @@ page:
   logo_width_cover: 46mm
   logo_width_cover_secondary: 24mm
   logo_width_header: 16mm       # one mark only: at 16mm a second is a smudge
+  keep_heading_lines: 3         # a heading starts the next page unless 3 lines
+                                # of its text fit below it; 0 turns it off
   # headheight: 22pt            # usually omit: derived from the logo's height
   # headsep: 13pt               # gap between the header rule and the text
 

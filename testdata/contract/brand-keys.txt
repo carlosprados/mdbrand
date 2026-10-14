@@ -34,6 +34,7 @@ name
 page
 page.headheight
 page.headsep
+page.keep_heading_lines
 page.linestretch
 page.logo_width_cover
 page.logo_width_cover_secondary

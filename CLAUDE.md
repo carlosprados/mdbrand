@@ -351,8 +351,13 @@ Do not relax one without understanding what it cost.
     The macros are written before the first block only, so a document
     without one keeps its .tex byte for byte. In a .docx, bookmarks mark the
     block and Repair sets keepNext and keepLines on its paragraphs.
+    Headings take the same reservation: page.keep_heading_lines (3 by
+    default) lines and the heading's own three, before every \section to
+    \subsubsection, because LaTeX alone kept only two lines and a heading
+    with a one-line paragraph sat at the foot with it.
     → `internal/build/build_test.go`, `internal/docx/docx_test.go`,
-    `testdata/keep.md`, `traps/keep-*.md`.
+    `internal/tex/tex_test.go`, `testdata/keep.md`, `testdata/headings.md`,
+    `traps/keep-*.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

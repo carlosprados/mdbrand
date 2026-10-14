@@ -168,6 +168,11 @@ type Page struct {
 	LogoWidthCover  string  `yaml:"logo_width_cover"`
 	LogoWidthHeader string  `yaml:"logo_width_header"`
 
+	// KeepHeadingLines is how many lines of text a heading needs below it
+	// on its page, or it starts the next one. Absent, it is
+	// DefaultKeepHeadingLines; 0 turns it off.
+	KeepHeadingLines *int `yaml:"keep_heading_lines"`
+
 	// Whether headheight came from the bundle or from applyDefaults. The
 	// difference decides policy: an absent value is derived from the logo's
 	// real height, a declared one that cannot hold the logo fails the build
@@ -177,6 +182,20 @@ type Page struct {
 	// The second logo appears on the cover only. The running header stays with
 	// one mark: at 16mm a second one is a smudge, not an identity.
 	LogoWidthCoverSecondary string `yaml:"logo_width_cover_secondary"`
+}
+
+// DefaultKeepHeadingLines keeps a heading off the foot of a page unless
+// three lines of its text fit below it: LaTeX alone keeps two lines of a
+// paragraph, and a one-line first paragraph left a heading and that line at
+// the foot with the rest overleaf.
+const DefaultKeepHeadingLines = 3
+
+// HeadingLines is the room a heading needs below it, in lines of text.
+func (p Page) HeadingLines() int {
+	if p.KeepHeadingLines == nil {
+		return DefaultKeepHeadingLines
+	}
+	return *p.KeepHeadingLines
 }
 
 // HeadHeightDeclared reports whether brand.yaml set page.headheight itself.
@@ -637,6 +656,10 @@ func (b *Brand) Check() (problems, warnings []string) {
 		}
 	}
 
+	if n := b.Page.HeadingLines(); n < 0 || n > 10 {
+		add(&problems, "page.keep_heading_lines: %d is not a number of lines from 0 (off) to 10", n)
+	}
+
 	checkLogo := func(label, logo string) { checkArtwork(label, logo, &problems, &warnings) }
 
 	if logo := b.LogoPath(); logo == "" {
@@ -737,6 +760,8 @@ page:
   logo_width_cover: 46mm    # tune per logo: a tall mark needs less width
   # logo_width_cover_secondary: 24mm
   logo_width_header: 16mm
+  # keep_heading_lines: 3   # a heading starts the next page unless this many
+  #                         # lines fit below it; 0 turns it off
   # headheight / headsep: leave them out. mdbrand measures the logo and gives
   # the running header the height it really needs — logo_width_header is a
   # WIDTH, and a square mark is as tall as it is wide. Set headheight only to

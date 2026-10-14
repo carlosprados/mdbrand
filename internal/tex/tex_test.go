@@ -312,3 +312,27 @@ func TestDataEsc(t *testing.T) {
 		t.Errorf("plain: %q", got)
 	}
 }
+
+// A heading reserves room for page.keep_heading_lines lines below it by
+// default; 0 leaves the preamble without the macro at all.
+func TestKeepHeadingLines(t *testing.T) {
+	b := brand.Default()
+	out, err := Render("preamble", &Data{Brand: b, Style: "report", Title: "T"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`\dimexpr 3\baselineskip+3\baselineskip`, `\pretocmd{\section}{\mdbrandHeadingRoom}`, `\pretocmd{\subsubsection}`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("default preamble lacks %s", want)
+		}
+	}
+	off := 0
+	b.Page.KeepHeadingLines = &off
+	out, err = Render("preamble", &Data{Brand: b, Style: "report", Title: "T"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out, "mdbrandHeadingRoom") {
+		t.Error("keep_heading_lines: 0 still reserves room")
+	}
+}

@@ -365,6 +365,31 @@ if [ $status -eq 0 ]; then
 		ok "the text after the last figure is on the page" || bad "the text after the last figure is off the page"
 fi
 
+# headings: a heading whose first paragraph is one line long sat at the foot
+# of a page with that line, the rest overleaf. Each must share its page with
+# the start of its second paragraph.
+echo
+echo "testdata/headings.md — headings keep their text on their page"
+out="$("$bin" build "$root/testdata/headings.md" -o "$work/headings.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	pages="$(pdfinfo "$work/headings.pdf" | awk '/^Pages/ {print $2}')"
+	alone=""
+	for i in $(seq -w 1 30); do
+		hp="" sp=""
+		for p in $(seq 1 "$pages"); do
+			t="$(pdftotext -f "$p" -l "$p" "$work/headings.pdf" -)"
+			[ -z "$hp" ] && grep -qF "H$i section" <<<"$t" && hp=$p
+			[ -z "$sp" ] && grep -qF "Second $i" <<<"$t" && sp=$p
+		done
+		[ "$hp" = "$sp" ] || alone="$alone H$i"
+	done
+	[ -z "$alone" ] && ok "no heading is left at the foot without its text" || bad "headings alone at the foot:$alone"
+fi
+
 # ----------------------------------------------------------------- the locale
 # A chart in a Spanish document wrote 30,000 and Jan. Its locale only reaches
 # Vega through vl2vg and vg2svg -f -t, and only from vega-cli 6.4.0; the
