@@ -350,6 +350,21 @@ if [ $status -eq 0 ]; then
 	[ "$(grep -o '<w:keepNext/>' <<<"$xml" | wc -l)" -eq 72 ] && ok "the .docx keeps each card's paragraphs with the next" || bad "the .docx does not keep the cards together"
 fi
 
+# data-named: a second project's data/ under a name of its own, read by a
+# placeholder, a table and a chart alike.
+echo
+echo "testdata/data-named.md — named data roots"
+out="$("$bin" build "$root/testdata/data-named.md" -o "$work/data-named.pdf" 2>&1)"
+status=$?
+if [ $status -ne 0 ]; then
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+elif command -v pdftotext >/dev/null; then
+	text="$(pdftotext "$work/data-named.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+	for phrase in "ACME: División Norte. De la raíz con nombre: Wu wei, con peso 5" "p06 Wu wei 5"; do
+		case "$text" in *"$phrase"*) ok "prints: $phrase" ;; *) bad "missing: $phrase" ;; esac
+	done
+fi
+
 # floats beside a table: longtable forgot a figure at the top of its page, and
 # a later figure printed past the foot of the paper with the text below it,
 # exit 0. An observatorio report lost a chart and a paragraph that way.

@@ -102,7 +102,7 @@ mdbrand:
   short_title: "Oferta Acme"      # the running header's title when the real one is too long
   formats: [pdf, docx]            # pdf (default) | docx | notes, in any combination
   wordcount: all                  # or {base: ib, include: [tables]}; default ib
-  data: [precios/, extra.yaml]    # where {{data…}} reads; default data/ beside the document
+  data: [precios/, extra.yaml, {tao: ../tao/data}]  # where {{data…}} reads; default data/ beside the document; a named root is data.tao.…
   # letter only: to: [lines], place:, greeting:, signature: | (one line per line)
 ---
 ```
@@ -143,6 +143,9 @@ Values print literally, Markdown characters included; tag a YAML value `!md`
 to have it read as Markdown. A wrong key stops the build listing the real ones.
 Name anchor-only entries with a leading `_` (`_base: &base {…}`). Run
 `mdbrand data doc.md` before writing placeholders instead of opening the files.
+Another project's data goes in as a named root, `data: [data, {tao: ../tao/data}]`:
+its files are `data.tao.principios…` in placeholders, `source: tao.principios`
+in tables and `"data": {"name": "tao.principios"}` in charts.
 No loops or conditions: prepare that content upstream.
 
 Never type a table whose rows are in a data file:

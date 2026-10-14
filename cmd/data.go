@@ -21,6 +21,17 @@ matter points (directories or files, relative to the document). The file name
 is the namespace: data/maquinas.yaml is data.maquinas, data/aws/ec2.csv is
 data.aws.ec2. YAML, JSON, CSV (header row; , ; or tab, detected) and TSV.
 
+A root given a name puts its namespaces under that name, so another project's
+data/ is reachable without its files colliding with the document's own:
+
+  mdbrand: {data: [data, {tao: ../../tao-te-king/data}]}
+
+  {{data.tao.principios[p06].name}}   in the prose
+  source: tao.principios              in a table block
+  "data": {"name": "tao.principios"}  in a Vega-Lite chart
+
+A name two roots answer to stops the build.
+
 In the document, {{data.path}} prints one value, as written in the file:
 
   {{data.cliente.nombre}}

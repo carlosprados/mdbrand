@@ -1,6 +1,7 @@
 package doc
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -468,5 +469,26 @@ func TestExtractFigsSettlesEveryPictureForm(t *testing.T) {
 	f, _ = Read(write(t, dir, "fig.md", "![d][arq]\n\n[arq]: arq.d2\n"))
 	if _, _, err := f.ExtractFigs(t.TempDir()); err == nil || !strings.Contains(err.Error(), "link it inline") {
 		t.Errorf("a figure by reference: %v", err)
+	}
+}
+
+func TestDataRootsShapes(t *testing.T) {
+	for src, want := range map[string]DataRoots{
+		"data: ../data":                       {{Path: "../data"}},
+		"data: [../data, {tao: ../tao/data}]": {{Path: "../data"}, {Name: "tao", Path: "../tao/data"}},
+		"data: {tao: ../tao/data}":            {{Name: "tao", Path: "../tao/data"}},
+	} {
+		var o Options
+		if err := yaml.Unmarshal([]byte(src), &o); err != nil {
+			t.Errorf("%s: %v", src, err)
+			continue
+		}
+		if fmt.Sprint(o.Data) != fmt.Sprint(want) {
+			t.Errorf("%s = %v, want %v", src, o.Data, want)
+		}
+	}
+	var o Options
+	if err := yaml.Unmarshal([]byte("data: [{tao: [a, b]}]"), &o); err == nil {
+		t.Error("a name mapped to a list parsed")
 	}
 }
