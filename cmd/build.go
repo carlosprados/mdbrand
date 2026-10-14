@@ -99,6 +99,11 @@ silence, so the words would print black.
 Raw HTML stops it too, each tag named with its Markdown — <br>, <b>, <img>,
 <table> vanish from both outputs; an HTML comment is fine.
 
+::: {.keep} … ::: keeps a block on one page: when it does not fit in what is
+left, it starts the next page whole. A kept block taller than a page stops the
+build, naming its first heading; on a slide, or inside another, it is refused.
+In a .docx its paragraphs keep with the next.
+
 A picture linked as .svg is treated as a figure — checked for <foreignObject>,
 sized for legible labels and converted by rsvg-convert; a picture it links
 with <image href> is embedded from beside it, and one that is not there stops

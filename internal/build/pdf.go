@@ -163,6 +163,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	}
 	sc := scanLog(string(logRaw))
 	sc.HeadSepPt = headSepPt(b)
+	sc.KeepNames = keepNames(pandocOut)
 	if err := judgeLog(sc, o, rep); err != nil {
 		return err
 	}
@@ -449,6 +450,9 @@ it never print — and only this log knew. Split the cell's text over several
 rows, or move the long text out of the table into the body and keep a short
 summary in the cell`, strings.Join(sc.TallRows, ", "))
 	}
+	if len(sc.KeepTall) > 0 {
+		return keepTallError(sc)
+	}
 	if err := judgeHeader(sc, rep); err != nil {
 		return err
 	}
@@ -496,6 +500,26 @@ title block keep the full title`, sc.TitleOverPt)
 		rep.Warnings = append(rep.Warnings, w.String())
 	}
 	return nil
+}
+
+// keepTallError stops a kept block taller than a page: it has to break, and
+// where is a choice the author should make rather than TeX.
+func keepTallError(sc scan) error {
+	var lines []string
+	for _, k := range sc.KeepTall {
+		name := sc.KeepNames[k.N]
+		if name == "" {
+			name = "block " + k.N
+		}
+		lines = append(lines, fmt.Sprintf("%q: %.0f mm, where a page holds %.0f mm",
+			ellipsize(name, 50), k.HeightPt*mmPerPt, k.PagePt*mmPerPt))
+	}
+	return fmt.Errorf(`%d ::: {.keep} block(s) taller than a page, which cannot be kept off a
+page break:
+  %s
+Split each into blocks that fit, keeping together what must be read together,
+or drop {.keep} from it and let it break where it falls`,
+		len(lines), strings.Join(lines, "\n  "))
 }
 
 // judgeHeader weighs a header taller than its box. fancyhdr 4 grows the box
@@ -652,7 +676,8 @@ var (
 	// Links in Markdown are checked before this, by spans.lua.
 	undefRe = regexp.MustCompile("(Reference|Citation|Hyper reference) `([^']+)' on page \\S+\\s+undefined")
 	// The preamble's report of a table row cut at the foot of a page.
-	tallRowRe = regexp.MustCompile(`MDBRAND-ROW-TOOTALL (\S+)`)
+	tallRowRe  = regexp.MustCompile(`MDBRAND-ROW-TOOTALL (\S+)`)
+	keepTallRe = regexp.MustCompile(`MDBRAND-KEEP-TOOTALL (\d+) ([\d.]+)pt ([\d.]+)pt`)
 	// fontspec's family names carry an instance counter: Dosis(0).
 	instanceRe = regexp.MustCompile(`\(\d+\)$`)
 )
@@ -704,12 +729,21 @@ type wideCode struct {
 	Fits int
 }
 
+// keepTall is a ::: {.keep} block taller than the page's text, which cannot
+// be kept off a page break.
+type keepTall struct {
+	N                string
+	HeightPt, PagePt float64
+}
+
 // scan is what a xelatex log is worth reading for.
 type scan struct {
 	Holes       []string
 	Shapes      []string // "Dosis: italic", one per family and style lost
 	Undefined   []string // `\ref{tab:x}`, one per label or key never defined
 	TallRows    []string // pages where a table row ran past the foot
+	KeepTall    []keepTall
+	KeepNames   map[string]string // a kept block's name by number, from pandoc's stderr
 	Over        []overfull
 	Wide        []wideCode
 	Pages       int
@@ -828,7 +862,20 @@ func scanLog(log string) scan {
 		frames = append(frames, frameOver{Pt: pt, Line: line})
 	}
 	return scan{Holes: holes, Shapes: shapes, Undefined: undefined, TallRows: tallRows, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
-		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames, SlideWide: slideOverflows(lines), FootOverPt: footOverPt}
+		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames, SlideWide: slideOverflows(lines), FootOverPt: footOverPt,
+		KeepTall: keepTallBlocks(log)}
+}
+
+// keepTallBlocks reads the kept blocks spans.lua's macro found taller than
+// the text height.
+func keepTallBlocks(log string) []keepTall {
+	var out []keepTall
+	for _, m := range keepTallRe.FindAllStringSubmatch(log, -1) {
+		h, _ := strconv.ParseFloat(m[2], 64)
+		page, _ := strconv.ParseFloat(m[3], 64)
+		out = append(out, keepTall{N: m[1], HeightPt: h, PagePt: page})
+	}
+	return out
 }
 
 // offendingText reassembles the line XeLaTeX prints just below an Overfull

@@ -332,6 +332,19 @@ Do not relax one without understanding what it cost.
     documents carry those.
     → `internal/build/build_test.go`, `traps/picture-low-res.md`.
 
+24. **A block kept together is kept, or the build says why not.**
+    `::: {.keep}` is set in a box, measured, and the room for it reserved
+    as needspace does before the box is unpacked, so its footnotes still
+    reach the page's foot; a card of a heading and five paragraphs had left
+    its heading and a line at the foot of a page. A block taller than the
+    text height cannot be kept: the macro reports it to the log by number,
+    spans.lua names each number on stderr, and the build stops by heading.
+    The macros are written before the first block only, so a document
+    without one keeps its .tex byte for byte. In a .docx, bookmarks mark the
+    block and Repair sets keepNext and keepLines on its paragraphs.
+    → `internal/build/build_test.go`, `internal/docx/docx_test.go`,
+    `testdata/keep.md`, `traps/keep-*.md`.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.

@@ -259,6 +259,27 @@ because pandoc drops them in silence. Use it for a phrase, not a paragraph.
 Under 4.5:1 against white a deck stops and a page warns, naming a darker shade
 to put in the bundle.
 
+## Blocks that must not break
+
+`::: {.keep}` … `:::` keeps everything inside on one page: when it does not
+fit in what is left, it starts the next page whole, leaving a gap at the
+foot. Use it for cards, recipes, exercises — a heading and what belongs under
+it. Headings (`### E07 · Name {-}`), `{{data…}}`, `.accent` and footnotes work
+inside; use `::::` on the outer fence when the block holds another div.
+
+```markdown
+:::: {.keep}
+### E07 · Cuarta pared {-}
+
+Five short paragraphs that must be read together.
+::::
+```
+
+A block taller than a page stops the build, naming it by its first heading:
+split it. Inside another `.keep`, or on a slide, it is refused. In a `.docx`
+every paragraph of the block keeps with the next, which Word and Google Docs
+honour; a .docx cannot be measured, so a long block there simply breaks.
+
 ## Slides
 
 `style: slides` makes a 16:9 deck (160 × 90 mm) from the same Markdown, bundle

@@ -84,3 +84,16 @@ quotes and nested lists all pass straight through pandoc.
 // fits, and a fence with a language wraps what still does not.
 func build(doc string) error { return mdbrand.Build(doc) }
 ```
+
+## A block that does not break
+
+:::: {.keep}
+### A card {-}
+
+Everything inside `::: {.keep}` stays on one page. When the block does not fit
+in what is left of the page, it starts the next one whole and the gap stays at
+the foot: a heading never sits alone at the bottom with its text overleaf.
+
+Use it for cards, exercises and recipes. A block taller than a page stops the
+build, naming its heading.
+::::

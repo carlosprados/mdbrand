@@ -46,7 +46,44 @@ func filterProblems(pandocOut string) error {
 	if err := htmlProblems(pandocOut); err != nil {
 		return err
 	}
+	if err := keepProblems(pandocOut); err != nil {
+		return err
+	}
 	return anchorProblems(pandocOut)
+}
+
+var (
+	keepRe       = regexp.MustCompile(`MDBRAND-KEEP (\d+)\t([^\n]*)`)
+	keepDeckRe   = regexp.MustCompile(`MDBRAND-KEEP-DECK\t([^\n]*)`)
+	keepNestedRe = regexp.MustCompile(`MDBRAND-KEEP-NESTED\t([^\n]*)`)
+)
+
+// keepProblems refuses a ::: {.keep} where it cannot mean anything: on a
+// slide, which never breaks, and inside another, which already holds it.
+func keepProblems(pandocOut string) error {
+	if m := keepDeckRe.FindStringSubmatch(pandocOut); m != nil {
+		return fmt.Errorf(`::: {.keep} on a slide, which never breaks across pages:
+  %q
+There is nothing to keep together. Drop the div; a slide that does not fit
+stops the build by its title`, ellipsize(m[1], 50))
+	}
+	if m := keepNestedRe.FindStringSubmatch(pandocOut); m != nil {
+		return fmt.Errorf(`::: {.keep} inside another, which already keeps everything in it
+together:
+  %q
+Drop the inner one`, ellipsize(m[1], 50))
+	}
+	return nil
+}
+
+// keepNames is each kept block's name by its number: the log reports a block
+// taller than a page by number alone, since its heading is not TeX's to print.
+func keepNames(pandocOut string) map[string]string {
+	names := map[string]string{}
+	for _, m := range keepRe.FindAllStringSubmatch(pandocOut, -1) {
+		names[m[1]] = m[2]
+	}
+	return names
 }
 
 var htmlRe = regexp.MustCompile(`MDBRAND-HTML (\w+)\t([^\n]*)`)
