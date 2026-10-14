@@ -676,3 +676,18 @@ func TestKeepChecks(t *testing.T) {
 		}
 	}
 }
+
+// A page TeX overfilled while shipping it prints its foot off the paper; the
+// page is the one shipped next in the log.
+func TestPagesOver(t *testing.T) {
+	log := "[9]\nOverfull \\vbox (240.67445pt too high) has occurred while \\output is active []\n\n <use logo.pdf>\n [10]\n" +
+		"Overfull \\vbox (0.5pt too high) has occurred while \\output is active []\n [11]\n"
+	got := scanLog(log).PagesOver
+	if len(got) != 1 || got[0].Page != "10" || got[0].Pt != 240.67445 {
+		t.Fatalf("PagesOver = %+v, want page 10 alone (0.5pt is rounding)", got)
+	}
+	err := judgeLog(scanLog(log), Options{}, &Report{})
+	if err == nil || !strings.Contains(err.Error(), "page 10: 85 mm past the foot") {
+		t.Errorf("err = %v", err)
+	}
+}

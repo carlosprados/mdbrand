@@ -472,6 +472,9 @@ summary in the cell`, strings.Join(sc.TallRows, ", "))
 	if len(sc.KeepTall) > 0 {
 		return keepTallError(sc)
 	}
+	if len(sc.PagesOver) > 0 {
+		return pagesOverError(sc.PagesOver)
+	}
 	if err := judgeHeader(sc, rep); err != nil {
 		return err
 	}
@@ -519,6 +522,23 @@ title block keep the full title`, sc.TitleOverPt)
 		rep.Warnings = append(rep.Warnings, w.String())
 	}
 	return nil
+}
+
+// pagesOverError stops a PDF with a page whose content runs off the paper:
+// it prints cut at the foot, and the text below it is in the file, where a
+// search finds it, but on no page anyone can read.
+func pagesOverError(over []pageOver) error {
+	var lines []string
+	for _, o := range over {
+		lines = append(lines, fmt.Sprintf("page %s: %.0f mm past the foot of the paper", o.Page, o.Pt*mmPerPt))
+	}
+	return fmt.Errorf(`%d page(s) where LaTeX set more than the page holds, so the rest prints off
+the paper — cut at the foot, and only the log knew:
+  %s
+This is mdbrand's to fix, not the document's: please report it, with the
+document, at https://github.com/carlosprados/mdbrand/issues. Meanwhile moving
+the figure or the table near that page elsewhere usually avoids it`,
+		len(lines), strings.Join(lines, "\n  "))
 }
 
 // keepTallError stops a kept block taller than a page: it has to break, and
@@ -696,6 +716,8 @@ var (
 	undefRe = regexp.MustCompile("(Reference|Citation|Hyper reference) `([^']+)' on page \\S+\\s+undefined")
 	// The preamble's report of a table row cut at the foot of a page.
 	tallRowRe  = regexp.MustCompile(`MDBRAND-ROW-TOOTALL (\S+)`)
+	pageOverRe = regexp.MustCompile(`Overfull \\vbox \(([0-9.]+)pt too high\) has occurred while \\output is active`)
+	shippedRe  = regexp.MustCompile(`\[(\d+)`)
 	keepTallRe = regexp.MustCompile(`MDBRAND-KEEP-TOOTALL (\d+) ([\d.]+)pt ([\d.]+)pt`)
 	// fontspec's family names carry an instance counter: Dosis(0).
 	instanceRe = regexp.MustCompile(`\(\d+\)$`)
@@ -748,6 +770,13 @@ type wideCode struct {
 	Fits int
 }
 
+// pageOver is a page TeX filled past its height while shipping it out: what
+// does not fit prints off the paper, and nothing else says so.
+type pageOver struct {
+	Page string
+	Pt   float64
+}
+
 // keepTall is a ::: {.keep} block taller than the page's text, which cannot
 // be kept off a page break.
 type keepTall struct {
@@ -762,6 +791,7 @@ type scan struct {
 	Undefined   []string // `\ref{tab:x}`, one per label or key never defined
 	TallRows    []string // pages where a table row ran past the foot
 	KeepTall    []keepTall
+	PagesOver   []pageOver        // pages whose content ran past the paper
 	KeepNames   map[string]string // a kept block's name by number, from pandoc's stderr
 	Over        []overfull
 	Wide        []wideCode
@@ -882,7 +912,26 @@ func scanLog(log string) scan {
 	}
 	return scan{Holes: holes, Shapes: shapes, Undefined: undefined, TallRows: tallRows, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
 		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames, SlideWide: slideOverflows(lines), FootOverPt: footOverPt,
-		KeepTall: keepTallBlocks(log)}
+		KeepTall: keepTallBlocks(log), PagesOver: pagesOver(log)}
+}
+
+// pagesOver reads each page TeX overfilled in its output routine. The
+// warning comes before the page's [N] in the log, so the page is the next
+// one shipped. A slide is judged by its frame instead (frameRe).
+func pagesOver(log string) []pageOver {
+	var out []pageOver
+	for _, loc := range pageOverRe.FindAllStringSubmatchIndex(log, -1) {
+		pt, _ := strconv.ParseFloat(log[loc[2]:loc[3]], 64)
+		if pt <= frameSlackPt {
+			continue
+		}
+		page := "?"
+		if m := shippedRe.FindStringSubmatch(log[loc[1]:]); m != nil {
+			page = m[1]
+		}
+		out = append(out, pageOver{Page: page, Pt: pt})
+	}
+	return out
 }
 
 // keepTallBlocks reads the kept blocks spans.lua's macro found taller than

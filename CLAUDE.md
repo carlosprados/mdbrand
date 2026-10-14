@@ -184,8 +184,14 @@ Do not relax one without understanding what it cost.
     the rest of the cell and the rows after it gone, exit 0. longtable's
     output routine reads `\badness`, which TeX leaves at 1000000 for a page
     that overflows, and reports it to the log.
+    longtable also starts every table with `\@colroom` reset to the whole
+    column, forgetting a figure already at the top of the page: a figure set
+    after it printed past the foot of the paper, the text below with it, exit
+    0 — an observatorio report lost a chart and a paragraph. The preamble
+    drops that reset, and any page TeX overfills while shipping it out
+    (`has occurred while \output is active`) stops the build by number.
     → `internal/tex/tables_test.go`, the page checks on `testdata/data.md`,
-    and `traps/table-row-tall.md`.
+    `traps/table-row-tall.md`, and `testdata/floats-table.md`.
 
 15. **A .docx asks only for the faces the bundle declares, and uses only what
     Google Docs keeps.** A .docx carries no fonts, so `fonts.office` is
