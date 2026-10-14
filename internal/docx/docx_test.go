@@ -330,3 +330,34 @@ func TestCellPropsKeepSchemaOrder(t *testing.T) {
 		}
 	}
 }
+
+// A kept block's paragraphs stay together: each keeps its lines, each but
+// the last stays with the next, and the marks spans.lua left are gone. Its
+// end is found by id, past the bookmark pandoc gives the heading inside.
+func TestKeepBlocks(t *testing.T) {
+	doc := `<w:p><w:r><w:t>before</w:t></w:r></w:p>` +
+		`<w:bookmarkStart w:id="900001" w:name="_mdbrandKeep1"/>` +
+		`<w:bookmarkStart w:id="9" w:name="f01" /><w:p><w:pPr><w:pStyle w:val="Heading3" /></w:pPr><w:r><w:t>F01</w:t></w:r></w:p><w:bookmarkEnd w:id="9" />` +
+		`<w:p><w:r><w:t>one</w:t></w:r></w:p>` +
+		`<w:p><w:pPr><w:pStyle w:val="BodyText" /></w:pPr><w:r><w:t>last</w:t></w:r></w:p>` +
+		`<w:bookmarkEnd w:id="900001"/>` +
+		`<w:p><w:r><w:t>after</w:t></w:r></w:p>`
+	got := keepBlocks(doc)
+	if strings.Contains(got, "_mdbrandKeep") || strings.Contains(got, `w:id="900001"`) {
+		t.Errorf("marks left behind:\n%s", got)
+	}
+	for _, want := range []string{
+		`<w:p><w:pPr><w:keepNext/><w:keepLines/><w:pStyle w:val="Heading3" /></w:pPr><w:r><w:t>F01</w:t>`,
+		`<w:p><w:pPr><w:keepNext/><w:keepLines/></w:pPr><w:r><w:t>one</w:t>`,
+		`<w:p><w:pPr><w:keepLines/><w:pStyle w:val="BodyText" /></w:pPr><w:r><w:t>last</w:t>`,
+		`<w:p><w:r><w:t>before</w:t></w:r></w:p>`,
+		`<w:p><w:r><w:t>after</w:t></w:r></w:p>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %s\nin:\n%s", want, got)
+		}
+	}
+	if misordered(normalize(got)) != "" {
+		t.Errorf("properties out of schema order after normalize:\n%s", normalize(got))
+	}
+}

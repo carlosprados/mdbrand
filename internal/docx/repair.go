@@ -40,6 +40,7 @@ func Repair(b []byte, f Fix) ([]byte, []string, error) {
 		doc = fillTOC(doc)
 	}
 	doc = dropPictureDescr(doc)
+	doc = keepBlocks(doc)
 	p.set("word/document.xml", doc)
 	// Notes hold accents and links as well, in parts of their own: the
 	// colour reached the body's alone, and a footnote's link printed black
@@ -503,6 +504,66 @@ func sizeRuns(s string, pt float64) string {
 		if !strings.HasPrefix(s, "<w:rPr>") {
 			b.WriteString("<w:rPr>" + sz + "</w:rPr>")
 		}
+	}
+}
+
+var keepStartRe = regexp.MustCompile(`<w:bookmarkStart w:id="(\d+)" w:name="_mdbrandKeep\d+"\s*/>`)
+
+// keepBlocks holds each ::: {.keep} together, between the bookmarks
+// spans.lua marks it with: every paragraph keeps its lines on one page and
+// stays with the next, the last excepted, so the block moves to the next page
+// whole. The marks go; normalize puts the properties in schema order. A
+// block's end is found by its id: the headings inside carry bookmarks of
+// their own.
+func keepBlocks(doc string) string {
+	var b strings.Builder
+	for {
+		loc := keepStartRe.FindStringSubmatchIndex(doc)
+		if loc == nil {
+			break
+		}
+		// Written by spans.lua in exactly this form, which pandoc keeps.
+		closing := `<w:bookmarkEnd w:id="` + doc[loc[2]:loc[3]] + `"/>`
+		end := strings.Index(doc[loc[1]:], closing)
+		if end < 0 {
+			break
+		}
+		b.WriteString(doc[:loc[0]])
+		b.WriteString(keepParas(doc[loc[1] : loc[1]+end]))
+		doc = doc[loc[1]+end+len(closing):]
+	}
+	b.WriteString(doc)
+	return b.String()
+}
+
+// keepParas sets keep-lines on every paragraph of a block, and keep-with-next
+// on all but its last.
+func keepParas(inner string) string {
+	paras := paraRe.FindAllStringIndex(inner, -1)
+	var b strings.Builder
+	at := 0
+	for i, loc := range paras {
+		b.WriteString(inner[at:loc[0]])
+		props := "<w:keepLines/>"
+		if i < len(paras)-1 {
+			props = "<w:keepNext/>" + props
+		}
+		b.WriteString(withPPr(inner[loc[0]:loc[1]], props))
+		at = loc[1]
+	}
+	b.WriteString(inner[at:])
+	return b.String()
+}
+
+// withPPr adds props to a paragraph's properties, making them if it has none.
+func withPPr(p, props string) string {
+	switch {
+	case strings.HasPrefix(p, "<w:p><w:pPr>"):
+		return "<w:p><w:pPr>" + props + p[len("<w:p><w:pPr>"):]
+	case strings.HasPrefix(p, "<w:p>"):
+		return "<w:p><w:pPr>" + props + "</w:pPr>" + p[len("<w:p>"):]
+	default: // <w:p/>, or one with attributes and nothing in it
+		return "<w:p><w:pPr>" + props + "</w:pPr></w:p>"
 	}
 }
 

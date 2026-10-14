@@ -582,6 +582,30 @@ text colour. A bundle without `colors.link` prints links in its primary, where
 they read as accents — and a light primary, an orange say, is also too pale
 for text.
 
+### Blocks that must not break
+
+```markdown
+:::: {.keep}
+### E07 · Cuarta pared {-}
+
+A card: a heading and the paragraphs that belong under it.
+::::
+```
+
+LaTeX breaks a page wherever it fills, so a card of a heading and five short
+paragraphs could leave its heading and a line at the foot of one page and the
+rest on the next. A `.keep` block is set in a box first and measured: when it
+does not fit in what is left of the page it starts the next one whole, and
+the gap stays at the foot. Its footnotes come with it. Headings, `{{data…}}`
+and `.accent` work inside.
+
+A block taller than a page cannot be kept off a page break, so the build stops
+and names it by its first heading, with its height and the page's. A `.keep`
+inside another, or on a slide (which never breaks), is refused. In the
+`.docx` every paragraph of the block is set to keep with the next and keep its
+lines together, which Word and Google Docs both honour; the layout there is
+the reader's, so a block too long for a page breaks where Word puts it.
+
 ### Styles
 
 | Style | Shape |

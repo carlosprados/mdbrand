@@ -652,3 +652,27 @@ func TestScanLogSkipsVariationSelectorsOnly(t *testing.T) {
 		t.Errorf("a code point outside the range was skipped:\n%s", got)
 	}
 }
+
+// A ::: {.keep} taller than a page is reported by number in the log and named
+// from pandoc's stderr; on a slide or inside another it is refused.
+func TestKeepChecks(t *testing.T) {
+	sc := scanLog("MDBRAND-KEEP-TOOTALL 2 900.0pt 650.0pt\n")
+	if len(sc.KeepTall) != 1 || sc.KeepTall[0].N != "2" || sc.KeepTall[0].HeightPt != 900 {
+		t.Fatalf("KeepTall = %+v", sc.KeepTall)
+	}
+	sc.KeepNames = keepNames("MDBRAND-KEEP 1\tF01 · Uno\nMDBRAND-KEEP 2\tF02 · Dos\n")
+	err := judgeLog(sc, Options{}, &Report{})
+	if err == nil || !strings.Contains(err.Error(), `"F02 · Dos": 316 mm, where a page holds 228 mm`) {
+		t.Errorf("err = %v, want the block named with its height", err)
+	}
+	for out, want := range map[string]string{
+		"MDBRAND-KEEP-DECK\tA slide\n": "on a slide, which never breaks",
+		"MDBRAND-KEEP-NESTED\tInner\n": "inside another, which already keeps",
+		"MDBRAND-KEEP 1\tF01\n":        "",
+	} {
+		err := keepProblems(out)
+		if (want == "") != (err == nil) || want != "" && !strings.Contains(err.Error(), want) {
+			t.Errorf("keepProblems(%q) = %v, want %q", out, err, want)
+		}
+	}
+}

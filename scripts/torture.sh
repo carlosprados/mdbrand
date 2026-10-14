@@ -322,6 +322,34 @@ if [ $status -eq 0 ]; then
 	grep -qF '*resumen*' <<<"$xml" && bad "the .docx prints the title's Markdown" || ok "the .docx drops the title's Markdown"
 fi
 
+# keep: a card of a heading and five paragraphs broke wherever the page
+# ended, its heading and a line at the foot. Each ::: {.keep} must start and
+# end on one page, its footnote with it, and the .docx must keep it together.
+echo
+echo "testdata/keep.md — blocks that do not break across pages"
+out="$("$bin" build "$root/testdata/keep.md" --to pdf,docx -o "$work/keep.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	pages="$(pdfinfo "$work/keep.pdf" | awk '/^Pages/ {print $2}')"
+	page_of() {
+		for p in $(seq 1 "$pages"); do
+			pdftotext -f "$p" -l "$p" "$work/keep.pdf" - | grep -qF "$1" && { echo "$p"; return; }
+		done
+	}
+	split=""
+	for i in $(seq -w 1 12); do
+		[ "$(page_of "F$i ·")" = "$(page_of "FIN-F$i")" ] || split="$split F$i"
+	done
+	[ -z "$split" ] && ok "every card starts and ends on one page" || bad "cards split across pages:$split"
+	[ "$(page_of "F05 ·")" = "$(page_of "The note stays")" ] && ok "a card's footnote is on its page" || bad "a card's footnote left its page"
+	xml="$(unzip -p "$work/keep.docx" word/document.xml)"
+	grep -qF '_mdbrandKeep' <<<"$xml" && bad "the .docx keeps mdbrand's marks" || ok "the .docx drops mdbrand's marks"
+	[ "$(grep -o '<w:keepNext/>' <<<"$xml" | wc -l)" -eq 72 ] && ok "the .docx keeps each card's paragraphs with the next" || bad "the .docx does not keep the cards together"
+fi
+
 # ----------------------------------------------------------------- the locale
 # A chart in a Spanish document wrote 30,000 and Jan. Its locale only reaches
 # Vega through vl2vg and vg2svg -f -t, and only from vega-cli 6.4.0; the
@@ -646,6 +674,9 @@ traps=(
 	"accent-pale.md|ok|Set colors.accent|--style note --brands-dir $root/testdata/brands"
 	"brand-typo.md|fail|colors.acent is not a setting mdbrand reads — did you mean accent?|--brands-dir $root/testdata/brands"
 	"brand-future.md|fail|requires mdbrand 99.0 or later|--brands-dir $root/testdata/brands"
+	"keep-too-tall.md|fail|\"The long card\": "
+	"keep-slides.md|fail|::: {.keep} on a slide"
+	"keep-nested.md|fail|::: {.keep} inside another"
 )
 
 echo
