@@ -86,7 +86,7 @@ type Output struct {
 }
 
 // Formats are the outputs a build can write.
-var Formats = []string{"pdf", "docx", "notes"}
+var Formats = []string{"pdf", "docx", "notes", "pptx"}
 
 // tools are the external programs each format needs, whatever the document
 // holds. PDF's come first and in this order, which is the order the missing
@@ -96,6 +96,7 @@ var tools = map[string][]string{
 	"docx": {"pandoc", "rsvg-convert"},
 	// The notes are the deck typeset again, so they need what the PDF does.
 	"notes": {"pandoc", "xelatex", "rsvg-convert"},
+	"pptx":  {"pandoc", "rsvg-convert"},
 }
 
 func (o *Options) logf(f string, a ...any) {
@@ -166,6 +167,15 @@ the document as a .docx in another style (--style report)`)
 			return nil, err
 		}
 	}
+	if slices.Contains(formats, "pptx") {
+		if p.style != tex.Slides {
+			return nil, fmt.Errorf(`a .pptx is a deck, and this is style %s, a page: there is no slide
+for it to become. Build it as a deck with --style slides, or as a .docx`, p.style)
+		}
+		if _, err := p.b.OfficeFonts(); err != nil {
+			return nil, err
+		}
+	}
 	if slices.Contains(formats, "notes") && p.style != tex.Slides {
 		return nil, fmt.Errorf(`speaker notes belong to a deck (style slides), and this is style %s:
 build it with --to pdf, or as a deck with --style slides`, p.style)
@@ -199,6 +209,8 @@ build it with --to pdf, or as a deck with --style slides`, p.style)
 			err = renderDOCX(p, out, inputs)
 		case "notes":
 			err = renderNotes(p, out)
+		case "pptx":
+			err = renderPPTX(p, out, inputs)
 		}
 		if err != nil {
 			return nil, err

@@ -336,6 +336,19 @@ stays the reference; offer the `.docx` when someone needs to edit or comment.
 - It is one-way: carry edits made in Word or Docs back into the `.md`
   (`pandoc x.docx -t markdown` helps to see them).
 
+## PowerPoint
+
+`--to pptx` (or `formats: [pdf, pptx]`) writes a deck as a branded `.pptx`
+for someone who must edit it. Only `style: slides`; the PDF stays the
+reference — offer the `.pptx` when asked for an editable deck.
+
+- Needs `fonts.office`, as the `.docx` does.
+- Figures keep their PDF size, scaled to the slide; pictures as PDF stop it.
+- Pauses (`. . .`) are dropped with a warning; three columns or two figures on
+  one slide stop the build — split the slide.
+- Text that does not fit is estimated with LibreOffice (`soffice`) and warned
+  about by slide title; `--to pdf,pptx` measures it on the PDF instead.
+
 ## Brand bundles
 
 `brands_dir` (see `mdbrand config`) holds one directory per identity:

@@ -38,6 +38,14 @@ function Span(el)
     return nil
   end
   io.stderr:write("MDBRAND-ACCENT\n")
+  -- pandoc's pptx writer has no character styles: private-use marks around
+  -- the words survive into the run, where Repair colours them.
+  if FORMAT == "pptx" then
+    local out = pandoc.List({ pandoc.Str("\u{E000}") })
+    out:extend(el.content)
+    out:insert(pandoc.Str("\u{E001}"))
+    return out
+  end
   if FORMAT == "docx" then
     el.attributes["custom-style"] = "Accent"
     return el
@@ -135,6 +143,18 @@ end
 
 function Div(el)
   check(el)
+  -- pandoc's pptx writer keeps two columns and drops the rest in silence.
+  if FORMAT == "pptx" and el.classes:includes("columns") then
+    local n = 0
+    for _, b in ipairs(el.content) do
+      if b.t == "Div" and b.classes:includes("column") then
+        n = n + 1
+      end
+    end
+    if n > 2 then
+      io.stderr:write("MDBRAND-PPTX-COLUMNS " .. n .. "\t" .. pandoc.utils.stringify(el):sub(1, 50) .. "\n")
+    end
+  end
   if el.classes:includes("keep") then
     return keep(el)
   end
@@ -156,7 +176,30 @@ end
 -- [the setup](#setup) beside a heading "Set-up", whose id is set-up. Every
 -- identifier pandoc assigned is gathered, and each #target without one is
 -- reported with the identifiers that exist, so the build can name the nearest.
+-- A slide of a .pptx holds one figure: pandoc's writer moves a second to a
+-- slide of its own, untitled, which the PDF deck never had.
+local function slideFigures(doc)
+  local title, n = nil, 0
+  local function flush()
+    if n > 1 then
+      io.stderr:write("MDBRAND-PPTX-FIGURES " .. n .. "\t" .. (title or "") .. "\n")
+    end
+  end
+  for _, b in ipairs(doc.blocks) do
+    if b.t == "Header" and b.level <= 2 then
+      flush()
+      title, n = pandoc.utils.stringify(b), 0
+    elseif b.t == "Figure" or (b.t == "Para" and #b.content == 1 and b.content[1].t == "Image") then
+      n = n + 1
+    end
+  end
+  flush()
+end
+
 function Pandoc(doc)
+  if FORMAT == "pptx" then
+    slideFigures(doc)
+  end
   local ids, targets = {}, {}
   local function note(el)
     if el.identifier and el.identifier ~= "" then

@@ -87,7 +87,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		look.LogoAspect, _ = imgsize.Aspect(filepath.Join(work, meta.Logo))
 	}
 	display, plain := d.Meta.Printed()
-	unchecked, err := docxGlyphs(look, body, append(display, b.Footer), plain, o.AllowHoles)
+	unchecked, err := officeGlyphs(officeFaces{look.Body, look.Display, look.Mono}, ".docx", body, append(display, b.Footer), plain, o.AllowHoles)
 	if err != nil {
 		return err
 	}
@@ -239,15 +239,18 @@ func docxLogoFile(src, work, stem string) (string, error) {
 	}
 }
 
-// docxGlyphs is the .docx's missing-glyph check. The PDF's is read from
-// XeLaTeX's log; a .docx is set on the reader's machine, so the best this one
+// officeFaces are the faces an office document asks the reader's machine for.
+type officeFaces struct{ Body, Display, Mono string }
+
+// officeGlyphs is the missing-glyph check of a .docx or .pptx. The PDF's is
+// read from XeLaTeX's log; an office file is set on the reader's machine, so the best this one
 // can do is ask fontconfig whether the faces, installed here, cover the text
 // each sets: the prose and a letter's greeting in the body face, the front
 // matter the cover, letterhead, header and footer print in the display face,
 // code in the mono face.
 // A face that is not installed cannot be checked; it is returned, so the
 // reader hears that rather than nothing.
-func docxGlyphs(l docx.Look, body string, display, plain []string, allow bool) ([]string, error) {
+func officeGlyphs(l officeFaces, product, body string, display, plain []string, allow bool) ([]string, error) {
 	// Code is set in the mono face, and a face checked only against prose let
 	// a ✓ in a code block print as a box. Mathematics is Word's own.
 	var prose, code strings.Builder
@@ -277,15 +280,15 @@ func docxGlyphs(l docx.Look, body string, display, plain []string, allow bool) (
 			continue
 		}
 		if holes := missingGlyphs(cov, set.text); len(holes) > 0 {
-			found = append(found, fmt.Sprintf("%s, the .docx's %s face (fonts.office.%s), has no glyph for %d character(s) it sets:\n  %s",
-				set.face, set.role, set.role, len(holes), strings.Join(holes, "\n  ")))
+			found = append(found, fmt.Sprintf("%s, the %s's %s face (fonts.office.%s), has no glyph for %d character(s) it sets:\n  %s",
+				set.face, product, set.role, set.role, len(holes), strings.Join(holes, "\n  ")))
 		}
 	}
 	if len(found) == 0 || allow {
 		return unchecked, nil
 	}
 	return unchecked, fmt.Errorf(`%s
-Word would print them in whatever face it finds, or as boxes. Fix the text, or
+Word or PowerPoint would print them in whatever face it finds, or as boxes. Fix the text, or
 name a face that covers them; override with --allow-missing-glyphs`, strings.Join(found, "\n"))
 }
 

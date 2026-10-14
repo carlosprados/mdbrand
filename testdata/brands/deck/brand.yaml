@@ -11,6 +11,10 @@ colors:
   accent: "A8520A"   # a darker shade of the primary, for words: 5.4:1
 fonts:
   body: DejaVu Sans
+  office:            # the faces a .pptx asks for; every fontconfig has them
+    body: DejaVu Sans
+    display: DejaVu Sans
+    mono: DejaVu Sans Mono
 slides:
   background: "1F2328"
   foreground: "F2F2F2"
