@@ -21,9 +21,12 @@ runs:
         # LibreOffice is no part of a .docx build: it is how the fixtures read
         # a .docx back, the way poppler reads the PDF. Impress reads a .pptx
         # back, and is what --to pptx estimates a slide's overflow with.
+        # epubcheck validates every .epub; Ubuntu's is 4.2, and this machine's
+        # 5.2, so the fixtures pass under both.
         sudo apt-get install -y --no-install-recommends \
           libreoffice-writer-nogui \
           libreoffice-impress-nogui \
+          epubcheck \
           pandoc \
           texlive-xetex \
           texlive-latex-base \

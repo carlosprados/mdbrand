@@ -15,16 +15,19 @@ and rediscovering the same traps. So the traps are behaviour, not documentation:
 **a build that would produce a defective PDF must fail, naming the fix.** Adding
 a knob that lets a defect through is the wrong direction.
 
-Non-goals: a general pandoc wrapper, HTML output, slide layouts of the
-author's own, a template language for users. It renders documents that look
-like the ones in `examples/`, and decks that look like `testdata/slides.md`.
-The `.pptx` (`--to pptx`) is the deck for a reader who must edit it: the same
-slides, brand and figures, and nothing the PDF deck did not already say —
-never a second design.
+Non-goals: a general pandoc wrapper, a web page or an HTML export, slide
+layouts of the author's own, a template language for users. It renders
+documents that look like the ones in `examples/`, and decks that look like
+`testdata/slides.md`. The `.pptx` (`--to pptx`) is the deck for a reader who
+must edit it: the same slides, brand and figures, and nothing the PDF deck did
+not already say — never a second design. The `.epub` (`--to epub`) is the same
+document for the owner's own e-reader — reflowed, the reader's type, the PDF's
+figures and structure — and never a site, a theme or a publishing format with
+a cover to design.
 
 The PDF is the product. `--to docx` writes the same document for readers who
-need Word or Google Docs, and `--to pptx` a deck for one who must edit it;
-both are strictly additive: nothing on the PDF's path
+need Word or Google Docs, `--to pptx` a deck for one who must edit it, and
+`--to epub` the document for an e-reader; all three are strictly additive: nothing on the PDF's path
 may change for it. A change near `internal/build` proves that by building every
 fixture before and after and diffing the generated `.tex`, Markdown and the
 PDFs' text — byte for byte. `style: slides` is held to the same rule: a deck
@@ -46,12 +49,14 @@ internal/tex/            templates/*.tmpl + escaping + page arithmetic;
                          slides.tex.tmpl is the deck's preamble, beside the page's
 internal/docx/           reference.docx from the brand, cover and letterhead
                          as OOXML, repairs over pandoc's .docx; a pure leaf
+internal/epub/           the .epub's metadata, stylesheet, grey and width
+                         estimates, epubcheck's report; a pure leaf
 internal/pptx/           reference.pptx from the brand, repairs over pandoc's
                          .pptx, the overflow estimate; a pure leaf
 internal/build/          the pipeline: prepare.go is what every output format
                          shares (brand, data, words, sized figures); pdf.go is
                          the PDF's own, and owns the xelatex run and its log;
-                         docx.go is the .docx's
+                         docx.go is the .docx's, pptx.go and epub.go theirs
 internal/run/            external commands, with their output on failure
 internal/exit/           exit statuses: 1 defect, 2 usage, 3 environment
 internal/contract/       the golden check behind testdata/contract/
@@ -381,6 +386,28 @@ Do not relax one without understanding what it cost.
     Unmeasured: PowerPoint and Google Slides themselves.
     → `internal/pptx/pptx_test.go`, the pptx section of `scripts/torture.sh`
     (read back through LibreOffice Impress), `traps/pptx-*.md`.
+
+26. **An `.epub` is reflowed by the reader, so what the page measured has no
+    counterpart, and what the document sets is checked again for a 6" grey
+    screen.** pandoc's epub3 writer wrote an empty `<dc:date>` for a Spanish
+    `date:`, which epubcheck refuses, and printed `[words]{.accent}` plain,
+    both at exit 0. mdbrand writes the date and a stable identifier through
+    `--epub-metadata`, keeps the accent as a class from spans.lua's epub
+    branch only, and validates every package with epubcheck: an error stops
+    the build by its code. Figures are placed again in an 80 × 100 mm box by
+    `fig.Fit` — the SVG does not depend on the box, so the PDF's files are not
+    touched — and rasterised at 300 ppi. Scaled down, an A4 chart's labels
+    fell to 4–5 pt in every Marginalia manual: `fig.Narrow` draws a Vega-Lite
+    chart again, into its own files, with the "width" that sets them in the
+    middle of the band, or the narrowest plot that still reads (120 px).
+    Play Books clipped a four-column table's last column whole, so table
+    cells drop pandoc's A4 widths and may break a long word. Everything measured against the
+    assumed screen warns: labels under the floor on that column, two data
+    colours of a chart within 15 L* (Amplía's grey and blue were one bar),
+    code past 45 columns, a table wider than the column, MathML. No face is
+    embedded or named. Unmeasured: any real device, and Send-to-Kindle.
+    → `internal/epub/epub_test.go`, `internal/fig/fit_test.go`, the epub
+    section of `scripts/torture.sh`, `traps/epub-*.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

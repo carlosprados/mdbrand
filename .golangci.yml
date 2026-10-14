@@ -42,7 +42,7 @@ linters:
           deny:
             - pkg: github.com/carlosprados/mdbrand/internal/build
               desc: only cmd drives the pipeline; move the shared piece down instead
-        # The output formats know nothing of each other. docx and pptx are pure
+        # The output formats know nothing of each other. docx, pptx and epub are pure
         # leaves — bytes and numbers in, bytes out — and build is what tells it
         # what the brand means, as it does for tex.
         docx-is-a-leaf:
@@ -57,6 +57,12 @@ linters:
           deny:
             - pkg: github.com/carlosprados/mdbrand/internal
               desc: internal/pptx takes plain values from build; it imports no other package of mdbrand
+        epub-is-a-leaf:
+          files:
+            - "**/internal/epub/**"
+          deny:
+            - pkg: github.com/carlosprados/mdbrand/internal
+              desc: internal/epub takes plain values from build; it imports no other package of mdbrand
         tex-knows-no-docx:
           files:
             - "**/internal/tex/**"

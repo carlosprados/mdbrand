@@ -24,7 +24,8 @@ func buildCmd() *cobra.Command {
 		Use:   "build <document.md>",
 		Short: "Build a branded A4 PDF, and a .docx if asked, from a Markdown document",
 		Long: `Build a branded A4 PDF from Markdown — and, with --to docx, a Word file;
-with --to pptx, a deck as PowerPoint.
+with --to pptx, a deck as PowerPoint; with --to epub, the document for an
+e-reader.
 
 Everything can come from the document's front matter, so the usual invocation
 carries no flags at all:
@@ -192,6 +193,19 @@ two figures stops the build. Text that does not fit is estimated by rendering
 the deck in LibreOffice and warned about by slide; --to pdf,pptx measures it
 on the PDF instead.
 
+--to epub writes a report or a note for an e-reader (style slides and letter
+refuse it): the reader's own face and size, the nav as the contents, notes
+that pop up, figures placed again for a 6" screen's 80 x 100 mm and
+rasterised at 300 ppi (a Vega-Lite chart drawn again with a narrower width,
+so its labels keep their size), table cells that break a long word rather
+than be clipped, [words]{.accent} in colors.accent, no cover, and no reference
+or confidential label. The package is validated with epubcheck,
+which must be installed, and an error stops the build. Estimates warn: a
+figure whose labels fall under min_text_pt on that column, chart series two
+of which are one grey on e-ink, code over 45 columns, a table wider than the
+column, MathML formulas (Adobe's engine shows them as text). Not opened on a
+device here: open the result on yours.
+
 --watch keeps mdbrand running and rebuilds whenever a file the build read
 changes: the document, its linked figures and pictures, the bibliography and
 CSL, the bundle's brand.yaml and logos. The set is taken from each build, so a
@@ -245,7 +259,7 @@ file. Ctrl-C stops it.
 		},
 	}
 	c.Flags().StringVarP(&o.Output, "out", "o", "", "output file (default: alongside the input); with several formats, each takes its own extension")
-	c.Flags().StringSliceVar(&o.Formats, "to", nil, "pdf | docx | notes | pptx, or a list (pdf,notes); overrides the front matter's formats (default pdf)")
+	c.Flags().StringSliceVar(&o.Formats, "to", nil, "pdf | docx | notes | pptx | epub, or a list (pdf,epub); overrides the front matter's formats (default pdf)")
 	c.Flags().StringVar(&o.BrandName, "brand", "", "brand bundle to use; overrides the front matter")
 	c.Flags().StringVar(&o.Style, "style", "", "report | note | letter | slides; overrides the front matter")
 	c.Flags().StringVar(&o.WordCount, "wordcount", "", "ib | all: the {{words}} criterion; replaces the front matter's entirely")

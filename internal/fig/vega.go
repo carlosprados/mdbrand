@@ -365,10 +365,17 @@ func vegaToSVG(dir, src, out, lang string) (string, error) {
 }
 
 // renderVega renders a copy of the spec whose data urls have been settled.
-func renderVega(f *doc.Fig, b *brand.Brand, out string, ds *Datasets) error {
+// width, when not 0, replaces the spec's own: an e-reader's copy is drawn
+// narrower so that its labels keep their size.
+func renderVega(f *doc.Fig, b *brand.Brand, out string, ds *Datasets, width int) error {
 	spec, _, err := VegaSpec(f, ds)
 	if err != nil {
 		return err
+	}
+	if width > 0 {
+		if spec, err = withWidth(spec, width); err != nil {
+			return err
+		}
 	}
 	var settled any
 	if err := json.Unmarshal(spec, &settled); err != nil {
@@ -378,7 +385,7 @@ func renderVega(f *doc.Fig, b *brand.Brand, out string, ds *Datasets) error {
 		return err
 	}
 	dir := filepath.Dir(out)
-	src := filepath.Join(dir, fmt.Sprintf(".mdbrand-fig%02d.vl.json", f.Index))
+	src := filepath.Join(dir, ".mdbrand-"+strings.TrimSuffix(filepath.Base(out), ".svg")+".vl.json")
 	if err := os.WriteFile(src, spec, 0o644); err != nil {
 		return err
 	}
@@ -398,4 +405,37 @@ func renderVega(f *doc.Fig, b *brand.Brand, out string, ds *Datasets) error {
 		return fmt.Errorf("%s: %s", figName(f), errs[0])
 	}
 	return nil
+}
+
+// withWidth sets a spec's top-level width.
+func withWidth(spec []byte, width int) ([]byte, error) {
+	dec := json.NewDecoder(bytes.NewReader(spec))
+	dec.UseNumber()
+	var v map[string]any
+	if err := dec.Decode(&v); err != nil {
+		return nil, err
+	}
+	v["width"] = width
+	return json.Marshal(v)
+}
+
+// narrowable reports a spec whose width is one number Narrow may change:
+// not a layout of several views, and not "container".
+func narrowable(spec []byte) (width float64, known, ok bool) {
+	var v map[string]any
+	if err := json.Unmarshal(spec, &v); err != nil {
+		return 0, false, false
+	}
+	for _, k := range []string{"facet", "concat", "hconcat", "vconcat", "repeat"} {
+		if _, has := v[k]; has {
+			return 0, false, false
+		}
+	}
+	switch w := v["width"].(type) {
+	case nil:
+		return 0, false, true
+	case float64:
+		return w, true, true
+	}
+	return 0, false, false
 }

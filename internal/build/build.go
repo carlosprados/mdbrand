@@ -86,7 +86,7 @@ type Output struct {
 }
 
 // Formats are the outputs a build can write.
-var Formats = []string{"pdf", "docx", "notes", "pptx"}
+var Formats = []string{"pdf", "docx", "notes", "pptx", "epub"}
 
 // tools are the external programs each format needs, whatever the document
 // holds. PDF's come first and in this order, which is the order the missing
@@ -97,6 +97,7 @@ var tools = map[string][]string{
 	// The notes are the deck typeset again, so they need what the PDF does.
 	"notes": {"pandoc", "xelatex", "rsvg-convert"},
 	"pptx":  {"pandoc", "rsvg-convert"},
+	"epub":  {"pandoc", "rsvg-convert", "epubcheck"},
 }
 
 func (o *Options) logf(f string, a ...any) {
@@ -176,6 +177,11 @@ for it to become. Build it as a deck with --style slides, or as a .docx`, p.styl
 			return nil, err
 		}
 	}
+	if slices.Contains(formats, "epub") && (p.style == tex.Slides || p.style == "letter") {
+		return nil, fmt.Errorf(`an .epub is a document an e-reader reflows, and this is style %s: a %s
+have no counterpart there. Build it as a PDF, or the document in style report
+or note`, p.style, map[string]string{tex.Slides: "deck's frames", "letter": "letter's letterhead and signature"}[p.style])
+	}
 	if slices.Contains(formats, "notes") && p.style != tex.Slides {
 		return nil, fmt.Errorf(`speaker notes belong to a deck (style slides), and this is style %s:
 build it with --to pdf, or as a deck with --style slides`, p.style)
@@ -211,6 +217,8 @@ build it with --to pdf, or as a deck with --style slides`, p.style)
 			err = renderNotes(p, out)
 		case "pptx":
 			err = renderPPTX(p, out, inputs)
+		case "epub":
+			err = renderEPUB(p, out, inputs)
 		}
 		if err != nil {
 			return nil, err

@@ -162,7 +162,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err := filterProblems(pandocOut); err != nil {
 		return err
 	}
-	if err := pandocWarnings(pandocOut, rep); err != nil {
+	if err := pandocWarnings(pandocOut, ".docx", rep); err != nil {
 		return err
 	}
 	if !p.pdfToo {

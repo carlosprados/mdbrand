@@ -11,6 +11,7 @@ mdbrand:
   style: report
   reference: "MDB-2026-001"       # on the cover
   confidential: "Internal"        # on the cover and every footer
+  # formats: [pdf, epub]          # an .epub too, to read on an e-reader (needs epubcheck)
 ---
 
 # What this is

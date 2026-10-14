@@ -80,7 +80,7 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, box tex.Box, ds *Dataset
 			return nil, err
 		}
 	default:
-		if err := renderVega(f, b, svg, ds); err != nil {
+		if err := renderVega(f, b, svg, ds, 0); err != nil {
 			return nil, err
 		}
 	}

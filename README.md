@@ -155,6 +155,11 @@ Recommended: **[pdftotext](https://poppler.freedesktop.org/)** from poppler
 Each PDF is read back through it, and a text layer that would copy as garbage
 stops the build; without it the build warns that the check did not run.
 
+For `--to epub` only: **[epubcheck](https://www.w3.org/publishing/epubcheck/)**,
+which validates every package (`apt install epubcheck`, `brew install
+epubcheck`, or the jar from its [releases](https://github.com/w3c/epubcheck/releases)
+with Java 11 or later).
+
 Fonts: the body font named in the bundle must be installed and must cover the
 glyphs you type. [Inter](https://rsms.me/inter/) is a good default
 (`apt install fonts-inter`). A bundle whose body face is missing stops the build
@@ -864,6 +869,46 @@ rendering the deck in LibreOffice and warned about, by title; without
 LibreOffice the build says it did not look. Build `--to pdf,pptx` and the PDF
 measures every slide instead. Not tried in PowerPoint itself or in Google
 Slides: open the result before sending it.
+
+### E-readers
+
+```sh
+mdbrand build informe.md --to epub        # informe.epub
+mdbrand build informe.md --to pdf,epub    # both
+```
+
+The document for reading on an e-reader or in Google Play Books: a `report`
+or `note` as an EPUB 3 the reader reflows in its own face and size. `slides`
+and `letter` refuse it. Designed for a 6" e-ink screen — a column of about
+80 mm, sixteen greys, 300 ppi — the narrowest a reader comes, so it reads on
+anything wider.
+
+What carries over: title, subtitle, author, date and abstract on pandoc's
+title page; the headings as the reader's contents menu (the nav, and a
+`toc.ncx` for EPUB 2 readers), numbered when the document is; footnotes that
+pop up; citations, tables, code, data and `{{words}}`; `[words]{.accent}` in
+`colors.accent` and links in `colors.link`; figures **placed again for an 80 ×
+100 mm screen** with the bundle's legibility band, and rasterised at 300 ppi —
+a Vega-Lite chart whose labels would shrink under the floor there is drawn
+again with a narrower `width`, so they keep their size (not one with a `width=`
+on its block, or of several views).
+What does not: no font is embedded or named (the reader's is the right one,
+and a licensed face in a file copied to a device is a distribution), no
+cover, no running header, footer, `reference` or `confidential`, and a
+`::: {.keep}` keeps nothing, since a reflowed page has no breaks of its own.
+Raw LaTeX is left out with a warning, as in a `.docx`.
+
+`pandoc` wrote invalid packages at exit 0 — an empty date for a Spanish
+`date:` — so every `.epub` goes through epubcheck, and an error stops the
+build. The rest is estimated against the assumed screen, so it warns: a figure
+whose labels fall under `min_text_pt` on the column (the reader can still
+zoom it), chart series two of which are the same grey on e-ink (L\* under 15
+apart: Amplía's grey text and blue link), code over 45 columns, which wraps,
+a table whose longest words do not fit the column (its cells break them,
+hyphenated where the reader can, rather than let the reader clip a column), and formulas, written as
+MathML, which Adobe's engine and older Kobos show as text. The identifier is
+the source's path, so a rebuilt file is the same book to the reader and keeps
+its place. Not opened on a device here: open the result on yours.
 
 ### Diagrams and charts
 
