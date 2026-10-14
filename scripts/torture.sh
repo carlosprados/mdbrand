@@ -648,6 +648,43 @@ else
 	echo "  --    soffice, pdffonts or fc-match absent: the .docx files were built, not read"
 fi
 
+# -------------------------------------------------------------------- the pptx
+# The deck as an editable .pptx, beside the PDF: the PDF must not move for it,
+# and the .pptx must carry the brand's faces only, its footer, the accent,
+# and no pause printed as text.
+echo
+echo "testdata/slides.md --to pdf,pptx — the deck as an editable .pptx"
+out="$("$bin" build "$root/testdata/slides.md" --brands-dir "$root/testdata/brands" \
+	--to pdf,pptx -o "$work/slides-pptx.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	cmp -s <(pdftotext "$work/slides.pdf" -) <(pdftotext "$work/slides-pptx.pdf" -) \
+		&& ok "the PDF deck is the same with a .pptx beside it" || bad "the PDF deck changed when a .pptx was built beside it"
+	if command -v unzip >/dev/null; then
+		xml="$(unzip -p "$work/slides-pptx.pptx" 'ppt/slides/*.xml')"
+		grep -qF '. . .' <<<"$xml" && bad "a pause printed as text in the .pptx" || ok "no pause printed as text"
+		grep -q $'\xee\x80\x80\|\xee\x80\x81' <<<"$xml" && bad "an accent mark left in the .pptx" || ok "the accent marks are resolved"
+		grep -qF 'val="A8520A"' <<<"$xml" && ok "the accent is coloured" || bad "the accent lost its colour"
+	fi
+	if command -v soffice >/dev/null && command -v pdffonts >/dev/null; then
+		(cd "$work" && timeout 300 soffice --headless --convert-to pdf --outdir "$work/lo-pptx" slides-pptx.pptx >/dev/null 2>&1)
+		lo="$work/lo-pptx/slides-pptx.pdf"
+		if [ -f "$lo" ]; then
+			[ "$(pdfinfo "$lo" | awk '/^Pages/ {print $2}')" = 9 ] && ok "nine slides, as the PDF deck counts them" || bad "the .pptx does not hold the deck's nine slides"
+			stray="$(pdffonts "$lo" | awk 'NR>2{print $1}' | sed 's/^[A-Z]*+//' | grep -v '^DejaVuSans' | sort -u | tr '\n' ' ')"
+			[ -z "$stray" ] && ok "only the bundle's office faces" || bad "faces nobody declared: $stray"
+			pdftotext -f 3 -l 3 "$lo" - | grep -qF "Decks & frames" && ok "the footer carries the running title" || bad "the footer lost its running title"
+		else
+			bad "LibreOffice did not render the .pptx"
+		fi
+	else
+		echo "  --    soffice or pdffonts absent: the .pptx was built, not read"
+	fi
+fi
+
 # ------------------------------------------------------------------- the traps
 # file · expected exit (ok|fail) · a phrase the message must carry · extra args
 traps=(
@@ -715,6 +752,9 @@ traps=(
 	"accent-pale.md|ok|Set colors.accent|--style note --brands-dir $root/testdata/brands"
 	"brand-typo.md|fail|colors.acent is not a setting mdbrand reads — did you mean accent?|--brands-dir $root/testdata/brands"
 	"brand-future.md|fail|requires mdbrand 99.0 or later|--brands-dir $root/testdata/brands"
+	"pptx-three-columns.md|fail|a .pptx holds two|--to pptx --brand none"
+	"pptx-two-figures.md|fail|\"Two at once\" holds 2 figures|--to pptx --brand none"
+	"pptx-on-page.md|fail|a .pptx is a deck|--to pptx --brand none"
 	"keep-too-tall.md|fail|\"The long card\": "
 	"keep-slides.md|fail|::: {.keep} on a slide"
 	"keep-nested.md|fail|::: {.keep} inside another"
@@ -726,7 +766,7 @@ for t in "${traps[@]}"; do
 	IFS='|' read -r file want phrase extra <<<"$t"
 	# shellcheck disable=SC2086 — the extra arguments are meant to split.
 	ext=pdf
-	case "$extra" in *"--to docx"*) ext=docx ;; esac
+	case "$extra" in *"--to docx"*) ext=docx ;; *"--to pptx"*) ext=pptx ;; esac
 	out="$("$bin" build "$root/testdata/traps/$file" ${extra:---brand none} \
 		-o "$work/${file%.md}.$ext" 2>&1)"
 	status=$?

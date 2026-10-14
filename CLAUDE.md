@@ -15,12 +15,16 @@ and rediscovering the same traps. So the traps are behaviour, not documentation:
 **a build that would produce a defective PDF must fail, naming the fix.** Adding
 a knob that lets a defect through is the wrong direction.
 
-Non-goals: a general pandoc wrapper, HTML output, a .pptx, slide layouts of
-the author's own, a template language for users. It renders documents that look
+Non-goals: a general pandoc wrapper, HTML output, slide layouts of the
+author's own, a template language for users. It renders documents that look
 like the ones in `examples/`, and decks that look like `testdata/slides.md`.
+The `.pptx` (`--to pptx`) is the deck for a reader who must edit it: the same
+slides, brand and figures, and nothing the PDF deck did not already say —
+never a second design.
 
 The PDF is the product. `--to docx` writes the same document for readers who
-need Word or Google Docs, and it is strictly additive: nothing on the PDF's path
+need Word or Google Docs, and `--to pptx` a deck for one who must edit it;
+both are strictly additive: nothing on the PDF's path
 may change for it. A change near `internal/build` proves that by building every
 fixture before and after and diffing the generated `.tex`, Markdown and the
 PDFs' text — byte for byte. `style: slides` is held to the same rule: a deck
@@ -42,6 +46,8 @@ internal/tex/            templates/*.tmpl + escaping + page arithmetic;
                          slides.tex.tmpl is the deck's preamble, beside the page's
 internal/docx/           reference.docx from the brand, cover and letterhead
                          as OOXML, repairs over pandoc's .docx; a pure leaf
+internal/pptx/           reference.pptx from the brand, repairs over pandoc's
+                         .pptx, the overflow estimate; a pure leaf
 internal/build/          the pipeline: prepare.go is what every output format
                          shares (brand, data, words, sized figures); pdf.go is
                          the PDF's own, and owns the xelatex run and its log;
@@ -358,6 +364,23 @@ Do not relax one without understanding what it cost.
     → `internal/build/build_test.go`, `internal/docx/docx_test.go`,
     `internal/tex/tex_test.go`, `testdata/keep.md`, `testdata/headings.md`,
     `traps/keep-*.md`.
+
+25. **A `.pptx` is laid out by the reader, so what can be measured is set
+    and what cannot is estimated and warned.** pandoc's pptx writer fits a
+    figure to its placeholder whatever width it was given, prints `. . .` as
+    text, keeps two of three columns, moves a second figure to an untitled
+    slide and drops the master's media files, all at exit 0. Figures are
+    rasterised at the PDF's size × 1.5875 (the 160 × 90 mm frame on the 254 ×
+    142.875 mm slide) and Repair writes that size from the PNG's pixels;
+    pauses go with a warning; three columns, two figures, a page style and a
+    face outside fonts.office stop the build. Text overflow is read off
+    LibreOffice's rendering — it draws past the box and the page clips — and
+    warns by slide, unless the PDF was built beside it and measured the same
+    slide. spans.lua marks `.accent` with private-use characters only for
+    `FORMAT == "pptx"`, so the PDF and the .docx do not move by a byte.
+    Unmeasured: PowerPoint and Google Slides themselves.
+    → `internal/pptx/pptx_test.go`, the pptx section of `scripts/torture.sh`
+    (read back through LibreOffice Impress), `traps/pptx-*.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

@@ -50,6 +50,7 @@ flag mdbrand skill path --project (bool)
 format docx
 format notes
 format pdf
+format pptx
 style letter
 style note
 style report

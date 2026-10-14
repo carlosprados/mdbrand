@@ -107,10 +107,10 @@ func (b *Brand) OfficeFonts() (Office, error) {
 		return o, nil
 	}
 	if !b.Fonts.Office.Complete() {
-		return Office{}, fmt.Errorf(`the %s bundle names no fonts.office, and a .docx needs them.
-A .docx carries no fonts: Word and Google Docs set it in what the reader has
-and substitute the rest in silence. Declare faces the readers have — Google
-Docs offers only Google Fonts — in %s:
+		return Office{}, fmt.Errorf(`the %s bundle names no fonts.office, and a .docx or .pptx needs them.
+Neither carries its fonts: Word, PowerPoint and Google set them in what the
+reader has and substitute the rest in silence. Declare faces the readers have
+— Google's apps offer only Google Fonts — in %s:
 
   fonts:
     office:

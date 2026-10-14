@@ -825,6 +825,42 @@ The Markdown stays the source. A `.docx` edited by someone else does not come
 back: carry the changes into the `.md` by hand, or have an assistant do it from
 `pandoc informe.docx -t markdown`.
 
+### PowerPoint
+
+```sh
+mdbrand build charla.md --to pptx         # charla.pptx
+mdbrand build charla.md --to pdf,pptx     # the PDF deck and the .pptx
+```
+
+For a reader who must edit the deck: a `style: slides` document as a branded
+`.pptx`, the same slides, brand and figures as the PDF deck. The PDF stays the
+reference — the `.pptx` is laid out by the reader's PowerPoint in the reader's
+fonts, so what mdbrand measures on the PDF it can only estimate here. A page
+style refuses `pptx`, as a deck refuses `docx`.
+
+What carries over:
+
+- title and section slides on the bundle's `slides.background`, with its
+  `art` and logo; every other slide with the footer — logo, confidentiality
+  label, short title and slide number;
+- type in `fonts.office`, at the PDF deck's proportions, titles left and bold;
+- figures **at the PDF's size scaled to the slide** (×1.5875: the frame is
+  160 × 90 mm, the slide 254 × 142.9 mm), rasterised at 300 ppi;
+- two columns, `::: incremental` lists as one click per point, `::: notes` in
+  the notes pane, tables ruled as in the PDF, code in `fonts.office.mono`,
+  `[words]{.accent}` in `colors.accent`; footnotes on a closing slide titled
+  in the deck's language.
+
+What does not, and says so: a pause (`. . .`) is dropped with a warning — the
+slide shows at once. A slide of three columns or two figures stops the build,
+since pandoc would drop a column or move a figure to an untitled slide. The
+slide number is "N" alone: a total written in would go stale at the first
+slide the reader adds. A slide whose text does not fit is estimated by
+rendering the deck in LibreOffice and warned about, by title; without
+LibreOffice the build says it did not look. Build `--to pdf,pptx` and the PDF
+measures every slide instead. Not tried in PowerPoint itself or in Google
+Slides: open the result before sending it.
+
 ### Diagrams and charts
 
 Write them inline, or link a side file. Both are rendered, placed and sized:

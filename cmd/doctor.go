@@ -29,7 +29,9 @@ func doctorCmd() *cobra.Command {
 what is absent. Required for any build: pandoc, xelatex, rsvg-convert and a few
 LaTeX packages. Required only if the document has diagrams: d2, vl2svg.
 Recommended: pdftotext, which reads each PDF back so a text layer that copies
-as garbage stops the build; without it a build warns that it was not checked.`,
+as garbage stops the build; without it a build warns that it was not checked.
+Optional: soffice (LibreOffice), which --to pptx uses to estimate the slides
+whose text does not fit.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
 			fails := printChecks(out, append(toolChecks(), latexChecks()...))
@@ -64,6 +66,9 @@ func toolChecks() []check {
 	bin("vl2vg", "npm i -g vega-lite  ·  https://vega.github.io/vega-lite/", false)
 	bin("vg2svg", "npm i -g vega-cli@latest (6.4.0 or later)  ·  https://vega.github.io/vega/usage/#cli", false)
 	bin("pdftotext", "apt install poppler-utils (brew install poppler)  ·  https://poppler.freedesktop.org/", false)
+	// --to pptx estimates which slides' text does not fit by rendering the
+	// deck in LibreOffice; without it the build says it did not look.
+	bin("soffice", "apt install libreoffice-impress-nogui  ·  https://www.libreoffice.org/download/download-libreoffice/", false)
 	return checks
 }
 

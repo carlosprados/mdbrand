@@ -23,7 +23,8 @@ func buildCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "build <document.md>",
 		Short: "Build a branded A4 PDF, and a .docx if asked, from a Markdown document",
-		Long: `Build a branded A4 PDF from Markdown — and, with --to docx, a Word file.
+		Long: `Build a branded A4 PDF from Markdown — and, with --to docx, a Word file;
+with --to pptx, a deck as PowerPoint.
 
 Everything can come from the document's front matter, so the usual invocation
 carries no flags at all:
@@ -182,6 +183,15 @@ write on a slide without notes. --to pdf,notes writes the deck and its notes. A
 note too long for its page, or holding a word too wide for its column, stops
 the build by the slide's title.
 
+--to pptx, for a deck, writes it as a branded .pptx for someone who must edit
+it: the same slides, title and section slides on the bundle's ground, the
+footer, figures at their PDF size scaled to the slide (x1.5875), two columns,
+incremental lists, notes in the notes pane. It needs fonts.office as a .docx
+does. A pause (. . .) is dropped with a warning; a slide of three columns or
+two figures stops the build. Text that does not fit is estimated by rendering
+the deck in LibreOffice and warned about by slide; --to pdf,pptx measures it
+on the PDF instead.
+
 --watch keeps mdbrand running and rebuilds whenever a file the build read
 changes: the document, its linked figures and pictures, the bibliography and
 CSL, the bundle's brand.yaml and logos. The set is taken from each build, so a
@@ -235,7 +245,7 @@ file. Ctrl-C stops it.
 		},
 	}
 	c.Flags().StringVarP(&o.Output, "out", "o", "", "output file (default: alongside the input); with several formats, each takes its own extension")
-	c.Flags().StringSliceVar(&o.Formats, "to", nil, "pdf | docx | notes, or a list (pdf,notes); overrides the front matter's formats (default pdf)")
+	c.Flags().StringSliceVar(&o.Formats, "to", nil, "pdf | docx | notes | pptx, or a list (pdf,notes); overrides the front matter's formats (default pdf)")
 	c.Flags().StringVar(&o.BrandName, "brand", "", "brand bundle to use; overrides the front matter")
 	c.Flags().StringVar(&o.Style, "style", "", "report | note | letter | slides; overrides the front matter")
 	c.Flags().StringVar(&o.WordCount, "wordcount", "", "ib | all: the {{words}} criterion; replaces the front matter's entirely")
