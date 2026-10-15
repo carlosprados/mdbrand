@@ -44,11 +44,23 @@ func TestUnknownFieldsOnlyWhereTheDataIsKnown(t *testing.T) {
 func TestEmptyExtentsNameTheFieldAsWritten(t *testing.T) {
 	log := "WARN Infinite extent for field \"cost_start\": [Infinity, -Infinity]\n" +
 		"WARN Infinite extent for field \"cost_end\": [Infinity, -Infinity]\n"
-	got := strings.Join(emptyExtents(log, map[string]bool{"coste": true}), "\n")
+	cols := map[string]bool{"coste": true}
+	got := strings.Join(emptyExtents(log, cols, map[string]bool{"cost": true}), "\n")
 	if strings.Count(got, `"cost"`) != 1 || !strings.Contains(got, `did you mean "coste"?`) {
 		t.Errorf("got %q", got)
 	}
-	if got := emptyExtents("WARN something else\n", nil); got != nil {
+	if got := emptyExtents("WARN something else\n", nil, nil); got != nil {
 		t.Errorf("unrelated warning reported: %q", got)
+	}
+	// An aggregate's field carries its op as a prefix.
+	if got := emptyExtents("WARN Infinite extent for field \"sum_cost\": [Infinity, -Infinity]\n",
+		cols, map[string]bool{"cost": true}); got == nil {
+		t.Error("an aggregated typo went unreported")
+	}
+	// Vega-Lite's own field, from a literal domain unioned with a data one
+	// across layers: the chart draws whole.
+	if got := emptyExtents("WARN Infinite extent for field \"data\": [Infinity, -Infinity]\n",
+		cols, map[string]bool{"start": true, "end": true}); got != nil {
+		t.Errorf("Vega-Lite's internal field reported: %q", got)
 	}
 }

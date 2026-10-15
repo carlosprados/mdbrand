@@ -350,6 +350,15 @@ if [ $status -eq 0 ]; then
 	[ "$(grep -o '<w:keepNext/>' <<<"$xml" | wc -l)" -eq 72 ] && ok "the .docx keeps each card's paragraphs with the next" || bad "the .docx does not keep the cards together"
 fi
 
+# A layered chart whose time scale gets a literal domain in one layer and a
+# data one in another: Vega reports an empty extent for Vega-Lite's own field
+# "data", and a Gantt that drew whole stopped the build.
+echo
+echo "testdata/vega-layer-domain.md — Vega-Lite's own fields are not the author's"
+out="$("$bin" build "$root/testdata/vega-layer-domain.md" -o "$work/vega-layer-domain.pdf" 2>&1)"
+status=$?
+[ $status -eq 0 ] && ok "builds" || { bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'; }
+
 # data-named: a second project's data/ under a name of its own, read by a
 # placeholder, a table and a chart alike.
 echo

@@ -158,9 +158,13 @@ Do not relax one without understanding what it cost.
     the build as well. A field name that misses the data draws the same
     nothing — one bar labelled undefined, or none — so a plotted field must
     be one of the data's columns where they are all known and no transform
-    derives more, and Vega's `Infinite extent for field` fails everywhere.
+    derives more, and Vega's `Infinite extent for field` fails everywhere —
+    for a field the spec names, or names under an aggregate's prefix:
+    Vega-Lite's own "data", from a literal domain unioned across layers,
+    stopped a Gantt that drew whole.
     → `internal/fig/vega_test.go`, `internal/fig/fields_test.go`,
-    `testdata/traps/missing-data.md`, `traps/chart-field-typo.md`.
+    `testdata/traps/missing-data.md`, `traps/chart-field-typo.md`,
+    `testdata/vega-layer-domain.md`.
 
 13. **A data value prints as its characters, and a path that leads nowhere
     stops the build.** Values are held as YAML nodes so `0.10` is not
