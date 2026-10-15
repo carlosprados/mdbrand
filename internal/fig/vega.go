@@ -401,7 +401,9 @@ func renderVega(f *doc.Fig, b *brand.Brand, out string, ds *Datasets, width int)
 			figName(f), strings.TrimSpace(log))
 	}
 	cols, _ := dataColumns(settled)
-	if errs := emptyExtents(log, cols); len(errs) > 0 {
+	used := map[string]bool{}
+	usedFields(settled, used)
+	if errs := emptyExtents(log, cols, used); len(errs) > 0 {
 		return fmt.Errorf("%s: %s", figName(f), errs[0])
 	}
 	return nil

@@ -147,8 +147,11 @@ var infiniteRe = regexp.MustCompile(`Infinite extent for field "([^"]+)"`)
 
 // emptyExtents reads Vega's own report of a quantitative field with no number
 // in it — the case a transform hides from unknownFields. A stacked bar's
-// field arrives as X_start and X_end.
-func emptyExtents(log string, cols map[string]bool) []string {
+// field arrives as X_start and X_end, an aggregate's as sum_X. Only a field
+// the spec names counts: Vega-Lite's own are reported too — two layers giving
+// a time scale a literal domain and a data one made it build a dataset whose
+// field is "data", and a Gantt that drew whole stopped the build.
+func emptyExtents(log string, cols, used map[string]bool) []string {
 	seen := map[string]bool{}
 	var fields []string
 	for _, m := range infiniteRe.FindAllStringSubmatch(log, -1) {
@@ -157,6 +160,9 @@ func emptyExtents(log string, cols map[string]bool) []string {
 			if t := strings.TrimSuffix(f, s); t != f && !cols[f] {
 				f = t
 			}
+		}
+		if !specField(f, used) {
+			continue
 		}
 		if !seen[f] {
 			seen[f] = true
@@ -167,6 +173,17 @@ func emptyExtents(log string, cols map[string]bool) []string {
 		return nil
 	}
 	return []string{fieldsMessage(fields, cols)}
+}
+
+// specField reports whether a field Vega names is one the spec plots, as
+// written or under the prefix an aggregate or a bin gives it.
+func specField(f string, used map[string]bool) bool {
+	for u := range used {
+		if f == u || strings.HasSuffix(f, "_"+u) {
+			return true
+		}
+	}
+	return false
 }
 
 func fieldsMessage(fields []string, cols map[string]bool) string {
