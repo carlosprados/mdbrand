@@ -95,7 +95,9 @@ Contextual alternates are off for that reason — Inter's turned "(SD1)" into
 U+EE4E SD1 U+EE4F. Without pdftotext the build warns that it was not checked.
 
 [words]{.accent} sets words in the bundle's colors.accent (its primary when it
-declares none), in the PDF and the .docx alike. color=, colour=, style=, bgcolor= or background= on a span, div,
+declares none), in every output. [Verde]{.ok}, [Rojo]{.ko} and [Gris]{.muted}
+are named colours every bundle has, redefined or added to under colors.named;
+a class one slip from a colour's name (.kko, .OK) stops the build. color=, colour=, style=, bgcolor= or background= on a span, div,
 heading, code or link stops the build: pandoc drops those attributes in
 silence, so the words would print black.
 Raw HTML stops it too, each tag named with its Markdown — <br>, <b>, <img>,

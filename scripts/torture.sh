@@ -350,6 +350,29 @@ if [ $status -eq 0 ]; then
 	[ "$(grep -o '<w:keepNext/>' <<<"$xml" | wc -l)" -eq 72 ] && ok "the .docx keeps each card's paragraphs with the next" || bad "the .docx does not keep the cards together"
 fi
 
+# Named colours: a table that sorts its rows into kinds wanted more than the
+# accent. Each prints in its colour in every output, set where pandoc would
+# otherwise drop it, and none reaches the preamble.
+echo
+echo "testdata/named-colours.md — words in a colour by name"
+out="$("$bin" build "$root/testdata/named-colours.md" --to pdf,docx,epub --work "$work/named" -o "$work/named.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	tex="$work/named/named-colours.tex"
+	for hex in 2E7D32 C62828 6B6B6B; do
+		grep -qF "\\textcolor[HTML]{$hex}" "$tex" && ok "the PDF sets $hex" || bad "the .tex does not set $hex"
+	done
+	grep -qF 'Colour-' "$work/named/preamble.tex" && bad "a named colour reached the preamble" || ok "the preamble names no named colour"
+	xml="$(unzip -p "$work/named.docx" word/document.xml)"
+	grep -qF '<w:rStyle w:val="Colour-ko"/><w:color w:val="C62828"/>' <<<"$xml" \
+		&& ok "the .docx colours the runs, not only the style" || bad "the .docx leaves a named colour to its style"
+	css="$(unzip -p "$work/named.epub" 'EPUB/styles/*.css')"
+	grep -qF '.muted { color: #6B6B6B; }' <<<"$css" && ok "the .epub's stylesheet colours .muted" || bad "the .epub's stylesheet lacks .muted"
+fi
+
 # A layered chart whose time scale gets a literal domain in one layer and a
 # data one in another: Vega reports an empty extent for Vega-Lite's own field
 # "data", and a Gantt that drew whole stopped the build.
@@ -769,6 +792,8 @@ traps=(
 	"pdf-picture.md|fail|a .docx cannot hold one|--to docx --brand none"
 	"span-colour.md|fail|[words]{.accent}"
 	"span-colour.md|fail|[words]{.accent}|--to docx --brand none"
+	"named-colour-typo.md|fail|.kko on \"Rojo\" — did you mean .ko?"
+	"named-colour-typo.md|fail|.OK on \"Verde\" — did you mean .ok?|--to docx --brand none"
 	"display-glyph.md|fail|display face (fonts.office.display), has no glyph|--to docx --brands-dir $root/testdata/brands"
 	"missing-style.md|fail|DejaVuSans: small caps|--brands-dir $root/testdata/brands"
 	"cite-no-source.md|fail|2 citation(s) but nothing to cite them from"

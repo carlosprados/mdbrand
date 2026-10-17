@@ -1,6 +1,7 @@
 package build
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/doc"
 	"github.com/carlosprados/mdbrand/internal/fig"
+	"github.com/carlosprados/mdbrand/internal/pptx"
 )
 
 func TestScanLogFindsFrameOverflows(t *testing.T) {
@@ -205,5 +207,49 @@ func TestTitleSlideAdviceNamesTheLogo(t *testing.T) {
 		if got := titleSlideAdvice(over, logo); strings.Contains(got, "logo_width_cover") || !strings.Contains(got, "shorten the title") {
 			t.Errorf("%s: %q", name, got)
 		}
+	}
+}
+
+// A class one slip from a colour stops; a class of pandoc's own does not,
+// nor a two-letter class two edits from ok and ko alike.
+func TestNearColour(t *testing.T) {
+	colours := []string{"accent", "ko", "muted", "ok"}
+	for class, want := range map[string]string{
+		"kko": "ko", "OK": "ok", "mutted": "muted", "acent": "accent",
+		"smallcaps": "", "underline": "", "em": "", "o": "",
+	} {
+		if got := nearColour(class, colours); got != want {
+			t.Errorf("nearColour(%q) = %q, want %q", class, got, want)
+		}
+	}
+}
+
+// The filter's marks must be the ones the .pptx's Repair reads, in the same
+// order, or a deck's words take the wrong colour.
+func TestNamedTableMarksMatchThePptx(t *testing.T) {
+	b := brand.Default()
+	table := namedTable(b.Colors)
+	for i, n := range b.Colors.NamedNames() {
+		line := fmt.Sprintf("[%q] = { hex = %q, mark = utf8.char(%d) }", n, b.Colors.Named[n], pptx.NamedMark(i))
+		if !strings.Contains(table, line) {
+			t.Errorf("the filter's table lacks %s:\n%s", line, table)
+		}
+	}
+}
+
+// A named colour is measured like the accent, by its own key.
+func TestNamedContrast(t *testing.T) {
+	b := brand.Default()
+	b.Colors.Named["pale"] = "FFD54F"
+	if err := accentContrast(b, "MDBRAND-NAMED ok\n", true, &Report{}); err != nil {
+		t.Errorf("the built-in ok must pass on a deck: %v", err)
+	}
+	err := accentContrast(b, "MDBRAND-NAMED pale\n", true, &Report{})
+	if err == nil || !strings.Contains(err.Error(), "colors.named.pale") {
+		t.Errorf("a pale named colour must stop a deck, by its key: %v", err)
+	}
+	rep := &Report{}
+	if err := accentContrast(b, "MDBRAND-NAMED pale\n", false, rep); err != nil || len(rep.Warnings) != 1 {
+		t.Errorf("a page must warn, not stop: %v %v", err, rep.Warnings)
 	}
 }

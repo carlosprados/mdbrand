@@ -100,29 +100,52 @@ function Table(el)
 end
 function Link(el) check(el) end
 
+-- The bundle's named colours, [words]{.ok}, written in by mdbrand: each
+-- one's hex and the private-use mark that opens it in a .pptx.
+local named = {}
+
+-- colour is the colour a span asks for by class, the accent first, with the
+-- way each output sets it; nil when it asks for none. Any other class is
+-- reported, so the build can name the colour a typo meant.
+local function colour(el)
+  local found
+  for _, c in ipairs(el.classes) do
+    if c == "accent" then
+      found = found or { report = "MDBRAND-ACCENT", style = "Accent", tex = "\\textcolor{brandPrimary}{", mark = "\u{E000}" }
+    elseif named[c] then
+      found = found or { report = "MDBRAND-NAMED " .. c, style = "Colour-" .. c,
+        tex = "\\textcolor[HTML]{" .. named[c].hex .. "}{", mark = named[c].mark }
+    else
+      io.stderr:write("MDBRAND-CLASS " .. c .. "\t" .. pandoc.utils.stringify(el):gsub("%s+", " "):sub(1, 50) .. "\n")
+    end
+  end
+  return found
+end
+
 function Span(el)
   check(el)
-  if not el.classes:includes("accent") then
+  local c = colour(el)
+  if not c then
     return nil
   end
-  io.stderr:write("MDBRAND-ACCENT\n")
+  io.stderr:write(c.report .. "\n")
   -- pandoc's pptx writer has no character styles: private-use marks around
   -- the words survive into the run, where Repair colours them.
   if FORMAT == "pptx" then
-    local out = pandoc.List({ pandoc.Str("\u{E000}") })
+    local out = pandoc.List({ pandoc.Str(c.mark) })
     out:extend(el.content)
     out:insert(pandoc.Str("\u{E001}"))
     return out
   end
   if FORMAT == "docx" then
-    el.attributes["custom-style"] = "Accent"
+    el.attributes["custom-style"] = c.style
     return el
   end
   -- The stylesheet colours the class.
   if epub then
     return el
   end
-  local out = pandoc.List({ pandoc.RawInline("latex", "\\textcolor{brandPrimary}{") })
+  local out = pandoc.List({ pandoc.RawInline("latex", c.tex) })
   out:extend(el.content)
   out:insert(pandoc.RawInline("latex", "}"))
   return out
@@ -242,8 +265,10 @@ function Div(el)
     out:insert(pandoc.RawBlock("latex", "\\end{abstract}"))
     return out
   end
-  if el.classes:includes("accent") then
-    report(el, "a ::: {.accent} block")
+  for _, c in ipairs(el.classes) do
+    if c == "accent" or named[c] then
+      report(el, "a ::: {." .. c .. "} block")
+    end
   end
   return nil
 end

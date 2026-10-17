@@ -3,6 +3,7 @@ package docx
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -147,7 +148,10 @@ func styles(s string, l Look) string {
 		s = strings.Replace(s, "</w:styles>", sourceCodeStyle(l.Mono)+"</w:styles>", 1)
 	}
 	if !strings.Contains(s, `w:styleId="`+AccentStyle+`"`) {
-		s = strings.Replace(s, "</w:styles>", accentStyle(l.accent())+"</w:styles>", 1)
+		s = strings.Replace(s, "</w:styles>", accentStyle(AccentStyle, l.accent())+"</w:styles>", 1)
+	}
+	for _, n := range sortedKeys(l.Named) {
+		s = strings.Replace(s, "</w:styles>", accentStyle(NamedStyle(n), l.Named[n])+"</w:styles>", 1)
 	}
 	return s
 }
@@ -157,10 +161,23 @@ func styles(s string, l Look) string {
 // character styles on import; the style is what a Word user sees named.
 const AccentStyle = "Accent"
 
-func accentStyle(color string) string {
+// NamedStyle is the character style of a named colour's words, the one
+// spans.lua writes for [words]{.ok}.
+func NamedStyle(name string) string { return "Colour-" + name }
+
+func accentStyle(style, color string) string {
 	return fmt.Sprintf(`<w:style w:type="character" w:customStyle="1" w:styleId="%s">`+
 		`<w:name w:val="%s"/><w:basedOn w:val="DefaultParagraphFont"/>`+
-		`<w:rPr><w:color w:val="%s"/></w:rPr></w:style>`, AccentStyle, AccentStyle, color)
+		`<w:rPr><w:color w:val="%s"/></w:rPr></w:style>`, style, style, color)
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // tocStyle is one level of the table of contents, indented like the PDF's,

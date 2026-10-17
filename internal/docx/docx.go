@@ -26,7 +26,8 @@ type Look struct {
 	Body, Display, Mono string // font families the reader's machine is asked for
 	Primary, Text, Rule string // hex colours, no '#'
 	Link                string
-	Accent              string // [words]{.accent}; the primary when the bundle sets none
+	Accent              string            // [words]{.accent}; the primary when the bundle sets none
+	Named               map[string]string // [words]{.ok}, by name
 
 	PaperWMM, PaperHMM float64
 	MarginMM           float64

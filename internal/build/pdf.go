@@ -128,7 +128,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if err := citationProblems(d.Meta, pandocOut, "PDF"); err != nil {
 		return err
 	}
-	if err := filterProblems(pandocOut); err != nil {
+	if err := filterProblems(pandocOut, b); err != nil {
 		return err
 	}
 	if err := pandocWarnings(pandocOut, "PDF", rep); err != nil {
