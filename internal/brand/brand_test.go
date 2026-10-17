@@ -2,6 +2,7 @@ package brand
 
 import (
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -364,6 +365,31 @@ func TestKeepHeadingLinesRange(t *testing.T) {
 		probs, _ := b.Check()
 		if !strings.Contains(strings.Join(probs, "\n"), "page.keep_heading_lines") {
 			t.Errorf("%d lines accepted: %v", n, probs)
+		}
+	}
+}
+
+// The built-in named colours are there in every bundle, a bundle's own
+// replaces one by name, and a name that is no class, or one pandoc or mdbrand
+// already reads, is refused: [x]{.keep} would be coloured and kept.
+func TestNamedColours(t *testing.T) {
+	b := &Brand{Name: "x", Colors: Colors{Named: map[string]string{"ok": "1B5E20", "pending": "8A6D00"}}}
+	b.applyDefaults()
+	want := map[string]string{"ok": "1B5E20", "ko": "C62828", "muted": "6B6B6B", "pending": "8A6D00"}
+	if !maps.Equal(b.Colors.Named, want) {
+		t.Errorf("named = %v, want %v", b.Colors.Named, want)
+	}
+	if d := Default(); !maps.Equal(d.Colors.Named, DefaultNamed) {
+		t.Errorf("the default bundle's named = %v", d.Colors.Named)
+	}
+	for name, want := range map[string]string{"Rojo": "lower-case", "keep": "already reads", "x": "6-digit hex"} {
+		b := &Brand{Name: "x", Colors: Colors{Named: map[string]string{name: "C62828"}}}
+		if name == "x" {
+			b.Colors.Named[name] = "#C62828"
+		}
+		b.applyDefaults()
+		if problems, _ := b.Check(); !strings.Contains(strings.Join(problems, "\n"), want) {
+			t.Errorf("colors.named.%s: want a problem saying %q, got %v", name, want, problems)
 		}
 	}
 }

@@ -101,7 +101,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err := citationProblems(d.Meta, pandocOut, "deck"); err != nil {
 		return err
 	}
-	if err := filterProblems(pandocOut); err != nil {
+	if err := filterProblems(pandocOut, b); err != nil {
 		return err
 	}
 	if err := pptxColumns(pandocOut); err != nil {
@@ -207,6 +207,7 @@ func pptxLook(p *prepared) (pptx.Look, error) {
 	l := pptx.Look{
 		Body: office.Body, Display: office.Display, Mono: office.Mono,
 		Primary: b.Colors.Primary, Text: b.Colors.Text, Rule: b.Colors.Rule, Link: b.Colors.Link, Accent: b.Colors.Accent,
+		Named: b.Colors.Named, NamedNames: b.Colors.NamedNames(),
 		Ground: b.Slides.Background, OnGround: b.Slides.Foreground,
 		MarginMM:     tex.SlideMarginMM * pptx.Scale,
 		Confidential: p.d.Meta.Options.Confidential, RunningTitle: p.d.Meta.RunningTitle(),

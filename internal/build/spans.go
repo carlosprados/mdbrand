@@ -9,8 +9,10 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/pptx"
 	"github.com/carlosprados/mdbrand/internal/suggest"
 )
 
@@ -31,26 +33,87 @@ func writeSpanFilter(work string, b *brand.Brand) (string, error) {
 	if b.Colors.Accent != b.Colors.Primary {
 		filter = bytes.ReplaceAll(filter, []byte(`\\textcolor{brandPrimary}`), []byte(`\\textcolor{brandAccent}`))
 	}
+	filter = bytes.Replace(filter, []byte("local named = {}"), []byte(namedTable(b.Colors)), 1)
 	if err := os.WriteFile(filepath.Join(work, spanFilterName), filter, 0o644); err != nil {
 		return "", err
 	}
 	return "--lua-filter=" + spanFilterName, nil
 }
 
+// namedTable is the filter's table of named colours. Each opens its words in
+// a .pptx with a private-use mark of its own, after the accent's two.
+func namedTable(c brand.Colors) string {
+	var b strings.Builder
+	b.WriteString("local named = {\n")
+	for i, n := range c.NamedNames() {
+		fmt.Fprintf(&b, "  [%q] = { hex = %q, mark = utf8.char(%d) },\n", n, c.Named[n], pptx.NamedMark(i))
+	}
+	b.WriteString("}")
+	return b.String()
+}
+
 var spanRe = regexp.MustCompile(`MDBRAND-SPAN ([^\t\n]+)\t([^\n]*)`)
 
 // filterProblems is everything spans.lua reports that stops a build.
-func filterProblems(pandocOut string) error {
+func filterProblems(pandocOut string, b *brand.Brand) error {
 	if err := spanProblems(pandocOut); err != nil {
 		return err
 	}
 	if err := htmlProblems(pandocOut); err != nil {
 		return err
 	}
+	if err := classProblems(pandocOut, b); err != nil {
+		return err
+	}
 	if err := keepProblems(pandocOut); err != nil {
 		return err
 	}
 	return anchorProblems(pandocOut)
+}
+
+var classRe = regexp.MustCompile(`MDBRAND-CLASS (\S+)\t([^\n]*)`)
+
+// classProblems stops a class one letter from a colour: [Rojo]{.kO} would
+// print black, exit 0. A class far from every colour is left alone, since
+// pandoc and other filters read classes of their own.
+func classProblems(pandocOut string, b *brand.Brand) error {
+	colours := append([]string{"accent"}, b.Colors.NamedNames()...)
+	var lines []string
+	seen := map[string]bool{}
+	for _, m := range classRe.FindAllStringSubmatch(pandocOut, -1) {
+		if seen[m[1]] {
+			continue
+		}
+		seen[m[1]] = true
+		if near := nearColour(m[1], colours); near != "" {
+			lines = append(lines, fmt.Sprintf(".%s on %q — did you mean .%s?", m[1], ellipsize(strings.TrimSpace(m[2]), 50), near))
+		}
+	}
+	if len(lines) == 0 {
+		return nil
+	}
+	return fmt.Errorf(`%d class(es) close to a colour's name that no colour has, so the words would print black:
+  %s
+The colours are .%s; a bundle adds its own under colors.named`,
+		len(lines), strings.Join(lines, "\n  "), strings.Join(colours, ", ."))
+}
+
+// nearColour is the colour a class probably meant. Two edits turn any
+// two-letter class into ok or ko, so a short name takes one, and a case
+// slip always counts.
+func nearColour(class string, colours []string) string {
+	lower := strings.ToLower(class)
+	if lower != class && slices.Contains(colours, lower) {
+		return lower
+	}
+	near := suggest.Closest(lower, colours)
+	if near == "" {
+		return ""
+	}
+	if suggest.Distance(lower, near) > 1 && utf8.RuneCountInString(near) < 5 {
+		return ""
+	}
+	return near
 }
 
 var (
@@ -191,8 +254,32 @@ func spanProblems(pandocOut string) error {
   %s
 pandoc drops colour attributes without a word, so the text would come out
 black, and the accent colours words, not blocks. Colour words with the brand's
-accent, which both outputs print:
-  [words]{.accent}`, len(ms), strings.Join(lines, "\n  "))
+accent or a named colour, which every output prints:
+  [words]{.accent}   [words]{.ok}   [words]{.ko}   [words]{.muted}`, len(ms), strings.Join(lines, "\n  "))
+}
+
+var namedUseRe = regexp.MustCompile(`MDBRAND-NAMED (\S+)`)
+
+// namedContrast holds each named colour the document prints words in to the
+// accent's rule: under 4.5:1 a deck stops and a page warns.
+func namedContrast(b *brand.Brand, pandocOut string, deck bool, rep *Report) error {
+	for _, n := range uniqueMatches(namedUseRe, pandocOut) {
+		hex := b.Colors.Named[n]
+		c := brand.Contrast(hex, "FFFFFF")
+		if c >= minAccentContrast {
+			continue
+		}
+		dark := brand.Darken(hex, minAccentContrast)
+		msg := fmt.Sprintf(`[words]{.%s} print in %s, %.1f:1 against the white page, under the
+%.1f:1 that text needs to be read. Set colors.named.%s in the bundle to %s,
+the same hue as dark as it needs to be, which reaches %.1f:1`,
+			n, hex, c, minAccentContrast, n, dark, brand.Contrast(dark, "FFFFFF"))
+		if deck {
+			return fmt.Errorf("%s", msg)
+		}
+		rep.Warnings = append(rep.Warnings, msg)
+	}
+	return nil
 }
 
 // minAccentContrast is WCAG's AA ratio for text, which accented words are.
@@ -203,6 +290,9 @@ const minAccentContrast = 4.5
 // colour out to nothing; a page warns, because a pale accent has always
 // printed and a document that built yesterday must still build.
 func accentContrast(b *brand.Brand, pandocOut string, deck bool, rep *Report) error {
+	if err := namedContrast(b, pandocOut, deck, rep); err != nil {
+		return err
+	}
 	if !strings.Contains(pandocOut, "MDBRAND-ACCENT") {
 		return nil
 	}

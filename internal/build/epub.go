@@ -46,7 +46,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		return err
 	}
 	meta := epub.Metadata(epub.Meta{Input: mustAbs(o.Input), Date: d.Meta.Date, Now: time.Now()})
-	css := epub.CSS(epub.Look{Accent: b.Colors.Accent, Link: b.Colors.Link, Rule: b.Colors.Rule})
+	css := epub.CSS(epub.Look{Accent: b.Colors.Accent, Named: b.Colors.Named, Link: b.Colors.Link, Rule: b.Colors.Rule})
 	for name, content := range map[string]string{"epub-metadata.xml": meta, "epub.css": css} {
 		if err := os.WriteFile(filepath.Join(work, name), []byte(content), 0o644); err != nil {
 			return err
@@ -85,7 +85,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err := citationProblems(d.Meta, pandocOut, "document"); err != nil {
 		return err
 	}
-	if err := filterProblems(pandocOut); err != nil {
+	if err := filterProblems(pandocOut, b); err != nil {
 		return err
 	}
 	if err := pandocWarnings(pandocOut, ".epub", rep); err != nil {

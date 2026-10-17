@@ -19,6 +19,10 @@ const (
 	AccentClose = ""
 )
 
+// NamedMark is the private-use mark that opens the i-th named colour's words,
+// [words]{.ok}, in the bundle's sorted order; AccentClose closes them all.
+func NamedMark(i int) rune { return 0xE002 + rune(i) }
+
 // Repair fixes what pandoc's pptx writer gets wrong, and returns the
 // warnings worth printing. It refuses a deck it would otherwise publish
 // wrong: two figures drawn over each other, a face the bundle did not name,
@@ -49,7 +53,7 @@ func Repair(b []byte, l Look) ([]byte, []string, error) {
 			warns = append(warns, fmt.Sprintf("slide %q: a pause (. . .) does not carry into a .pptx; the slide shows all at once", title))
 		}
 		x = ruleTables(x, l.Text)
-		if x, err = accents(x, l.Accent); err != nil {
+		if x, err = accents(x, l.marks()); err != nil {
 			return nil, nil, fmt.Errorf("slide %q: %w", title, err)
 		}
 		p.set(name, x)
@@ -206,18 +210,28 @@ var (
 	rPrOpenRe = regexp.MustCompile(`^<a:rPr([^>]*?)(/?)>`)
 )
 
-// accents sets in the accent colour what spans.lua marked, splitting runs at
+// marks maps each mark spans.lua opens coloured words with to the colour.
+func (l Look) marks() map[rune]string {
+	m := map[rune]string{[]rune(AccentOpen)[0]: l.Accent}
+	for i, n := range l.NamedNames {
+		m[NamedMark(i)] = l.Named[n]
+	}
+	return m
+}
+
+// accents sets in their colour the words spans.lua marked, splitting runs at
 // the marks; a mark left in the text would print as a box.
-func accents(x, accent string) (string, error) {
-	if !strings.Contains(x, AccentOpen) {
+func accents(x string, marks map[rune]string) (string, error) {
+	isMark := func(c rune) bool { _, ok := marks[c]; return ok || string(c) == AccentClose }
+	if !strings.ContainsFunc(x, isMark) {
 		return x, nil
 	}
 	x = paraRe.ReplaceAllStringFunc(x, func(par string) string {
-		on := false
+		on := ""
 		return runRe.ReplaceAllStringFunc(par, func(run string) string {
 			m := runRe.FindStringSubmatch(run)
 			rpr, text := m[1], m[2]
-			if !strings.ContainsAny(text, AccentOpen+AccentClose) && !on {
+			if !strings.ContainsFunc(text, isMark) && on == "" {
 				return run
 			}
 			var b strings.Builder
@@ -225,22 +239,21 @@ func accents(x, accent string) (string, error) {
 			flush := func() {
 				if seg != "" {
 					r := rpr
-					if on {
-						r = coloured(rpr, accent)
+					if on != "" {
+						r = coloured(rpr, on)
 					}
 					b.WriteString("<a:r>" + r + "<a:t>" + seg + "</a:t></a:r>")
 				}
 				seg = ""
 			}
 			for _, c := range text {
-				switch string(c) {
-				case AccentOpen:
+				if hex, ok := marks[c]; ok {
 					flush()
-					on = true
-				case AccentClose:
+					on = hex
+				} else if string(c) == AccentClose {
 					flush()
-					on = false
-				default:
+					on = ""
+				} else {
 					seg += string(c)
 				}
 			}
@@ -248,8 +261,8 @@ func accents(x, accent string) (string, error) {
 			return b.String()
 		})
 	})
-	if strings.ContainsAny(x, AccentOpen+AccentClose) {
-		return "", fmt.Errorf("an accent mark mdbrand could not resolve is left in the text; please report it at https://github.com/carlosprados/mdbrand/issues")
+	if strings.ContainsFunc(x, isMark) {
+		return "", fmt.Errorf("a colour mark mdbrand could not resolve is left in the text; please report it at https://github.com/carlosprados/mdbrand/issues")
 	}
 	return x, nil
 }

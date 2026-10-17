@@ -1,6 +1,7 @@
 colors
 colors.accent
 colors.link
+colors.named
 colors.primary
 colors.rule
 colors.text

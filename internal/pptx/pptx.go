@@ -37,8 +37,10 @@ const PPI = 300
 type Look struct {
 	Body, Display, Mono                string
 	Primary, Text, Rule, Link, Accent  string
-	Ground, OnGround                   string // the covers' fill and type; Ground "" is white
-	Logo, CoverLogo, Art               []byte // PNG; nil when the bundle has none
+	Named                              map[string]string // [words]{.ok}, by name
+	NamedNames                         []string          // Named's names, in mark order
+	Ground, OnGround                   string            // the covers' fill and type; Ground "" is white
+	Logo, CoverLogo, Art               []byte            // PNG; nil when the bundle has none
 	LogoAspect, CoverAspect, ArtAspect float64
 	LogoWMM, CoverLogoWMM, MarginMM    float64
 	Confidential, RunningTitle         string // the PDF footline's words

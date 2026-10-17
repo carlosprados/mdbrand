@@ -48,6 +48,9 @@ func Repair(b []byte, f Fix) ([]byte, []string, error) {
 	for _, part := range []string{"word/document.xml", "word/footnotes.xml", "word/endnotes.xml"} {
 		if x := p.get(part); x != "" {
 			x = styledRuns(x, AccentStyle, f.Look.accent())
+			for n, hex := range f.Look.Named {
+				x = styledRuns(x, NamedStyle(n), hex)
+			}
 			p.set(part, styledRuns(x, "Hyperlink", f.Look.Link))
 		}
 	}

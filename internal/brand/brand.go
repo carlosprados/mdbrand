@@ -9,9 +9,12 @@ package brand
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
+	"sort"
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/exit"
@@ -56,6 +59,33 @@ type Colors struct {
 	// usually drawn as rules. A light primary — an orange — makes rules that
 	// read and words that do not, so a bundle may set the words apart.
 	Accent string `yaml:"accent"`
+	// Named are the colours a document may print words in by name,
+	// [Verde]{.ok}: a table that sorts its rows into kinds wanted more than
+	// one. The built-in ok, ko and muted are there unless the bundle sets
+	// them otherwise.
+	Named map[string]string `yaml:"named"`
+}
+
+// DefaultNamed are the named colours every bundle has: green, red and grey,
+// each 5:1 or more on white, so they read as text in any brand.
+var DefaultNamed = map[string]string{"ok": "2E7D32", "ko": "C62828", "muted": "6B6B6B"}
+
+// ReservedClasses are the classes a named colour may not take, because
+// pandoc or mdbrand already reads them: [x]{.keep} would be coloured and kept.
+var ReservedClasses = []string{"accent", "underline", "smallcaps", "mark", "keep", "nocount",
+	"abstract", "columns", "column", "notes", "whole", "unnumbered", "unlisted"}
+
+var namedRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+
+// NamedNames are the named colours in order, which is how the filter and
+// the .pptx's marks number them.
+func (c Colors) NamedNames() []string {
+	names := make([]string, 0, len(c.Named))
+	for n := range c.Named {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
 }
 
 type Fonts struct {
@@ -246,6 +276,10 @@ func (b *Brand) applyDefaults() {
 	if b.Colors.Accent == "" {
 		b.Colors.Accent = b.Colors.Primary
 	}
+	named := map[string]string{}
+	maps.Copy(named, DefaultNamed)
+	maps.Copy(named, b.Colors.Named)
+	b.Colors.Named = named
 	if b.Fonts.Body == "" {
 		b.Fonts.Body = "Inter"
 	}
@@ -650,6 +684,17 @@ func (b *Brand) Check() (problems, warnings []string) {
 			add(&problems, "%s: %q is not a 6-digit hex without '#'", label, v)
 		}
 	}
+	for _, n := range b.Colors.NamedNames() {
+		switch {
+		case !namedRe.MatchString(n):
+			add(&problems, "colors.named.%s: a name is lower-case letters, digits and hyphens, starting with a letter, as a class is written: [words]{.%s}", n, strings.ToLower(n))
+		case slices.Contains(ReservedClasses, n):
+			add(&problems, "colors.named.%s: .%s is a class pandoc or mdbrand already reads; name the colour otherwise", n, n)
+		}
+		if v := b.Colors.Named[n]; !hexRe.MatchString(v) {
+			add(&problems, "colors.named.%s: %q is not a 6-digit hex without '#'", n, v)
+		}
+	}
 	for i, v := range b.Figures.Palette {
 		if !hexRe.MatchString(v) {
 			add(&problems, "figures.palette[%d]: %q is not a 6-digit hex without '#'", i, v)
@@ -734,6 +779,8 @@ colors:
   # link: "1565C0"    # optional; links, the primary when unset
   # accent: "AE6413"  # optional; [words]{.accent}, the primary when unset.
   #                   # Words need 4.5:1 on white, which a light primary misses
+  # named:            # optional; [words]{.ok}, beside the built-in
+  #   ok: "2E7D32"    # ok (green), ko (red) and muted (grey)
 
 fonts:
   body: Inter         # fontconfig family; must cover the glyphs you type

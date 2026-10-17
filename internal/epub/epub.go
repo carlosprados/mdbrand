@@ -19,6 +19,7 @@ import (
 	"io"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -77,6 +78,7 @@ func uuidOf(s string) string {
 // without '#'.
 type Look struct {
 	Accent, Link, Rule string
+	Named              map[string]string // [words]{.ok}, by name
 }
 
 // CSS is the stylesheet laid over pandoc's own, which keeps the headings',
@@ -89,9 +91,18 @@ type Look struct {
 // and a four-column table on a phone lost its last column whole, so a cell
 // may break a word, hyphenated where the reader can.
 func CSS(l Look) string {
+	names := make([]string, 0, len(l.Named))
+	for n := range l.Named {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	var named strings.Builder
+	for _, n := range names {
+		fmt.Fprintf(&named, ".%s { color: #%s; }\n", n, l.Named[n])
+	}
 	return fmt.Sprintf(`html { font-family: serif; }
 .accent { color: #%s; }
-a { color: #%s; }
+`, l.Accent) + named.String() + fmt.Sprintf(`a { color: #%s; }
 pre { white-space: pre-wrap; font-size: 0.85em; }
 table { border-collapse: collapse; margin: 1em auto; }
 table { max-width: 100%%; }
@@ -101,7 +112,7 @@ td.whole, th.whole { overflow-wrap: normal; white-space: nowrap; }
 th { text-align: left; }
 figure { margin: 1em 0; text-align: center; page-break-inside: avoid; }
 figcaption { font-size: 0.9em; }
-`, l.Accent, l.Link, l.Rule)
+`, l.Link, l.Rule)
 }
 
 // Lightness is a colour's CIELAB L*, 0 for black to 100 for white: what is

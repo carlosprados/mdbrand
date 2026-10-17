@@ -33,11 +33,11 @@ plan -> rev: 3 fallos
 
 # Calendario
 
-| Fase | Fecha | Responsable |
-|---|---|---|
-| Pruebas en preproducción | 14 de octubre | Plataforma |
-| Despliegue gradual | 21 de octubre | Operaciones |
-| Retirada de la versión 1 | 4 de noviembre | Plataforma |
+| Fase | Fecha | Responsable | Estado |
+|---|---|---|---|
+| Pruebas en preproducción | 14 de octubre | Plataforma | **[Hecho]{.ok}** |
+| Despliegue gradual | 21 de octubre | Operaciones | **[Bloqueado]{.ko}** |
+| Retirada de la versión 1 | 4 de noviembre | Plataforma | [Pendiente]{.muted} |
 
 Para subirlo a Google Docs como documento editable:
 `gog drive upload nota.docx --convert-to doc`.

@@ -52,7 +52,7 @@ a build that would print a defective document fails naming the fix.
 | Asked for | Example | Style and what it shows |
 |---|---|---|
 | A report, proposal or offer for a client | `informe` | `report`: cover with reference and confidential label, table of contents, diagram, chart, table, code |
-| An internal note or memo; a Word or Google Docs version | `nota` | `note`, `formats: [pdf, docx]`: title block, header from page 1 |
+| An internal note or memo; a Word or Google Docs version | `nota` | `note`, `formats: [pdf, docx]`: title block, header from page 1, a status column in named colours |
 | A formal letter | `carta` | `letter`: letterhead, recipient lines, place and date, subject, greeting, signature |
 | Numbers kept in a spreadsheet, YAML or JSON | `datos` | `{{data…}}` values, ```` ```table ```` blocks, a CSV linked whole, a chart reading the same data |
 | An essay with a word limit; anything with citations | `ensayo` | `{{words}}` on the cover, `{.nocount}`, `bibliography:` and `[@key, p. 12]` |
@@ -255,10 +255,25 @@ the columns that fit; one so wide it runs off the paper fails the build.
 ## Coloured words
 
 `[words]{.accent}` sets them in the bundle's `colors.accent` (its primary
-unless it names one), in the PDF and the `.docx`. That is the only colour:
+unless it names one). For words that sort things into kinds — a table's
+status column — there are named colours, built into every bundle:
+
+```markdown
+| Partida   | Bloque             |
+|:----------|:-------------------|
+| Licencias | **[Verde]{.ok}**   |
+| Viajes    | **[Rojo]{.ko}**    |
+| Formación | **[Gris]{.muted}** |
+```
+
+`.ok` green, `.ko` red, `.muted` grey; a bundle redefines them or adds its
+own under `colors.named` (`pending: "8A6D00"`). They print in the PDF, the
+deck, the `.docx`, the `.pptx` and the `.epub`, in text, in cells and in bold.
+A class one slip from a colour's name (`.kko`, `.OK`) stops the build with
+"did you mean"; other classes are left alone. Those are the only colours:
 `color=`, `colour=`, `style=`, `bgcolor=` (on a span, div, heading, code or
-link) and a `::: {.accent}` block stop the build,
-because pandoc drops them in silence. Use it for a phrase, not a paragraph.
+link) and a `::: {.accent}` or `::: {.ok}` block stop the build,
+because pandoc drops them in silence. Use them for a phrase, not a paragraph.
 Under 4.5:1 against white a deck stops and a page warns, naming a darker shade
 to put in the bundle.
 

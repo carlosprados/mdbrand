@@ -159,7 +159,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err := citationProblems(d.Meta, pandocOut, "document"); err != nil {
 		return err
 	}
-	if err := filterProblems(pandocOut); err != nil {
+	if err := filterProblems(pandocOut, b); err != nil {
 		return err
 	}
 	if err := pandocWarnings(pandocOut, ".docx", rep); err != nil {
@@ -211,6 +211,7 @@ func docxLook(p *prepared) (docx.Look, error) {
 	return docx.Look{
 		Body: office.Body, Display: office.Display, Mono: office.Mono,
 		Primary: b.Colors.Primary, Text: b.Colors.Text, Rule: b.Colors.Rule, Link: b.Colors.Link, Accent: b.Colors.Accent,
+		Named:    b.Colors.Named,
 		PaperWMM: tex.PaperWidthMM(b.Page.PaperSize), PaperHMM: tex.PaperHeightMM(b.Page.PaperSize),
 		MarginMM: margin, LineStretch: b.Page.LineStretch,
 		LogoHeaderWMM: header, RunningTitle: p.d.Meta.RunningTitle(), Confidential: p.d.Meta.Options.Confidential,

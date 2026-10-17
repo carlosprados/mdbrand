@@ -246,7 +246,7 @@ mdbrand build carta.md
 | Example | For | What it shows |
 |---|---|---|
 | [`informe`](examples/informe/informe.md) | A report or proposal | `report`: cover with reference and confidential label, table of contents, D2 diagram, chart, table, code |
-| [`nota`](examples/nota/nota.md) | An internal note, also for Word or Google Docs | `note` with `formats: [pdf, docx]`: title block, header from page 1, a diagram and a table in both |
+| [`nota`](examples/nota/nota.md) | An internal note, also for Word or Google Docs | `note` with `formats: [pdf, docx]`: title block, header from page 1, a diagram and a table with a status column in named colours, in both |
 | [`carta`](examples/carta/carta.md) | A formal letter | `letter`: letterhead, recipient, place and date, subject, greeting, signature |
 | [`datos`](examples/datos/datos.md) | Numbers kept in data files | `{{data…}}` values, `table` blocks filtered, sorted, totalled and transposed, a CSV linked whole, a chart reading the same data |
 | [`ensayo`](examples/ensayo/ensayo.md) | An essay with a word limit | `{{words}}` on the cover, `{.nocount}` sections, a bibliography and citations |
@@ -577,6 +577,27 @@ div, heading, code or link with `color=`, `colour=`, `style=`, `bgcolor=` or
 `background=`, in any case, stops the build, and so does a
 `::: {.accent}` block, because pandoc drops those attributes on both outputs
 and the words would print black without a word of warning.
+
+Words that sort rows into kinds take a **named colour**:
+
+```markdown
+| Partida   | Bloque             |
+|:----------|:-------------------|
+| Licencias | **[Verde]{.ok}**   |
+| Viajes    | **[Rojo]{.ko}**    |
+| Formación | **[Gris]{.muted}** |
+```
+
+Every bundle has `.ok` (green, `2E7D32`), `.ko` (red, `C62828`) and `.muted`
+(grey, `6B6B6B`), each 5:1 or more on white. A bundle replaces one by name, or
+adds its own, under `colors.named`; a name is written as its class is, and one
+pandoc or mdbrand already reads (`keep`, `smallcaps`…) is refused. They go
+wherever `.accent` goes — the PDF, a deck, the `.docx` (a *Colour-ok*
+character style and the colour on each run), the `.pptx` and the `.epub` — and
+are measured the same way. A class within a slip of a colour's name, `.kko` or
+`.OK`, stops the build naming the colour meant, because it would print black;
+a class far from all of them is pandoc's or another filter's, and is left
+alone.
 
 **An accent is type, and type has to be read.** A primary is often drawn as
 rules and bullets, where a light orange is fine; set as words on white it can
@@ -1084,6 +1105,8 @@ colors:
   rule: "C8CCCE"               # hairlines
   link: "1565C0"               # optional; links — the primary when unset
   accent: "AE6413"             # optional; [words]{.accent} — the primary when unset
+  named:                       # optional; [words]{.ok}, beside the built-in
+    pending: "8A6D00"          #   ok, ko and muted, which a bundle may redefine
 
 fonts:
   body: Inter                  # fontconfig family
@@ -1268,7 +1291,11 @@ read nothing: the charts would print in English. `npm i -g vega-cli@latest`.
 
 **`colour(s) asked for in a way that neither the PDF nor the .docx can print`**
 — a `color=` or `style=` attribute, which pandoc drops in silence. Write
-`[words]{.accent}`.
+`[words]{.accent}`, or a named colour: `[words]{.ok}`.
+
+**`class(es) close to a colour's name that no colour has`** — `[Rojo]{.kko}`
+would print black. Use the name it suggests, or add the colour to the
+bundle's `colors.named`.
 
 **`would print its smallest label at 6.2pt`** — the figure cannot be placed
 legibly. The message says what held it back and the fixes for that: a figure

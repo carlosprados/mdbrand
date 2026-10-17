@@ -8,7 +8,7 @@ package suggest
 func Closest(k string, known []string) string {
 	best, bestD, tie := "", 3, false
 	for _, c := range known {
-		switch d := editDistance(k, c); {
+		switch d := Distance(k, c); {
 		case d < bestD:
 			best, bestD, tie = c, d, false
 		case d == bestD:
@@ -21,7 +21,8 @@ func Closest(k string, known []string) string {
 	return best
 }
 
-func editDistance(a, b string) int {
+// Distance is the edit distance between two names, in runes.
+func Distance(a, b string) int {
 	ra, rb := []rune(a), []rune(b)
 	prev := make([]int, len(rb)+1)
 	for j := range prev {

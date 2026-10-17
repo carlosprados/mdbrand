@@ -255,11 +255,17 @@ Do not relax one without understanding what it cost.
     accents have always printed, and a document that built must still build —
     both naming the darker shade of the same hue that passes. The filter names
     `brandAccent` only when the bundle declares one, so a bundle without it
-    keeps its `.tex` byte for byte. Raw HTML went the same way — an `<img>`
+    keeps its `.tex` byte for byte. Named colours, `[Rojo]{.ko}`, take the
+    same road and the same measure: `ok`, `ko` and `muted` are built in,
+    `colors.named` adds or replaces, and each is written as `\textcolor[HTML]`
+    so the preamble never names one. pandoc keeps any class, so one a slip
+    from a colour's name (`.kko`, `.OK`) stops naming it; one far from all of
+    them is someone else's and passes. Raw HTML went the same way — an `<img>`
     or `<table>` gone whole, `<b>` plain — so the filter reports each opening
     tag, comments aside, and the build names its Markdown form.
     → `internal/build/build_test.go`, `internal/build/slides_test.go`,
-    `traps/span-colour.md`, `traps/accent-pale.md`, `traps/raw-html.md`.
+    `traps/span-colour.md`, `traps/accent-pale.md`, `traps/raw-html.md`,
+    `testdata/named-colours.md`, `traps/named-colour-typo.md`.
 
 18. **A slide that does not fit stops the build, by its title.** beamer sets
     the excess over the footer or off the page and exits 0; the log's

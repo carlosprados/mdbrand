@@ -282,3 +282,24 @@ func TestOverflow(t *testing.T) {
 		t.Errorf("over = %q", over)
 	}
 }
+
+// Each mark opens its own colour, and the one close mark ends any of them.
+func TestAccentsSetEachNamedColour(t *testing.T) {
+	l := Look{Accent: "A8520A", Named: map[string]string{"ko": "C62828", "ok": "2E7D32"}, NamedNames: []string{"ko", "ok"}}
+	x := `<a:p><a:r><a:rPr/><a:t>` + string(NamedMark(1)) + `Paid` + AccentClose + ` and ` +
+		string(NamedMark(0)) + `refused` + AccentClose + `, ` + AccentOpen + `noted` + AccentClose + `</a:t></a:r></a:p>`
+	got, err := accents(x, l.marks())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`2E7D32"/></a:solidFill></a:rPr><a:t>Paid</a:t>`,
+		`<a:rPr/><a:t> and </a:t>`,
+		`C62828"/></a:solidFill></a:rPr><a:t>refused</a:t>`,
+		`A8520A"/></a:solidFill></a:rPr><a:t>noted</a:t>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %s in\n%s", want, got)
+		}
+	}
+}
