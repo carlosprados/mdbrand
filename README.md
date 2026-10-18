@@ -657,8 +657,10 @@ A pipe table wider than 72 characters takes its column widths from the
 separator's dashes, so `|---|---|---|` made every column equal and a column of
 names wrapped to four lines beside numbers with room to spare. When every run
 of dashes is the same length, mdbrand sizes the columns from their cells, as
-it does for ```` ```table ```` blocks — never under the longest word, and a
-citation measured as the number it prints. Dashes of different lengths are
+it does for ```` ```table ```` blocks: each column first gets its longest
+word, or a cell of up to 12 characters whole (a date, a label), and the rest
+of the measure is shared by how much text each holds; a citation is measured
+as the number it prints. Dashes of different lengths are
 the author's widths and are kept.
 
 ### Styles

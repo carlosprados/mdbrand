@@ -629,16 +629,7 @@ func sortRecords(recs []record, field string, desc bool, lang string) error {
 // gets less than its longest word and a little air, because a word cannot be
 // wrapped: sized to the letter, "vCPU" printed past its column's edge.
 func pipeTable(header []string, rows [][]string, align []string, caption string) string {
-	width := make([]int, len(header))
-	fit := func(c int, v string) { width[c] = max(width[c], cellWidth(v)) }
-	for c, h := range header {
-		fit(c, h)
-	}
-	for _, row := range rows {
-		for c, v := range row {
-			fit(c, v)
-		}
-	}
+	width := colWidths(append([][]string{header}, rows...), len(header))
 	var b strings.Builder
 	line := func(cells []string) {
 		b.WriteString("|")

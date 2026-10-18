@@ -212,7 +212,11 @@ Do not relax one without understanding what it cost.
     `|---|---|` gave every column the same width once a row passed 72
     characters; equal dashes are rewritten from the cells, a citation
     measured as the number it prints — by its key, one column took the width
-    of eight and a header overflowed.
+    of eight and a header overflowed. Shares by text alone gave a column of
+    dates 3% beside two of sentences and "Pendiente" ran 19pt over: each
+    column first gets its longest word, or a cell of 12 characters whole,
+    and only a table past an assumed 80-character measure is shared again,
+    so one that fits keeps its dashes byte for byte.
     → `internal/tex/tables_test.go`, the page checks on `testdata/data.md`,
     `traps/table-row-tall.md`, `testdata/floats-table.md`,
     `testdata/heading-table.md`, `internal/data/pipe_test.go`.
