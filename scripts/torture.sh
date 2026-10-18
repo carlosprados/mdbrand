@@ -10,6 +10,10 @@
 # Needs the full toolchain (`mdbrand doctor`). Run it before releasing; CI runs
 # it on every push.
 set -uo pipefail
+# grep -q stops at its first match and closes the pipe; under pipefail the
+# writer's SIGPIPE then failed a check that had passed ("no toc.ncx", once).
+# has reads its whole input.
+has() { grep "$@" >/dev/null; }
 # A CDPATH in the environment makes `cd` echo where it landed, which would end
 # up inside the path below.
 unset CDPATH
@@ -89,49 +93,49 @@ if command -v pdftotext >/dev/null; then
 	# The colon is in the pattern on purpose: it used to come back as U+EE47,
 	# Inter's case form, which was the text-layer defect showing.
 	for caption in "Figure 1:" "Figure 2:" "Figure 3:" "Figure 4:" "Figure 5:" "Figure 6:"; do
-		printf '%s' "$text" | grep -qF "$caption" || missing="$missing $caption"
+		printf '%s' "$text" | has -F "$caption" || missing="$missing $caption"
 	done
 	[ -z "$missing" ] && ok "all six figures placed in the PDF" \
 		|| bad "the PDF has no$missing — rendered, but never placed"
 
 	# The chart's labels come only from its CSV: an empty chart has axes and
 	# no p99.
-	printf '%s' "$text" | grep -qF "p99" \
+	printf '%s' "$text" | has -F "p99" \
 		&& ok "the chart drew its data file" \
 		|| bad "the chart has no p99 — its data never loaded"
 
-	printf '%s' "$text" | grep -qF "Prados Hijón" \
+	printf '%s' "$text" | has -F "Prados Hijón" \
 		&& ok "the bibliography printed" \
 		|| bad "the bibliography is not in the PDF"
 
-	printf '%s' "$text" | grep -qE '\([A-Za-z0-9]+\?\)' \
+	printf '%s' "$text" | has -E '\([A-Za-z0-9]+\?\)' \
 		&& bad "an unresolved citation key printed as (key?)" \
 		|| ok "no unresolved citation"
 
 	# Inter's case forms printed right and copied as U+EE4E/U+EE4F. The build
 	# refuses that itself now; this is the witness that the text survives.
 	flat="$(printf '%s' "$text" | tr -s '[:space:]' ' ')"
-	printf '%s' "$flat" | grep -qF "(SD1) and (Fox Business, 2026) and [ABC]" \
+	printf '%s' "$flat" | has -F "(SD1) and (Fox Business, 2026) and [ABC]" \
 		&& ok "brackets beside capitals copy as themselves" \
 		|| bad "brackets beside capitals do not survive text extraction"
 
 	# The cover, top to bottom: reference under the subtitle, then author and
 	# date at the foot, then the label. The .docx is held to the same order.
 	pdftotext -f 1 -l 1 "$work/torture.pdf" - 2>/dev/null | tr -s '[:space:]' ' ' \
-		| grep -qF "Ref. MDB-0001 mdbrand September 2026 Confidential & internal" \
+		| has -F "Ref. MDB-0001 mdbrand September 2026 Confidential & internal" \
 		&& ok "the cover sets reference, author, date and label in order" \
 		|| bad "the cover's reference, author, date and label are out of order"
 
 	# The running header prints short_title; the cover keeps the full title.
 	last="$(pdftotext -f "$pages" -l "$pages" "$work/torture.pdf" - 2>/dev/null)"
-	printf '%s' "$last" | grep -qF "Torture, short" \
+	printf '%s' "$last" | has -F "Torture, short" \
 		&& ok "the running header prints short_title" \
 		|| bad "the running header does not print short_title"
 
 	# The cover's confidentiality label repeats in every footer: the last page
 	# is the one furthest from the cover, so it is the witness.
 	last="$(pdftotext -f "$pages" -l "$pages" "$work/torture.pdf" - 2>/dev/null)"
-	printf '%s' "$last" | grep -qF "Confidential & internal" \
+	printf '%s' "$last" | has -F "Confidential & internal" \
 		&& ok "the confidentiality label prints in the footer of the last page" \
 		|| bad "the last page has no confidentiality label in its footer"
 else
@@ -153,7 +157,7 @@ elif command -v pdftotext >/dev/null; then
 	n="$(printf '%s\n' "$text" | grep -c '35 palabras')"
 	[ "$n" -eq 2 ] && ok "35 words, printed in the subtitle and the body" \
 		|| bad "want \"35 palabras\" twice in the PDF, found $n; the build said: $(printf '%s' "$out" | head -1)"
-	printf '%s' "$text" | grep -qF '{{words}}' \
+	printf '%s' "$text" | has -F '{{words}}' \
 		&& ok "a placeholder in a code span left as written" \
 		|| bad "the placeholder in a code span was filled"
 else
@@ -174,7 +178,7 @@ elif command -v pdftotext >/dev/null; then
 	text="$(pdftotext "$work/toc.pdf" - 2>/dev/null)"
 	# The trailing dot is spanish.ldf's: without texlive-lang-spanish, as on
 	# CI, babel's generic Spanish writes "10.10.10" and no dot.
-	printf '%s\n' "$text" | grep -qE '^10\.10\.10\.? Subsubsecci' \
+	printf '%s\n' "$text" | has -E '^10\.10\.10\.? Subsubsecci' \
 		&& ok "the contents reach the third level" \
 		|| bad "the contents have no 10.10.10 entry: $(printf '%s\n' "$text" | grep -E '^10\.' | cut -c1-30 | tr '\n' '|')"
 	touching="$(printf '%s\n' "$text" | grep -E '^[0-9]+(\.[0-9]+)*\.?[[:alpha:]]' | cut -c1-30)"
@@ -195,10 +199,10 @@ if [ $status -ne 0 ]; then
 	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
 elif command -v pdftotext >/dev/null; then
 	text="$(pdftotext "$work/references.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
-	printf '%s' "$text" | grep -qF '[@' \
+	printf '%s' "$text" | has -F '[@' \
 		&& bad "a citation printed as written: $(printf '%s' "$text" | grep -oF '[@' | head -1)" \
 		|| ok "no citation printed as written"
-	printf '%s' "$text" | grep -qF 'The TeXbook' \
+	printf '%s' "$text" | has -F 'The TeXbook' \
 		&& ok "the reference list printed" \
 		|| bad "the reference list is not in the PDF"
 else
@@ -240,7 +244,7 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 		"Instancias m5 para ACME" \
 		"Ávila 5 2100 Burgos 4 1875,25" \
 		"24 GiB 0,288"; do
-		printf '%s' "$text" | grep -qF -- "$phrase" \
+		printf '%s' "$text" | has -F -- "$phrase" \
 			&& ok "prints \"$phrase\"" \
 			|| bad "the PDF lacks \"$phrase\""
 	done
@@ -251,8 +255,8 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	whole=""
 	for p in $(seq 1 "${pages:-1}"); do
 		pt="$(pdftotext -f "$p" -l "$p" "$work/data.pdf" - 2>/dev/null)"
-		if printf '%s' "$pt" | grep -qF Zamora; then
-			printf '%s' "$pt" | grep -qF Burgos && printf '%s' "$pt" | grep -qF "Tabla 3" && whole=yes
+		if printf '%s' "$pt" | has -F Zamora; then
+			printf '%s' "$pt" | has -F Burgos && printf '%s' "$pt" | has -F "Tabla 3" && whole=yes
 		fi
 	done
 	[ -n "$whole" ] && ok "a short table is never split across pages" \
@@ -264,7 +268,7 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	[ "$n" -eq 3 ] && ok "the chart by name draws all three bars" \
 		|| bad "the chart by name drew $n bar(s), want 3"
 
-	printf '%s' "$text" | grep -qE 'Cuadro [0-9]' \
+	printf '%s' "$text" | has -E 'Cuadro [0-9]' \
 		&& bad "a table is labelled Cuadro" \
 		|| ok "tables are labelled Tabla in Spanish"
 
@@ -272,7 +276,7 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	# "· Uso interno". The footer prints the label alone too, so the
 	# witness is the dot, not the label.
 	first="$(pdftotext -f 1 -l 1 "$work/data.pdf" - 2>/dev/null)"
-	printf '%s' "$first" | grep -qF '· Uso interno' \
+	printf '%s' "$first" | has -F '· Uso interno' \
 		&& bad "a note's label line opens with a middle dot" \
 		|| ok "a note's label stands alone when there is no author or date"
 elif [ $status -eq 0 ]; then
@@ -296,7 +300,7 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	# The letterhead page has no footer: the label lived nowhere on a
 	# one-page letter.
 	for phrase in "ACME Industrial S.A." "Madrid, 3 de octubre de 2026" "Confidencial" "Estimados señores:" "Ana Ruiz Sánchez"; do
-		printf '%s' "$text" | grep -qF -- "$phrase" && ok "prints \"$phrase\"" || bad "the letter lacks \"$phrase\""
+		printf '%s' "$text" | has -F -- "$phrase" && ok "prints \"$phrase\"" || bad "the letter lacks \"$phrase\""
 	done
 fi
 
@@ -311,14 +315,14 @@ if [ $status -eq 0 ]; then ok "builds"; else
 	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
 fi
 if [ $status -eq 0 ]; then
-	pdftotext -f 1 -l 1 "$work/abstract.pdf" - | grep -qF "Resumen" && bad "the abstract is on the cover" || ok "the cover holds no abstract"
-	pdftotext -f 2 -l 2 "$work/abstract.pdf" - | grep -qF "El resumen va detrás" && ok "the abstract follows the cover" || bad "the abstract is not on page 2"
+	pdftotext -f 1 -l 1 "$work/abstract.pdf" - | has -F "Resumen" && bad "the abstract is on the cover" || ok "the cover holds no abstract"
+	pdftotext -f 2 -l 2 "$work/abstract.pdf" - | has -F "El resumen va detrás" && ok "the abstract follows the cover" || bad "the abstract is not on page 2"
 	xml="$(unzip -p "$work/abstract.docx" word/document.xml)"
 	grep -qF 'El resumen va detrás' <<<"$xml" && ok "the .docx holds the abstract" || bad "the .docx lost the abstract"
 	grep -qE '<w:t[^>]*>1</w:t>.*Primera sección' <<<"$xml" && ok "the .docx numbers its sections" || bad "the .docx's sections are not numbered"
 	# title: "Un informe con *resumen*" printed its asterisks on the cover and
 	# in the header of both outputs.
-	pdftotext "$work/abstract.pdf" - | grep -qF '*resumen*' && bad "the PDF prints the title's Markdown" || ok "the PDF sets the title's Markdown"
+	pdftotext "$work/abstract.pdf" - | has -F '*resumen*' && bad "the PDF prints the title's Markdown" || ok "the PDF sets the title's Markdown"
 	grep -qF '*resumen*' <<<"$xml" && bad "the .docx prints the title's Markdown" || ok "the .docx drops the title's Markdown"
 fi
 
@@ -336,7 +340,7 @@ if [ $status -eq 0 ]; then
 	pages="$(pdfinfo "$work/keep.pdf" | awk '/^Pages/ {print $2}')"
 	page_of() {
 		for p in $(seq 1 "$pages"); do
-			pdftotext -f "$p" -l "$p" "$work/keep.pdf" - | grep -qF "$1" && { echo "$p"; return; }
+			pdftotext -f "$p" -l "$p" "$work/keep.pdf" - | has -F "$1" && { echo "$p"; return; }
 		done
 	}
 	split=""
@@ -408,7 +412,7 @@ if [ $status -eq 0 ]; then ok "builds, no page set past the paper"; else
 	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
 fi
 if [ $status -eq 0 ]; then
-	pdftotext "$work/floats-table.pdf" - | grep -qF "WITNESS paragraph after the fourth figure" &&
+	pdftotext "$work/floats-table.pdf" - | has -F "WITNESS paragraph after the fourth figure" &&
 		ok "the text after the last figure is on the page" || bad "the text after the last figure is off the page"
 fi
 
@@ -572,27 +576,27 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	n="$(grep -c 'Missing character' "$log")"
 	[ "$n" -eq 0 ] && ok "no missing glyph" || bad "$n missing glyph(s) in the log"
 	info="$(pdfinfo "$work/slides.pdf" 2>/dev/null)"
-	printf '%s' "$info" | grep -q 'Page size: *453.54 x 255.12 pts' && ok "16:9, 160 × 90 mm" \
+	printf '%s' "$info" | has 'Page size: *453.54 x 255.12 pts' && ok "16:9, 160 × 90 mm" \
 		|| bad "the page is not beamer's 16:9 frame: $(printf '%s' "$info" | grep 'Page size')"
 	pages="$(printf '%s' "$info" | awk '/^Pages:/{print $2}')"
 	# Nine slides; the last one has a pause and two incremental points, so it
 	# takes three pages that share its number.
 	[ "${pages:-0}" -eq 11 ] && ok "9 slides on 11 pages" || bad "${pages:-no} pages, want 11"
 	first="$(pdftotext -f 9 -l 9 "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
-	printf '%s' "$first" | grep -qF "Said first" && ! printf '%s' "$first" | grep -qF "revealed" \
+	printf '%s' "$first" | has -F "Said first" && ! printf '%s' "$first" | has -F "revealed" \
 		&& ok "what a pause hides is not in the text layer" || bad "page 9 is not the pause's first overlay: $first"
 	last="$(pdftotext -f 11 -l 11 "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
-	printf '%s' "$last" | grep -qE "revealed third.* 9 ?/ ?9 ?$" \
+	printf '%s' "$last" | has -E "revealed third.* 9 ?/ ?9 ?$" \
 		&& ok "every overlay carries its slide's number, out of slides, not pages" \
 		|| bad "the last overlay is not numbered 9 / 9: $last"
 	third="$(pdftotext -f 3 -l 3 "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
-	printf '%s' "$third" | grep -qE " 3 ?/ ?9 ?$" \
+	printf '%s' "$third" | has -E " 3 ?/ ?9 ?$" \
 		&& ok "the first slide after the covers is 3 / 9" || bad "page 3 is not numbered 3 / 9: $third"
 	text="$(pdftotext "$work/slides.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
-	printf '%s' "$text" | grep -qF "A diagram — wide and low" && ok "a dash in a frame title prints as a dash" \
+	printf '%s' "$text" | has -F "A diagram — wide and low" && ok "a dash in a frame title prints as a dash" \
 		|| bad "the frame title's dash is not an em dash"
 	for absent in "---" "Figure 1" "Speaker notes"; do
-		printf '%s' "$text" | grep -qF -- "$absent" && bad "the deck prints \"$absent\"" || ok "no \"$absent\" on any slide"
+		printf '%s' "$text" | has -F -- "$absent" && bad "the deck prints \"$absent\"" || ok "no \"$absent\" on any slide"
 	done
 	# The bundle's colors.accent differs from its primary, so accented words
 	# take a colour of their own.
@@ -611,16 +615,16 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	# an A4 sheet, numbered out of the deck's own total.
 	notes="$work/slides-notes.pdf"
 	ninfo="$(pdfinfo "$notes" 2>/dev/null)"
-	printf '%s' "$ninfo" | grep -q 'Page size: *595.28 x 841.89 pts' && ok "the notes are on A4" \
+	printf '%s' "$ninfo" | has 'Page size: *595.28 x 841.89 pts' && ok "the notes are on A4" \
 		|| bad "the notes are not A4: $(printf '%s' "$ninfo" | grep 'Page size')"
 	npages="$(printf '%s' "$ninfo" | awk '/^Pages:/{print $2}')"
 	[ "${npages:-0}" -eq 3 ] && ok "six content slides, two to a sheet: 3 pages" || bad "${npages:-no} pages of notes, want 3"
 	ntext="$(pdftotext "$notes" - 2>/dev/null | tr -s '[:space:]' ' ')"
-	printf '%s' "$ntext" | grep -qF "Speaker notes: never on the slide." && ok "the note is beside its slide" \
+	printf '%s' "$ntext" | has -F "Speaker notes: never on the slide." && ok "the note is beside its slide" \
 		|| bad "the speaker note is missing from the notes"
-	printf '%s' "$ntext" | grep -qE "3 ?/ ?9" && printf '%s' "$ntext" | grep -qE "9 ?/ ?9" \
+	printf '%s' "$ntext" | has -E "3 ?/ ?9" && printf '%s' "$ntext" | has -E "9 ?/ ?9" \
 		&& ok "notes are numbered out of the deck's total" || bad "the notes' numbers are not out of 9"
-	printf '%s' "$ntext" | grep -qF "revealed third" && ok "a slide with pauses is shown whole" \
+	printf '%s' "$ntext" | has -F "revealed third" && ok "a slide with pauses is shown whole" \
 		|| bad "the pauses slide is not shown whole in the notes"
 fi
 
@@ -646,7 +650,7 @@ for f in torture data letter; do
 	# pandoc writes a picture's path into pic:cNvPr, and mdbrand makes it
 	# absolute: a handed-in document carried the author's home directory.
 	if command -v unzip >/dev/null && [ $status -eq 0 ]; then
-		unzip -p "$work/$f.docx" word/document.xml | grep -qE 'descr="(/|[A-Za-z]:\\)' \
+		unzip -p "$work/$f.docx" word/document.xml | has -E 'descr="(/|[A-Za-z]:\\)' \
 			&& bad "$f.docx carries a local path in a picture's descr" \
 			|| ok "$f.docx: no local path inside"
 	fi
@@ -685,35 +689,35 @@ if command -v soffice >/dev/null && command -v pdffonts >/dev/null && command -v
 	[ "$n" -eq 2 ] && ok "data.docx: the note's label line, as the PDF has it" \
 		|| bad "data.docx: \"Uso interno\" $n time(s) on page 1, want 2 (title block and footer)"
 	for phrase in "m5.xlarge" "m5.large" "Uso recomendado" "Tabla 1:" "Figura 1:" "Ávila 5 2100"; do
-		printf '%s' "$text" | grep -qF -- "$phrase" && ok "data.docx prints \"$phrase\" whole" \
+		printf '%s' "$text" | has -F -- "$phrase" && ok "data.docx prints \"$phrase\" whole" \
 			|| bad "data.docx lacks \"$phrase\" — a word broken across a column?"
 	done
 	pages="$(pdfinfo "$work/lo/data.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
 	whole=""
 	for p in $(seq 1 "${pages:-1}"); do
 		pt="$(pdftotext -f "$p" -l "$p" "$work/lo/data.pdf" - 2>/dev/null)"
-		if printf '%s' "$pt" | grep -qF Zamora; then
-			printf '%s' "$pt" | grep -qF Burgos && printf '%s' "$pt" | grep -qF "Tabla 3" && whole=yes
+		if printf '%s' "$pt" | has -F Zamora; then
+			printf '%s' "$pt" | has -F Burgos && printf '%s' "$pt" | has -F "Tabla 3" && whole=yes
 		fi
 	done
 	[ -n "$whole" ] && ok "data.docx: a short table is never split across pages" \
 		|| bad "data.docx: the Sedes table is split across a page break"
 	pages="$(pdfinfo "$work/lo/letter.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
 	[ "${pages:-0}" -eq 1 ] && ok "letter.docx: one page" || bad "letter.docx takes ${pages:-no} pages, want 1"
-	pdftotext "$work/lo/letter.pdf" - 2>/dev/null | grep -qF "Confidencial" \
+	pdftotext "$work/lo/letter.pdf" - 2>/dev/null | has -F "Confidencial" \
 		&& ok "letter.docx: the confidentiality label prints" \
 		|| bad "letter.docx: the confidentiality label is nowhere in the letter"
 	text="$(pdftotext "$work/lo/torture.pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
 	# The .docx cover put reference and label together under the subtitle, in
 	# bold primary; the PDF sets the label at the foot.
-	printf '%s' "$text" | grep -qF "Ref. MDB-0001 mdbrand September 2026 Confidential & internal" \
+	printf '%s' "$text" | has -F "Ref. MDB-0001 mdbrand September 2026 Confidential & internal" \
 		&& ok "torture.docx: the cover follows the PDF's order" \
 		|| bad "torture.docx: the cover's reference, author, date and label are out of the PDF's order"
 	pages="$(pdfinfo "$work/lo/torture.pdf" 2>/dev/null | awk '/^Pages:/{print $2}')"
-	pdftotext -f "$pages" -l "$pages" "$work/lo/torture.pdf" - 2>/dev/null | grep -qF "Confidential & internal" \
+	pdftotext -f "$pages" -l "$pages" "$work/lo/torture.pdf" - 2>/dev/null | has -F "Confidential & internal" \
 		&& ok "torture.docx: the confidentiality label prints in the last page's footer" \
 		|| bad "torture.docx: the last page has no confidentiality label in its footer"
-	printf '%s' "$text" | grep -qF "Contents What this is Code blocks" \
+	printf '%s' "$text" | has -F "Contents What this is Code blocks" \
 		&& ok "torture.docx: the contents are filled before Word updates them" \
 		|| bad "torture.docx: the table of contents is empty"
 else
@@ -748,7 +752,7 @@ if [ $status -eq 0 ]; then
 			[ "$(pdfinfo "$lo" | awk '/^Pages/ {print $2}')" = 9 ] && ok "nine slides, as the PDF deck counts them" || bad "the .pptx does not hold the deck's nine slides"
 			stray="$(pdffonts "$lo" | awk 'NR>2{print $1}' | sed 's/^[A-Z]*+//' | grep -v '^DejaVuSans' | sort -u | tr '\n' ' ')"
 			[ -z "$stray" ] && ok "only the bundle's office faces" || bad "faces nobody declared: $stray"
-			pdftotext -f 3 -l 3 "$lo" - | grep -qF "Decks & frames" && ok "the footer carries the running title" || bad "the footer lost its running title"
+			pdftotext -f 3 -l 3 "$lo" - | has -F "Decks & frames" && ok "the footer carries the running title" || bad "the footer lost its running title"
 		else
 			bad "LibreOffice did not render the .pptx"
 		fi
@@ -776,7 +780,7 @@ else
 	grep -q '<dc:date[^>]*>[0-9]' <<<"$opf" && ok "dc:date is a date" || bad "dc:date is empty"
 	grep -q '<dc:language>en' <<<"$opf" && ok "dc:language from lang" || bad "dc:language is wrong"
 	grep -q 'itemref idref="nav"' <<<"$opf" && bad "the nav is a page in the reading order" || ok "the nav is the reader's menu, not a page"
-	unzip -l "$work/torture-epub.epub" | grep -q 'toc.ncx' && ok "toc.ncx for EPUB 2 readers" || bad "no toc.ncx"
+	unzip -l "$work/torture-epub.epub" | has 'toc.ncx' && ok "toc.ncx for EPUB 2 readers" || bad "no toc.ncx"
 	pages="$(unzip -p "$work/torture-epub.epub" 'EPUB/text/*.xhtml')"
 	grep -q 'class="accent"' <<<"$pages" && ok "[words]{.accent} kept as a class" || bad "the accent printed plain"
 	n="$(grep -o '<img src="../media/' <<<"$pages" | wc -l)"
@@ -790,7 +794,7 @@ out="$("$bin" build "$root/testdata/data.md" --to epub -o "$work/data.epub" 2>&1
 if [ $? -ne 0 ]; then
 	bad "testdata/data.md --to epub failed"; printf '%s\n' "$out" | sed 's/^/        /'
 else
-	printf '%s\n' "$out" | grep -q "under the .*floor on an e-reader" \
+	printf '%s\n' "$out" | has "under the .*floor on an e-reader" \
 		&& bad "data.md's charts were shrunk, not drawn again: $(printf '%s\n' "$out" | grep floor)" \
 		|| ok "data.md's charts drawn again for the column, labels legible"
 fi
@@ -890,7 +894,7 @@ for t in "${traps[@]}"; do
 		ok)   [ $status -eq 0 ] || bad "$file: exit $status, want a build that warns and succeeds" ;;
 		fail) [ $status -ne 0 ] || bad "$file: exit 0, want the build to stop" ;;
 	esac
-	if printf '%s\n' "$out" | grep -qF "$phrase"; then
+	if printf '%s\n' "$out" | has -F "$phrase"; then
 		ok "$file says \"$phrase\""
 	else
 		bad "$file never says \"$phrase\". It said:"
@@ -923,7 +927,7 @@ SHIM
 chmod +x "$work/rsvg-old/rsvg-convert"
 out="$(PATH="$work/rsvg-old:$PATH" "$bin" build "$root/testdata/traps/rsvg-old.md" -o "$work/rsvg-old.pdf" 2>&1)"
 status=$?
-if [ $status -eq 3 ] && printf '%s\n' "$out" | grep -qF "mingw-w64-x86_64-librsvg"; then
+if [ $status -eq 3 ] && printf '%s\n' "$out" | has -F "mingw-w64-x86_64-librsvg"; then
 	ok "rsvg-old.md stops with exit 3 under rsvg-convert 2.40, naming MSYS2's librsvg"
 else
 	bad "rsvg-old.md under rsvg-convert 2.40: exit $status. It said:"
@@ -931,7 +935,7 @@ else
 fi
 # doctor exits non-zero here, by design: read its output before grepping it.
 out="$(PATH="$work/rsvg-old:$PATH" "$bin" doctor 2>&1)"
-if printf '%s\n' "$out" | grep -qF "TOO OLD rsvg-convert"; then
+if printf '%s\n' "$out" | has -F "TOO OLD rsvg-convert"; then
 	ok "doctor marks rsvg-convert 2.40 TOO OLD"
 else
 	bad "doctor does not mark rsvg-convert 2.40 TOO OLD"
