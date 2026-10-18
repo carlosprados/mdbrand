@@ -647,6 +647,20 @@ Inside a `::: {.keep}` block the block decides. Slides and the `.docx` are
 unaffected: a slide never breaks, and Word keeps headings with the next
 paragraph by its own styles.
 
+A heading straight above a table is not held by a paragraph: when the
+table's header and first rows do not fit under it, the heading goes over to
+the next page with them, settled over the xelatex passes.
+
+### Column widths
+
+A pipe table wider than 72 characters takes its column widths from the
+separator's dashes, so `|---|---|---|` made every column equal and a column of
+names wrapped to four lines beside numbers with room to spare. When every run
+of dashes is the same length, mdbrand sizes the columns from their cells, as
+it does for ```` ```table ```` blocks — never under the longest word, and a
+citation measured as the number it prints. Dashes of different lengths are
+the author's widths and are kept.
+
 ### Styles
 
 | Style | Shape |

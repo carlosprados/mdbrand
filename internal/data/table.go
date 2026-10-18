@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/carlosprados/mdbrand/internal/words"
 	"golang.org/x/text/collate"
@@ -631,12 +630,7 @@ func sortRecords(recs []record, field string, desc bool, lang string) error {
 // wrapped: sized to the letter, "vCPU" printed past its column's edge.
 func pipeTable(header []string, rows [][]string, align []string, caption string) string {
 	width := make([]int, len(header))
-	fit := func(c int, v string) {
-		width[c] = max(width[c], 3, utf8.RuneCountInString(v))
-		for _, w := range strings.Fields(v) {
-			width[c] = max(width[c], utf8.RuneCountInString(w)+2)
-		}
-	}
+	fit := func(c int, v string) { width[c] = max(width[c], cellWidth(v)) }
 	for c, h := range header {
 		fit(c, h)
 	}
