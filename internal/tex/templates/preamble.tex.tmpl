@@ -33,12 +33,32 @@
 % needspace does, the heading with the space around it counted as three
 % lines: two left a section heading alone with its line on testdata/headings.md.
 % Inside a ::: {.keep} box (\ifinner) the block decides.
+% A table straight after a heading is not text: longtable breaks the page
+% after the heading when its header and first rows do not fit, which left a
+% heading alone at the foot of an observatorio briefing. That break is only
+% known once it happens, so it is written to the .aux by heading number and
+% the next pass breaks before the heading instead — and keeps writing it, or
+% a third pass would forget it.
+\makeatletter
+\newcount\mdbrand@headno
+\def\mdbrand@orphan#1{\expandafter\gdef\csname mdbrand@orph@#1\endcsname{}}
+\def\mdbrand@markorphan{\immediate\write\@auxout{\string\mdbrand@orphan{\the\mdbrand@headno}}}
 \newdimen\mdbrandHeadRoom
-\newcommand\mdbrandHeadingRoom{\ifinner\else\par
+\newcommand\mdbrandHeadingRoom{\global\advance\mdbrand@headno\@ne
+  \ifinner\else\par
+  \ifcsname mdbrand@orph@\the\mdbrand@headno\endcsname
+    \mdbrand@markorphan \penalty-100 \vfil\penalty-10000
+  \else
   \mdbrandHeadRoom=\dimexpr {{.Brand.Page.HeadingLines}}\baselineskip+3\baselineskip\relax
   \penalty-100
   \ifdim\mdbrandHeadRoom>\dimexpr\pagegoal-\pagetotal\relax
-    \ifdim\dimexpr\pagegoal-\pagetotal\relax>0pt \vfil\penalty-10000\fi\fi\fi}
+    \ifdim\dimexpr\pagegoal-\pagetotal\relax>0pt \vfil\penalty-10000\fi\fi\fi\fi}
+% \if@nobreak is read as the table opens: by \LT@start the caption and the
+% header's minipages have cleared it.
+\newif\ifmdbrand@afterhead
+\AtBeginEnvironment{longtable}{\if@nobreak\global\mdbrand@afterheadtrue\else\global\mdbrand@afterheadfalse\fi}
+\patchcmd{\LT@start}{\vfil\break}{\ifmdbrand@afterhead\mdbrand@markorphan\fi\vfil\break}{}{}
+\makeatother
 \pretocmd{\section}{\mdbrandHeadingRoom}{}{}
 \pretocmd{\subsection}{\mdbrandHeadingRoom}{}{}
 \pretocmd{\subsubsection}{\mdbrandHeadingRoom}{}{}

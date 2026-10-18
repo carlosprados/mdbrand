@@ -146,6 +146,7 @@ func (p *prepared) fill(inputs *[]string) error {
 	if body, err = fillData(o, d, p.store, body, figs); err != nil {
 		return err
 	}
+	body = data.SizePipeTables(body)
 	if body, err = wordCount(o, d, body, figs, p.work, p.rep); err != nil {
 		return err
 	}

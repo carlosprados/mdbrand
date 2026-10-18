@@ -437,6 +437,31 @@ if [ $status -eq 0 ]; then
 	[ -z "$alone" ] && ok "no heading is left at the foot without its text" || bad "headings alone at the foot:$alone"
 fi
 
+# A heading straight above a table: longtable broke the page after it when
+# the header and first rows did not fit. Each heading shares its page with
+# its table's first row; six did not before the fix.
+echo
+echo "testdata/heading-table.md — a heading goes over with its table"
+out="$("$bin" build "$root/testdata/heading-table.md" -o "$work/heading-table.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	pages="$(pdfinfo "$work/heading-table.pdf" | awk '/^Pages/ {print $2}')"
+	alone=""
+	for i in $(seq -w 1 24); do
+		hp="" rp=""
+		for p in $(seq 1 "$pages"); do
+			t="$(pdftotext -f "$p" -l "$p" "$work/heading-table.pdf" -)"
+			[ -z "$hp" ] && grep -qF "T$i heading" <<<"$t" && hp=$p
+			[ -z "$rp" ] && grep -qF "R${i}x1" <<<"$t" && rp=$p
+		done
+		[ "$hp" = "$rp" ] || alone="$alone T$i"
+	done
+	[ -z "$alone" ] && ok "no heading is left at the foot above its table" || bad "headings alone above a table:$alone"
+fi
+
 # ----------------------------------------------------------------- the locale
 # A chart in a Spanish document wrote 30,000 and Jan. Its locale only reaches
 # Vega through vl2vg and vg2svg -f -t, and only from vega-cli 6.4.0; the

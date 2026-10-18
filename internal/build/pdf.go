@@ -184,9 +184,22 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 
 // runXeLaTeX typesets stem.tex in work, passes times, and names a fatal
 // error a document can cause in the document's terms.
+//
+// A heading left alone above a table is moved on the next pass, which can
+// push another one to a foot below it; while a pass finds a new one, and
+// at most twice, there is another pass.
 func runXeLaTeX(o Options, work, stem string, passes int) error {
-	for i := 0; i < passes; i++ {
-		o.logf("  xelatex pass %d/%d", i+1, passes)
+	marks := 0
+	for i := 0; i < passes+2; i++ {
+		if i >= passes {
+			before := marks
+			if marks = orphanMarks(work, stem); marks <= before {
+				return nil
+			}
+		} else {
+			marks = orphanMarks(work, stem)
+		}
+		o.logf("  xelatex pass %d/%d", i+1, max(passes, i+1))
 		if _, err := run.Cmd(work, "xelatex", "-interaction=nonstopmode", "-halt-on-error", stem+".tex"); err != nil {
 			if known := fatalLaTeX(filepath.Join(work, stem+".log")); known != nil {
 				return known
@@ -195,6 +208,16 @@ func runXeLaTeX(o Options, work, stem string, passes int) error {
 		}
 	}
 	return nil
+}
+
+// orphanMarks counts the headings the preamble has written to the .aux as
+// left alone above a table.
+func orphanMarks(work, stem string) int {
+	aux, err := os.ReadFile(filepath.Join(work, stem+".aux"))
+	if err != nil {
+		return 0
+	}
+	return bytes.Count(aux, []byte(`\mdbrand@orphan{`))
 }
 
 // fatalLaTeX names, in the document's terms, an error that stops xelatex and

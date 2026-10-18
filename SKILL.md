@@ -172,6 +172,10 @@ Every table, data or hand-written, is kept together (no page break leaves fewer
 than three rows on a side) and labelled *Tabla* in Spanish. Do not add
 `\needspace` or raw LaTeX for either. A row cannot break across pages, so one
 taller than the page fails the build: keep long prose out of cells.
+A heading straight above a table goes over to the next page with it, so no
+paragraph is needed between them. Write the separator as `|---|---|`: in a
+wide table mdbrand sizes each column from its cells (a citation counts as the
+number it prints); dashes of different lengths are kept as the author's widths.
 
 ## Citations
 

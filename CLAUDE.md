@@ -205,8 +205,17 @@ Do not relax one without understanding what it cost.
     0 — an observatorio report lost a chart and a paragraph. The preamble
     drops that reset, and any page TeX overfills while shipping it out
     (`has occurred while \output is active`) stops the build by number.
+    A heading straight above a table was left at the foot: longtable breaks
+    after it when the header and first rows do not fit. The break is written
+    to the .aux by heading number and the next pass breaks before the
+    heading; xelatex runs again while a pass finds a new one. A hand-written
+    `|---|---|` gave every column the same width once a row passed 72
+    characters; equal dashes are rewritten from the cells, a citation
+    measured as the number it prints — by its key, one column took the width
+    of eight and a header overflowed.
     → `internal/tex/tables_test.go`, the page checks on `testdata/data.md`,
-    `traps/table-row-tall.md`, and `testdata/floats-table.md`.
+    `traps/table-row-tall.md`, `testdata/floats-table.md`,
+    `testdata/heading-table.md`, `internal/data/pipe_test.go`.
 
 15. **A .docx asks only for the faces the bundle declares, and uses only what
     Google Docs keeps.** A .docx carries no fonts, so `fonts.office` is
