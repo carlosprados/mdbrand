@@ -57,15 +57,7 @@ func SizePipeTables(body string) string {
 		if !wide {
 			continue
 		}
-		width := make([]int, len(runs))
-		for _, row := range cells {
-			for c, v := range row {
-				if c < len(width) {
-					width[c] = max(width[c], cellWidth(v))
-				}
-			}
-		}
-		lines[i] = resize(sep, width) + "\n"
+		lines[i] = resize(sep, colWidths(cells, len(runs))) + "\n"
 		i = end - 1
 	}
 	return strings.Join(lines, "")
@@ -105,18 +97,69 @@ func splitRow(ln string) []string {
 	return cells
 }
 
-// cellWidth is the room a cell asks for, by the rule pipeTable follows: its
-// length, and never less than its longest word and a little air. A citation
-// is measured as the number it prints: measured by its key, a column of
-// [@enc-20261011-sociometrica-el-espanol] took the width of eight others and
-// their headers overflowed the measure.
-func cellWidth(v string) int {
-	v = citeGroup.ReplaceAllString(v, "[00]")
-	w := max(3, utf8.RuneCountInString(v))
-	for f := range strings.FieldsSeq(v) {
-		w = max(w, utf8.RuneCountInString(f)+2)
+// measureChars is the measure assumed in characters of a table's type, so a
+// column's narrowest share can be told from the dashes: A4 at footnotesize
+// holds about a hundred, and assuming fewer only widens the short columns.
+const measureChars = 80
+
+// unbroken is the longest cell kept on one line whole: a date or a short
+// label wrapped at its hyphen ("12-" over "oct") reads as two things.
+const unbroken = 12
+
+// colWidths gives each column its dashes. Each first gets the least it can
+// be set in — its longest word and a little air, or a short cell whole —
+// and what the measure has left is shared by how much more text each holds.
+// Shares by text alone gave a column of dates 3% of the measure beside two
+// of long sentences: "Pendiente" ran 19pt into the next column.
+func colWidths(cells [][]string, n int) []int {
+	least, most := make([]int, n), make([]int, n)
+	for _, row := range cells {
+		for c, v := range row {
+			if c >= n {
+				continue
+			}
+			l, m := cellRoom(v)
+			least[c], most[c] = max(least[c], l), max(most[c], m)
+		}
 	}
-	return w
+	sumLeast, sumMost, extra := 0, 0, 0
+	for c := range n {
+		sumLeast += least[c]
+		sumMost += most[c]
+		extra += max(0, most[c]-least[c])
+	}
+	if sumMost <= measureChars || sumLeast >= measureChars || extra == 0 {
+		return most
+	}
+	width := make([]int, n)
+	room := measureChars - sumLeast
+	for c := range n {
+		width[c] = least[c] + room*max(0, most[c]-least[c])/extra
+	}
+	return width
+}
+
+// cellRoom is the least a cell can be set in and the most it would take. A
+// citation is measured as the number it prints: measured by its key, a
+// column of [@enc-20261011-sociometrica-el-espanol] took the width of eight
+// others and their headers overflowed the measure.
+func cellRoom(v string) (least, most int) {
+	v = citeGroup.ReplaceAllString(v, "[00]")
+	n := utf8.RuneCountInString(v)
+	least = 3
+	if n <= unbroken {
+		least = max(least, n+2)
+	}
+	for f := range strings.FieldsSeq(v) {
+		least = max(least, utf8.RuneCountInString(f)+2)
+	}
+	// The most stays what it was before least existed, so a table that fits
+	// the measure keeps its dashes byte for byte.
+	most = max(3, n)
+	for f := range strings.FieldsSeq(v) {
+		most = max(most, utf8.RuneCountInString(f)+2)
+	}
+	return least, most
 }
 
 // resize writes sep again with each column's dashes width[c] long, keeping
