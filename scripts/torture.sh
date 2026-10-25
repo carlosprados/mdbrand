@@ -547,7 +547,10 @@ if [ $status -eq 0 ]; then ok "builds"; else
 	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
 fi
 if [ $status -eq 0 ]; then
-	warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in Latin Modern')"
+	# The runner has neither Inter nor the office faces: those two warnings are
+	# the machine's, and every other is the cover's.
+	warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in Latin Modern' |
+		grep -v "is not installed here, so the .docx's characters were not checked")"
 	[ -z "$warnings" ] && ok "no warnings" || bad "warnings: $warnings"
 	pdfimages -f 1 -l 1 -list "$work/cover.pdf" | has -E ' 1200 +1800 ' && ok "the picture is on the cover" || bad "the cover has no picture"
 	page1="$(pdftotext -f 1 -l 1 "$work/cover.pdf" -)"
@@ -559,7 +562,7 @@ if [ $status -eq 0 ]; then
 fi
 out="$("$bin" build "$root/testdata/cover.md" --to epub -o "$work/cover-alone.epub" 2>&1)"
 status=$?
-if [ $status -eq 0 ] && [ -z "$(printf '%s\n' "$out" | grep '^  !')" ]; then
+if [ $status -eq 0 ] && [ -z "$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in Latin Modern')" ]; then
 	ok "the .epub alone typesets its cover apart, without warnings"
 else
 	bad "--to epub alone (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
