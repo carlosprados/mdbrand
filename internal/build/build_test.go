@@ -155,6 +155,21 @@ func TestScanLogFindsConfidentialTooWide(t *testing.T) {
 	}
 }
 
+// The cover picture takes the height the title block leaves; the room TeX
+// measured is the only notice that it would print as a thumbnail. A title
+// long enough leaves a negative room, and that must stop the build too.
+func TestScanLogFindsCoverWithoutRoom(t *testing.T) {
+	if room := scanLog("MDBRAND-COVER-TOOSMALL room=82.5pt\n").CoverRoomPt; room != 82.5 {
+		t.Errorf("coverRoomPt = %v, want 82.5", room)
+	}
+	if room := scanLog("MDBRAND-COVER-TOOSMALL room=-14.2pt\n").CoverRoomPt; room <= 0 {
+		t.Errorf("a negative room read as %v, which judgeLog takes for no report", room)
+	}
+	if room := scanLog("Output written on doc.pdf (2 pages, 10 bytes).").CoverRoomPt; room != 0 {
+		t.Errorf("a clean log reported a cover room of %v pt", room)
+	}
+}
+
 // The count alone sent the reader to the log with a grep and a map from .tex
 // line numbers back to the Markdown. The quote is the diagnosis. What has to be
 // right is the reassembly: the log hard-wraps at 79 columns with nothing

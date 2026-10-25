@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"image"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,6 +36,8 @@ type prepared struct {
 	// pdfToo is set when the PDF is built as well, and measures what the
 	// .docx can only estimate.
 	pdfToo bool
+	// cover is the cover picture's absolute path; "" when there is none.
+	cover string
 }
 
 // close removes the work directory unless it was asked to be kept.
@@ -99,14 +102,53 @@ it, or open an issue for the knob you need:
 		}
 	}
 
+	cover, err := coverImage(o.Input, d.Meta.Options.Cover, style)
+	if err != nil {
+		return nil, err
+	}
+	if cover != "" {
+		*inputs = append(*inputs, cover)
+	}
+
 	work, keep, err := workDir(o.WorkDir)
 	if err != nil {
 		return nil, err
 	}
 	return &prepared{
-		o: o, d: d, b: b, style: style, work: work, keep: keep,
+		o: o, d: d, b: b, style: style, work: work, keep: keep, cover: cover,
 		rep: &Report{Brand: b.Name, Style: style, WorkDir: work, Kept: keep},
 	}, nil
+}
+
+// coverImage settles the cover picture: only a report has a cover to set it
+// on, and xelatex, the .epub and the .docx all take a JPEG or a PNG.
+func coverImage(input string, c doc.Cover, style string) (string, error) {
+	if c.Image == "" {
+		return "", nil
+	}
+	if style != "report" {
+		return "", fmt.Errorf(`mdbrand.cover sets a picture on the cover, and style %s has none: only a
+report opens with a cover page. Build it with style: report, or drop cover:`, style)
+	}
+	path := c.Image
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(filepath.Dir(mustAbs(input)), path)
+	}
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".jpg", ".jpeg", ".png":
+	default:
+		return "", fmt.Errorf("mdbrand.cover.image %s: the cover takes a JPEG or a PNG", c.Image)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return "", fmt.Errorf("mdbrand.cover.image %s: no such picture beside the document (%s)", c.Image, path)
+	}
+	_, _, err = image.DecodeConfig(f)
+	_ = f.Close() // read-only: nothing to lose
+	if err != nil {
+		return "", fmt.Errorf("mdbrand.cover.image %s: not a picture that can be read: %w", c.Image, err)
+	}
+	return path, nil
 }
 
 // workDir is the directory every external tool runs in: a temporary one, or

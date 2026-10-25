@@ -19,6 +19,12 @@ type Meta struct {
 	// Logo files as pandoc will find them, with their placed widths.
 	Logo, LogoSecondary       string
 	LogoWMM, LogoSecondaryWMM float64
+
+	// The cover picture as pandoc will find it, its placed size and the
+	// credit under it; Cover is "" when there is none.
+	Cover              string
+	CoverWMM, CoverHMM float64
+	CoverCredit        string
 }
 
 // Labels are the words a document prints in its own language.
@@ -61,12 +67,17 @@ func Front(layout string, m Meta, l Look) (before, after string) {
 func cover(m Meta, l Look) string {
 	var b strings.Builder
 	b.WriteString(logos(m))
-	var x strings.Builder
 	// The title block sits a third of the way down under a hairline, as the
 	// PDF's does. Spacing before a paragraph lies outside its border, so the
 	// rule travels with the title: a spacing value, not an anchored frame,
-	// which is what every importer keeps.
-	x.WriteString(para(pPr(twips(55), 120, 0, "", l.Rule, "top", false), run(l.Display, l.Text, 26, true, m.Title)))
+	// which is what every importer keeps. A cover picture takes that room.
+	titleGap, footGap := twips(55), twips(80)
+	if m.Cover != "" {
+		titleGap, footGap = twips(12), twips(12)
+		b.WriteString(coverPicture(m, l))
+	}
+	var x strings.Builder
+	x.WriteString(para(pPr(titleGap, 120, 0, "", l.Rule, "top", false), run(l.Display, l.Text, 26, true, m.Title)))
 	if m.Subtitle != "" {
 		x.WriteString(para(pPr(0, 120, 0, "", "", "", false), run(l.Display, l.Text, 13, false, m.Subtitle)))
 	}
@@ -94,7 +105,7 @@ func cover(m Meta, l Look) string {
 	for i, s := range foot {
 		ppr := pPr(twips(s.gapMM), 0, 0, "", "", "", false)
 		if i == 0 {
-			ppr = pPr(twips(80), 0, 0, "", l.Rule, "top", false)
+			ppr = pPr(footGap, 0, 0, "", l.Rule, "top", false)
 		}
 		r := run(l.Display, s.color, SmallPt, false, s.text)
 		if i == len(foot)-1 {
@@ -204,6 +215,17 @@ func signature(m Meta, l Look) string {
 		x.WriteString(para(pPr(before, 0, 0, "", "", "", true), run(l.Display, l.Text, SmallPt, false, s)))
 	}
 	return raw(x.String())
+}
+
+// coverPicture is the cover's picture and its credit. The picture is a pandoc
+// image, so pandoc owns its relationship; the line break keeps a lone picture
+// from becoming a captioned figure, as it does for the logos.
+func coverPicture(m Meta, l Look) string {
+	s := fmt.Sprintf("![](%s){width=%.1fmm height=%.1fmm}\\\n\n", m.Cover, m.CoverWMM, m.CoverHMM)
+	if m.CoverCredit != "" {
+		s += raw(para(pPr(0, 0, 0, "", "", "", false), run(l.Body, l.Text, 7.5, false, m.CoverCredit)))
+	}
+	return s
 }
 
 func logos(m Meta) string {

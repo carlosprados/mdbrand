@@ -12,6 +12,7 @@ mdbrand:
   reference: "MDB-2026-001"       # on the cover
   confidential: "Internal"        # on the cover and every footer
   # formats: [pdf, epub]          # an .epub too, to read on an e-reader (needs epubcheck)
+  # cover: {image: cover.jpg, credit: "Artist, year"}  # a picture on the cover, and the .epub's
 ---
 
 # What this is

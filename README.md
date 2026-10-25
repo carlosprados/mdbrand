@@ -310,6 +310,9 @@ mdbrand:
   reference: "Oferta AS-2164-26"
   confidential: "Confidencial"   # every style; see below for where it prints
   short_title: "Oferta Acme"     # optional; the running header, when the title is too long for it
+  cover:                         # optional, report only: a picture on the cover
+    image: portada.jpg           # JPEG or PNG, relative to the document
+    credit: "Eugène Delacroix, 1844 (dominio público)"   # optional, small under it
 ---
 ```
 
@@ -692,6 +695,23 @@ label too long to sit left of the page number stops the build. A `.docx` built
 alone cannot be measured, since Word sets it in the reader's fonts, so there
 a label over about 45 characters is a warning.
 
+### A picture on the cover
+
+`mdbrand.cover` sets a JPEG or PNG on a `report`'s cover, between the logo and
+the title, with `credit:` small under it. The picture keeps its proportions
+inside the measure and the height the logo, the title block and the foot
+leave — TeX measures them, since only it knows how many lines the title wraps
+to — and never more than 62% of the text height. Under 45 mm of room the
+build stops: shorten the title or the subtitle. Its resolution is judged like
+any other picture's.
+
+The `.epub`'s cover is the PDF's cover page, rasterised at 1600 px across with
+the margins cut: a reader's library shows the cover and nothing else, so the
+picture alone would shelve every book without its title. Built without the
+PDF, the cover page alone is typeset for it. The `.docx` sets the picture in
+its own cover, at a height it can only estimate (110 mm at most). `note`,
+`letter` and `slides` have no cover, and refuse the key.
+
 ### Slides
 
 ![Four slides of the charla example: the title slide, a diagram, a chart and two columns](assets/readme/slides.png)
@@ -931,7 +951,8 @@ again with a narrower `width`, so they keep their size (not one with a `width=`
 on its block, or of several views).
 What does not: no font is embedded or named (the reader's is the right one,
 and a licensed face in a file copied to a device is a distribution), no
-cover, no running header, footer, `reference` or `confidential`, and a
+cover unless `mdbrand.cover` gives one, no running header, footer,
+`reference` or `confidential`, and a
 `::: {.keep}` keeps nothing, since a reflowed page has no breaks of its own.
 Raw LaTeX is left out with a warning, as in a `.docx`.
 

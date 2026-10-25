@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,6 +36,10 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if err != nil {
 		return err
 	}
+	coverFile, err := prepareCover(p.cover, work)
+	if err != nil {
+		return err
+	}
 
 	slides := p.style == tex.Slides
 	body := p.pdfBody()
@@ -52,6 +57,8 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 		TOC:                     d.Meta.HasTOC(),
 		LogoFile:                logoFile,
 		LogoSecondaryFile:       logoSecondFile,
+		CoverImageFile:          coverFile,
+		CoverCredit:             d.Meta.Options.Cover.Credit,
 		CoverLogoWidth:          b.Page.LogoWidthCover,
 		CoverLogoSecondaryWidth: b.Page.LogoWidthCoverSecondary,
 		HeaderLogoWidth:         b.Page.LogoWidthHeader,
@@ -70,7 +77,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if s := d.Meta.Options.Signature; s != "" {
 		data.SignatureLines = strings.Split(s, "\n")
 	}
-	if data.Inline, err = inlineMarkdown(work, "latex", data.HeaderTitle, data.Title, data.Subtitle, data.Author, data.Date); err != nil {
+	if data.Inline, err = inlineMarkdown(work, "latex", data.HeaderTitle, data.Title, data.Subtitle, data.Author, data.Date, data.CoverCredit); err != nil {
 		return err
 	}
 	if slides {
@@ -175,7 +182,11 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if err := checkTextLayer(work, stem+".pdf", source, rep); err != nil {
 		return err
 	}
-	if err := checkResolution(work, stem+".pdf", p.d.Refs, rep); err != nil {
+	refs := p.d.Refs
+	if p.cover != "" {
+		refs = append(slices.Clip(refs), p.cover)
+	}
+	if err := checkResolution(work, stem+".pdf", refs, rep); err != nil {
 		return err
 	}
 	rep.Outputs = append(rep.Outputs, Output{Format: "pdf", Path: out, Pages: sc.Pages, built: filepath.Join(work, stem+".pdf")})
@@ -514,6 +525,12 @@ at this length the number is pushed off the slide. Set mdbrand.short_title to
 a shorter form, or shorten mdbrand.confidential — the title slide has room
 for both in full`, sc.FootOverPt)
 	}
+	if sc.CoverRoomPt > 0 {
+		return fmt.Errorf(`the cover leaves %.0fmm of height for mdbrand.cover.image, and a picture
+needs 45mm to read as more than a thumbnail: the logo, the title block and the
+foot take the rest of the page. Shorten the title or the subtitle, or move the
+reference into the body`, sc.CoverRoomPt*25.4/72.27)
+	}
 	if sc.TitleOverPt > 0 {
 		return fmt.Errorf(`the running header title is %.1fpt too wide to sit beside the logo on one
 line: it would print under the mark, or wrap onto a second line of the header.
@@ -646,6 +663,16 @@ characters the body face lacks`, b.Name, b.Fonts.Fallback))
 	return b.Fonts.Fallback, tex.FallbackChars(rs), nil
 }
 
+// prepareCover lands the cover picture in the work directory, where xelatex
+// looks for it; "" when there is none.
+func prepareCover(src, work string) (string, error) {
+	if src == "" {
+		return "", nil
+	}
+	name := "cover-image" + strings.ToLower(filepath.Ext(src))
+	return name, copyFile(src, filepath.Join(work, name))
+}
+
 func prepareLogo(b *brand.Brand, work string) (string, error) {
 	return prepareLogoFile(b, work, b.LogoPath(), "logo")
 }
@@ -724,6 +751,8 @@ var (
 	confRe = regexp.MustCompile(`MDBRAND-CONFIDENTIAL-TOOWIDE over=([0-9.]+)pt`)
 	// And when the running title would run under the header's logo.
 	titleRe = regexp.MustCompile(`MDBRAND-TITLE-TOOWIDE over=([0-9.]+)pt`)
+	// And when the cover's title block leaves its picture too little height.
+	coverRe = regexp.MustCompile(`MDBRAND-COVER-TOOSMALL room=([-0-9.]+)pt`)
 	// And, on a deck, when the footer's text would push the slide number off.
 	footRe = regexp.MustCompile(`MDBRAND-FOOT-TOOWIDE over=([0-9.]+)pt`)
 	// A slide whose content runs past the bottom of its frame. beamer prints
@@ -823,6 +852,7 @@ type scan struct {
 	HeadSepPt   float64 // set from the bundle, not the log: the room the header may take
 	ConfOverPt  float64
 	TitleOverPt float64
+	CoverRoomPt float64 // set only when the cover picture got too little room
 	Frames      []frameOver
 	SlideWide   []slideOver // a deck's lines too wide, by slide
 	FootOverPt  float64
@@ -923,6 +953,11 @@ func scanLog(log string) scan {
 	if m := titleRe.FindStringSubmatch(log); m != nil {
 		titleOverPt, _ = strconv.ParseFloat(m[1], 64)
 	}
+	var coverRoomPt float64
+	if m := coverRe.FindStringSubmatch(log); m != nil {
+		coverRoomPt, _ = strconv.ParseFloat(m[1], 64)
+		coverRoomPt = max(coverRoomPt, 0.01) // a room of 0pt or less is still a report
+	}
 	var footOverPt float64
 	if m := footRe.FindStringSubmatch(log); m != nil {
 		footOverPt, _ = strconv.ParseFloat(m[1], 64)
@@ -934,7 +969,7 @@ func scanLog(log string) scan {
 		frames = append(frames, frameOver{Pt: pt, Line: line})
 	}
 	return scan{Holes: holes, Shapes: shapes, Undefined: undefined, TallRows: tallRows, Over: over, Wide: wide, Pages: pages, HeadShortPt: headShortPt,
-		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, Frames: frames, SlideWide: slideOverflows(lines), FootOverPt: footOverPt,
+		ConfOverPt: confOverPt, TitleOverPt: titleOverPt, CoverRoomPt: coverRoomPt, Frames: frames, SlideWide: slideOverflows(lines), FootOverPt: footOverPt,
 		KeepTall: keepTallBlocks(log), PagesOver: pagesOver(log)}
 }
 
