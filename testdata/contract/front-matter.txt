@@ -1,5 +1,6 @@
 mdbrand.brand
 mdbrand.confidential
+mdbrand.cover
 mdbrand.data
 mdbrand.formats
 mdbrand.greeting

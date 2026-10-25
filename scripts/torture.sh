@@ -535,6 +535,36 @@ if [ $status -eq 0 ]; then
 	[ "$n" -ge 2 ] && ok "both pictures are in the PDF" || bad "the PDF holds $n of the 2 pictures"
 fi
 
+# A cover picture: set between the logo and the title, sized to the height
+# the title block leaves, the whole cover on one page — the foot was once
+# pushed alone onto a second one. The .epub's cover is that page, so a
+# reader's library shows the title; built alone, it typesets the cover apart.
+echo
+echo "testdata/cover.md --to pdf,docx,epub — a picture on the cover"
+out="$("$bin" build "$root/testdata/cover.md" --to pdf,docx,epub -o "$work/cover.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in Latin Modern')"
+	[ -z "$warnings" ] && ok "no warnings" || bad "warnings: $warnings"
+	pdfimages -f 1 -l 1 -list "$work/cover.pdf" | has -E ' 1200 +1800 ' && ok "the picture is on the cover" || bad "the cover has no picture"
+	page1="$(pdftotext -f 1 -l 1 "$work/cover.pdf" -)"
+	has -F 'generated for this fixture' <<<"$page1" && ok "the credit is under it" || bad "the credit is not on the cover"
+	has -F '25 October 2026' <<<"$page1" && ok "the foot stays on the cover page" || bad "the cover's foot left its page"
+	unzip -p "$work/cover.epub" EPUB/content.opf | has 'properties="cover-image"' \
+		&& ok "the .epub declares a cover image" || bad "the .epub has no cover image"
+	unzip -l "$work/cover.docx" | has -E 'word/media/.*\.jpe?g' && ok "the .docx carries the picture" || bad "the .docx has no picture"
+fi
+out="$("$bin" build "$root/testdata/cover.md" --to epub -o "$work/cover-alone.epub" 2>&1)"
+status=$?
+if [ $status -eq 0 ] && [ -z "$(printf '%s\n' "$out" | grep '^  !')" ]; then
+	ok "the .epub alone typesets its cover apart, without warnings"
+else
+	bad "--to epub alone (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+
 # Markdown about Markdown: a d2 fence inside a ````markdown sample was
 # rendered as a figure, and a picture link in code printed this machine's
 # absolute path. Both are examples and must print as written.
@@ -878,6 +908,10 @@ traps=(
 	"keep-too-tall.md|fail|\"The long card\": "
 	"keep-slides.md|fail|::: {.keep} on a slide"
 	"keep-nested.md|fail|::: {.keep} inside another"
+	"cover-missing.md|fail|no such picture beside the document"
+	"cover-on-note.md|fail|style note has none"
+	"cover-typo.md|fail|did you mean credit?"
+	"cover-no-room.md|fail|of height for mdbrand.cover.image"
 )
 
 echo

@@ -200,13 +200,15 @@ refuse it): the reader's own face and size, the nav as the contents, notes
 that pop up, figures placed again for a 6" screen's 80 x 100 mm and
 rasterised at 300 ppi (a Vega-Lite chart drawn again with a narrower width,
 so its labels keep their size), table cells that break a long word rather
-than be clipped, [words]{.accent} in colors.accent, no cover, and no reference
-or confidential label. The package is validated with epubcheck,
-which must be installed, and an error stops the build. Estimates warn: a
-figure whose labels fall under min_text_pt on that column, chart series two
-of which are one grey on e-ink, code over 45 columns, a table wider than the
-column, MathML formulas (Adobe's engine shows them as text). Not opened on a
-device here: open the result on yours.
+than be clipped, [words]{.accent} in colors.accent, no reference or
+confidential label, and no cover unless mdbrand.cover sets a picture: then the
+PDF's cover page is the .epub's, so a reader's library shows the title. The
+package is validated with epubcheck, which must be installed, and an error
+stops the build. Estimates warn: a figure whose labels fall under
+min_text_pt on that column, chart series two of which are one grey on e-ink,
+code over 45 columns, a table wider than the column, MathML formulas (Adobe's
+engine shows them as text). Not opened on a device here: open the result on
+yours.
 
 --watch keeps mdbrand running and rebuilds whenever a file the build read
 changes: the document, its linked figures and pictures, the bibliography and

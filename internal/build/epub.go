@@ -72,6 +72,13 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if d.Meta.NumberSections {
 		args = append(args, "--number-sections")
 	}
+	if p.cover != "" {
+		cover, err := epubCover(p, inputs)
+		if err != nil {
+			return err
+		}
+		args = append(args, "--epub-cover-image="+cover)
+	}
 	cites, err := citeArgs(d, o.Input, inputs)
 	if err != nil {
 		return err
@@ -122,6 +129,56 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	}
 	rep.Outputs = append(rep.Outputs, Output{Format: "epub", Path: out, built: built})
 	return nil
+}
+
+// coverSliverMM is the white the .epub's cover keeps around the page's text.
+const coverSliverMM = 8
+
+// epubCover is the .epub's cover: the PDF's cover page as a JPEG. A
+// reader's library shows the cover and nothing else, so the picture alone
+// would have set every book there without its title. When the PDF is not
+// built, its cover page alone is typeset, apart, and not published.
+func epubCover(p *prepared, inputs *[]string) (string, error) {
+	pdf := ""
+	for _, out := range p.rep.Outputs {
+		if out.Format == "pdf" {
+			pdf = out.built
+		}
+	}
+	if pdf == "" {
+		cp := *p
+		cp.body, cp.figs, cp.results = "", nil, nil
+		cp.work = filepath.Join(p.work, "epub-cover")
+		cp.rep = &Report{}
+		if err := os.MkdirAll(cp.work, 0o755); err != nil {
+			return "", err
+		}
+		p.o.logf("  cover page for the .epub")
+		if err := renderPDF(&cp, "", inputs); err != nil {
+			return "", fmt.Errorf("typesetting the cover for the .epub: %w", err)
+		}
+		p.rep.Warnings = append(p.rep.Warnings, cp.rep.Warnings...)
+		pdf = cp.rep.Outputs[0].built
+	}
+	// The page's margins, all but a sliver, are cut away: a library shows the
+	// cover a few centimetres tall, and the title gains what they took. On A4
+	// what is left is near the 1:1.6 the readers' shelves are drawn for.
+	// 1600 px across is what Play Books and Kobo ask of a cover.
+	m, err := tex.ParseLenMM(p.b.Page.Margin)
+	if err != nil {
+		return "", err
+	}
+	cut := max(m-coverSliverMM, 0)
+	wMM := tex.PaperWidthMM(p.b.Page.PaperSize) - 2*cut
+	hMM := tex.PaperHeightMM(p.b.Page.PaperSize) - 2*cut
+	ppi := 1600 / (wMM / 25.4)
+	px := func(mm float64) string { return strconv.Itoa(int(mm/25.4*ppi + 0.5)) }
+	if err := run.Quiet(p.work, "pdftoppm", "-f", "1", "-l", "1", "-singlefile", "-jpeg", "-jpegopt", "quality=90",
+		"-r", strconv.FormatFloat(ppi, 'f', 2, 64), "-x", px(cut), "-y", px(cut), "-W", px(wMM), "-H", px(hMM),
+		pdf, "epub-cover"); err != nil {
+		return "", err
+	}
+	return "epub-cover.jpg", nil
 }
 
 // epubFigures places every figure again for the e-reader's column and puts

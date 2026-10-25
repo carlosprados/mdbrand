@@ -148,6 +148,7 @@ type Options struct {
 	Confidential string    `yaml:"confidential"` // stamped under the cover rule
 	Reference    string    `yaml:"reference"`    // file/offer number on the cover
 	ShortTitle   string    `yaml:"short_title"`  // the running header's title, when the full one is too long
+	Cover        Cover     `yaml:"cover"`        // a picture on the report's cover, and the .epub's
 	WordCount    WordCount `yaml:"wordcount"`
 	// Data replaces the default data/ beside the document with these
 	// directories or files, resolved against the document.
@@ -161,6 +162,45 @@ type Options struct {
 	Place     string   `yaml:"place"`
 	Greeting  string   `yaml:"greeting"`
 	Signature string   `yaml:"signature"`
+}
+
+// Cover is a picture set on the cover between the logo and the title, and
+// the credit printed under it. Image is as written, relative to the document.
+type Cover struct {
+	Image  string
+	Credit string
+}
+
+func (c *Cover) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind != yaml.MappingNode {
+		return fmt.Errorf("mdbrand.cover: expected image: and credit:, as a mapping")
+	}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		k, v := n.Content[i].Value, n.Content[i+1]
+		var dst *string
+		switch k {
+		case "image":
+			dst = &c.Image
+		case "credit":
+			dst = &c.Credit
+		default:
+			// Decoded by hand because YAML drops an unknown field in silence:
+			// `imagen:` would have built a cover with no picture.
+			hint := ""
+			if near := suggest.Closest(k, []string{"image", "credit"}); near != "" {
+				hint = fmt.Sprintf(" — did you mean %s?", near)
+			}
+			return fmt.Errorf("mdbrand.cover.%s is not a key mdbrand reads%s\nThe keys are image and credit", k, hint)
+		}
+		if v.Kind != yaml.ScalarNode {
+			return fmt.Errorf("mdbrand.cover.%s: expected text", k)
+		}
+		*dst = strings.TrimSpace(v.Value)
+	}
+	if c.Image == "" {
+		return fmt.Errorf("mdbrand.cover: image: is missing — the picture to set on the cover")
+	}
+	return nil
 }
 
 // WordCount is the criterion {{words}} counts by: a profile name, or a mapping
@@ -612,7 +652,7 @@ func (m Meta) CitesFrom() bool { return len(m.Bibliography) > 0 || m.References 
 func (m Meta) HasTOC() bool { return m.TOC != nil && *m.TOC }
 
 // Printed is every front matter string a page prints, split by the face both
-// writers set it in: a letter's greeting in the body face; the cover, the
+// writers set it in: a letter's greeting and a cover's credit in the body face; the cover, the
 // letterhead, the running header, the footer and the signature in the display
 // face. The glyph checks read this, so a field printed somewhere and missing
 // here goes unchecked — TestPrintedCoversEveryField is there for that.
@@ -620,7 +660,7 @@ func (m Meta) Printed() (display, body []string) {
 	o := m.Options
 	display = append([]string{m.Title, o.ShortTitle, m.Subtitle, m.AuthorString(), m.Date,
 		o.Reference, o.Confidential, o.Place, o.Signature}, o.To...)
-	return display, []string{o.Greeting}
+	return display, []string{o.Greeting, o.Cover.Credit}
 }
 
 // LiftAbstract takes abstract: out of the front matter and returns it as

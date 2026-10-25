@@ -105,6 +105,11 @@ type Data struct {
 	LogoFile          string // basename inside the work dir; "" when there is none
 	LogoSecondaryFile string // cover only; "" when the bundle declares none
 
+	// CoverImageFile is the cover picture's basename inside the work dir,
+	// and CoverCredit the line under it; "" when the cover has none.
+	CoverImageFile string
+	CoverCredit    string
+
 	CoverLogoWidth          string
 	CoverLogoSecondaryWidth string
 	HeaderLogoWidth         string

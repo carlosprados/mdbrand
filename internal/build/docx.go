@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"image"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -62,6 +63,9 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		To: d.Meta.Options.To, Place: d.Meta.Options.Place,
 		Greeting: d.Meta.Options.Greeting, Signature: d.Meta.Options.Signature,
 		TOC: d.Meta.HasTOC(), TOCDepth: d.Meta.TOCDepth, Lang: d.Meta.Lang,
+	}
+	if err := docxCover(p, &meta); err != nil {
+		return err
 	}
 	if err := plainFront(work, &meta, &look); err != nil {
 		return err
@@ -221,6 +225,45 @@ func docxLook(p *prepared) (docx.Look, error) {
 
 // docxLogoFile lands a logo in the work directory as PNG, the one format every
 // .docx reader shows. A PDF logo cannot go in: Word does not draw PDF.
+// docxCoverHeightMM is the most height the .docx gives its cover picture.
+// Word sets the cover in the reader's fonts, so the room the title leaves
+// cannot be measured as the PDF measures it: this leaves room for a title of
+// two lines and a subtitle of two under the tallest logo bundles carry.
+const docxCoverHeightMM = 110
+
+// docxCover lands the cover picture beside the .docx's Markdown and sizes it
+// as the PDF does, inside the measure and a height it can only estimate.
+func docxCover(p *prepared, meta *docx.Meta) error {
+	if p.cover == "" {
+		return nil
+	}
+	f, err := os.Open(p.cover)
+	if err != nil {
+		return err
+	}
+	cfg, _, err := image.DecodeConfig(f)
+	_ = f.Close() // read-only: nothing to lose
+	if err != nil {
+		return fmt.Errorf("mdbrand.cover.image: %w", err)
+	}
+	maxW, err := tex.TextWidthMM(p.b)
+	if err != nil {
+		return err
+	}
+	aspect := float64(cfg.Width) / float64(cfg.Height)
+	w, h := maxW, maxW/aspect
+	if h > docxCoverHeightMM {
+		w, h = docxCoverHeightMM*aspect, docxCoverHeightMM
+	}
+	name := "docx-cover" + strings.ToLower(filepath.Ext(p.cover))
+	if err := copyFile(p.cover, filepath.Join(p.work, name)); err != nil {
+		return err
+	}
+	meta.Cover, meta.CoverWMM, meta.CoverHMM = name, w, h
+	meta.CoverCredit = p.d.Meta.Options.Cover.Credit
+	return nil
+}
+
 func docxLogoFile(src, work, stem string) (string, error) {
 	if src == "" {
 		return "", nil
@@ -326,11 +369,11 @@ func docxLength(key, v string) (float64, error) {
 // plainFront sets front matter Markdown as its text: the cover and header are
 // built as OOXML here, and printed the asterisks of *Hamlet* as written.
 func plainFront(work string, meta *docx.Meta, look *docx.Look) error {
-	asText, err := inlineMarkdown(work, "plain", meta.Title, meta.Subtitle, meta.Author, meta.Date, look.RunningTitle)
+	asText, err := inlineMarkdown(work, "plain", meta.Title, meta.Subtitle, meta.Author, meta.Date, look.RunningTitle, meta.CoverCredit)
 	if err != nil {
 		return err
 	}
-	for _, f := range []*string{&meta.Title, &meta.Subtitle, &meta.Author, &meta.Date, &look.RunningTitle} {
+	for _, f := range []*string{&meta.Title, &meta.Subtitle, &meta.Author, &meta.Date, &look.RunningTitle, &meta.CoverCredit} {
 		if t, ok := asText[*f]; ok {
 			*f = t
 		}

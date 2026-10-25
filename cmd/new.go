@@ -127,7 +127,8 @@ func scaffold(style, brandName, title, subtitle, author string, toc bool) string
 	fmt.Fprintf(&fm, "  style: %s\n", style)
 	switch style {
 	case "report":
-		fm.WriteString("  # reference: \"Oferta AS-0000-26\"\n  # confidential: \"Confidencial\"\n")
+		fm.WriteString("  # reference: \"Oferta AS-0000-26\"\n  # confidential: \"Confidencial\"\n" +
+			"  # cover: {image: portada.jpg, credit: \"Autor, año\"}\n")
 	case "letter":
 		fm.WriteString(`  to:
     - "Nombre del destinatario"

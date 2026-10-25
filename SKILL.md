@@ -100,6 +100,7 @@ mdbrand:
   reference: "Oferta AS-2164-26"  # report cover, optional
   confidential: "Confidencial"    # report: cover + footers; note: title + footers; letter: under the date; slides: footer
   short_title: "Oferta Acme"      # the running header's title when the real one is too long
+  cover: {image: portada.jpg, credit: "Delacroix, 1844"}  # report only: a picture on the cover, and the .epub's cover
   formats: [pdf, docx]            # pdf (default) | docx | notes | pptx | epub, in any combination
   wordcount: all                  # or {base: ib, include: [tables]}; default ib
   data: [precios/, extra.yaml, {tao: ../tao/data}]  # where {{data…}} reads; default data/ beside the document; a named root is data.tao.…
@@ -111,6 +112,12 @@ A key under `mdbrand:` that no option reads stops the build with "did you
 mean". A title too long for the running header stops it asking for
 `short_title`. Title, subtitle, author and date may carry inline Markdown
 (`*Hamlet*`, `` `code` ``): the PDF sets it, the `.docx` prints its text.
+
+`cover:` sets a JPEG or PNG on a report's cover, between the logo and the
+title, at the height the title block leaves; `credit:` prints small under it.
+Under 45 mm of room the build stops — shorten the title or subtitle. The
+`.epub`'s cover is that page, so a reader's library shows the title too; the
+`.docx` sets the picture in its own cover.
 
 - `report` — cover with logo, header with logo from page 2, optional ToC.
 - `note` — no cover; title block plus header from page 1.

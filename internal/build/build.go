@@ -186,6 +186,9 @@ or note`, p.style, map[string]string{tex.Slides: "deck's frames", "letter": "let
 		return nil, fmt.Errorf(`speaker notes belong to a deck (style slides), and this is style %s:
 build it with --to pdf, or as a deck with --style slides`, p.style)
 	}
+	if formats, err = coverFirst(p, formats); err != nil {
+		return nil, err
+	}
 	if err := p.fill(inputs); err != nil {
 		return nil, err
 	}
@@ -233,6 +236,23 @@ build it with --to pdf, or as a deck with --style slides`, p.style)
 		}
 	}
 	return p.rep, nil
+}
+
+// coverFirst readies the formats for a cover picture. The .epub's cover is
+// the PDF's cover page, typeset and rasterised, so it needs what that takes,
+// and the PDF goes first, when it is built at all, to lend its page.
+func coverFirst(p *prepared, formats []string) ([]string, error) {
+	if p.cover == "" || !slices.Contains(formats, "epub") {
+		return formats, nil
+	}
+	if missing := run.Missing("xelatex", "pdftoppm"); len(missing) > 0 {
+		return nil, exit.AsEnvironment(fmt.Errorf("the .epub's cover is drawn from the PDF's, and these are missing: %s\n  pdftoppm is in poppler-utils (brew install poppler); run: mdbrand doctor",
+			strings.Join(missing, ", ")))
+	}
+	if i := slices.Index(formats, "pdf"); i > 0 {
+		formats = append([]string{"pdf"}, slices.Delete(formats, i, i+1)...)
+	}
+	return formats, nil
 }
 
 // pickFormats settles which outputs to write, by the same precedence as every
