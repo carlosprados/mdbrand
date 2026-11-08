@@ -265,7 +265,7 @@ mdbrand example ensayo && mdbrand build ensayo.md --watch   # edit it: the cover
 | `mdbrand example [name] [dir]` | List the worked examples, or write one out to start from. `--show` prints it instead |
 | `mdbrand new <doc.md>` | Scaffold a bare document that already builds. `--title` · `--subtitle` · `--author` · `--brand` · `--style` · `--toc` |
 | `mdbrand diagrams <doc.md>` | Figure sizes and smallest label size, without building, with the document's brand and style (a slide's frame is not a page). `--brand` · `--style` override them · `--out <dir>` also keeps the rendered PDFs |
-| `mdbrand audit <doc.pdf>` | Check a PDF mdbrand did not build — a university's or a journal's LaTeX template, Overleaf — with the checks a build makes on its own: missing glyphs, undefined references, overfull lines and pages from the log beside it; private-use characters in the text layer, lines cut at the sheet's edge, faces not embedded or Type 3, pictures under 72/150 ppi from the PDF. `--max-pages N` · `--body-until References` counts only the body · `--paper a4\|letter` · `--log <file>` |
+| `mdbrand audit <doc.pdf>` | Check a PDF mdbrand did not build — a university's or a journal's LaTeX template, Overleaf — with the checks a build makes on its own: missing glyphs, undefined references, overfull lines and pages from the log beside it; private-use characters in the text layer, lines cut at the sheet's edge, faces not embedded or Type 3, pictures under 72/150 ppi from the PDF. `--max-pages N` · `--body-until References` measures the body · `--paper a4\|letter` · `--anonymous` · `--log <file>`; with mutool, text under 6pt |
 | `mdbrand data <doc.md> [path]` | The data files a document can print, with their shape; or what one path names |
 | `mdbrand doctor` | Check the toolchain — beamer for decks, vega-cli 6.4.0 for charts in a decimal-comma language included — and the installed bundles; prints the install command for anything missing |
 | `mdbrand brand list` · `show` · `validate` · `new` · `path` | Create and diagnose brand bundles: unknown keys, `requires:`, the slides section's contrast, the logo and fonts |
@@ -1373,14 +1373,19 @@ lines, a stale run, a log of another build — warnings. And it reads the PDF:
 private-use characters in the text layer (what a plagiarism checker sees),
 lines cut at the sheet's edge, faces not embedded, pictures under 72 ppi —
 defects — and Type 3 faces and pictures under 150 ppi — warnings.
-`--body-until` counts pages up to the heading that ends the body, for a limit
-that leaves out references and appendices.
+`--body-until` measures the body to the line of the heading that ends it —
+"body 9.6 up to References" says how much is left to cut — so a heading at
+the top of page 11 is a 10-page body. The PDF's title and author are read
+from its properties: none, or a file's name as the title, warns; with
+`--anonymous` an author is a defect, since it gives the submission away.
+Underfull lines are counted on the summary line, not warned about.
 
-What it cannot see is what a template does not write anywhere: a figure scaled
-down with its labels. Draw a figure at the width it is placed at — in
+With `mutool` installed (`apt install mupdf-tools`), text under 6pt warns,
+read at the size it prints: a figure drawn wide and scaled to the column
+brings its labels there. Draw a figure at the width it is placed at — in
 matplotlib, `figsize` in inches equal to that width, fonts at 8–9 pt — rather
-than scaling it: the size printed is the size drawn × placed width ÷ drawn
-width.
+than scaling it. A figure in a picture (PNG) has no text to measure; look at
+it at 100%.
 
 ## Troubleshooting
 

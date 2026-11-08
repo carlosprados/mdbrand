@@ -30,7 +30,8 @@ what is absent. Required for any build: pandoc, xelatex, rsvg-convert and a few
 LaTeX packages. Required only if the document has diagrams: d2, vl2svg.
 Recommended: pdftotext, which reads each PDF back so a text layer that copies
 as garbage stops the build; without it a build warns that it was not checked.
-Optional: soffice (LibreOffice), which --to pptx uses to estimate the slides
+Optional: mutool (MuPDF), which mdbrand audit reads text sizes with, and
+soffice (LibreOffice), which --to pptx uses to estimate the slides
 whose text does not fit. Required only for --to epub: epubcheck, which
 validates the package (Java).`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -69,6 +70,8 @@ func toolChecks() []check {
 	// style thesis numbers figures, tables and equations with it.
 	bin("pandoc-crossref", "the release built for your pandoc  ·  https://github.com/lierdakil/pandoc-crossref/releases", false)
 	bin("pdftotext", "apt install poppler-utils (brew install poppler)  ·  https://poppler.freedesktop.org/", false)
+	// mdbrand audit reads the size each run of text prints at with it.
+	bin("mutool", "apt install mupdf-tools (brew install mupdf-tools)  ·  https://mupdf.com/", false)
 	// --to pptx estimates which slides' text does not fit by rendering the
 	// deck in LibreOffice; without it the build says it did not look.
 	bin("soffice", "apt install libreoffice-impress-nogui  ·  https://www.libreoffice.org/download/download-libreoffice/", false)

@@ -25,6 +25,7 @@ exit 2 usage
 exit 3 environment
 flag mdbrand --brands-dir (string)
 flag mdbrand --config (string)
+flag mdbrand audit --anonymous (bool)
 flag mdbrand audit --body-until (string)
 flag mdbrand audit --log (string)
 flag mdbrand audit --max-pages (int)

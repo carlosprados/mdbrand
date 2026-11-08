@@ -79,7 +79,9 @@ When a university or a journal mandates its own LaTeX template, mdbrand does
 not build the document: build it with the template, then run
 `mdbrand audit doc.pdf --max-pages N --body-until References --paper a4`,
 which reads the PDF and the `.log` beside it with mdbrand's checks and exits 1
-on a defect. Draw figures at the width they are placed at (matplotlib
+on a defect; it prints the body's length ("body 9.6 up to References"), warns
+on text under 6pt (with mutool) and a missing title or author, and
+`--anonymous` stops a PDF that names its author. Draw figures at the width they are placed at (matplotlib
 `figsize` in inches = that width, fonts 8–9 pt) instead of scaling them.
 
 `mdbrand <cmd> --help` is the complete manual; read it rather than guess a flag.
