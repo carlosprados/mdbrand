@@ -779,6 +779,16 @@ function Figure(el) return label(el, "fig:") end
 function Table(el) return label(el, "tbl:") end
 `
 
+// dropLabels takes the appendix letters off the headings once
+// pandoc-crossref has read them: pandoc 3.1 wrote label="A" into the
+// .epub's HTML as it was, and epubcheck refused the package (RSC-005).
+const dropLabels = `-- Written by mdbrand: the letters are pandoc-crossref's to read, not HTML.
+function Header(h)
+  h.attributes.label = nil
+  return h
+end
+`
+
 // reflowArgs are pandoc's settings for a thesis's .docx and .epub, where no
 // LaTeX numbers anything: pandoc-crossref numbers the chapters, sections to
 // the PDF's depth, figures, tables and equations, and the appendices by the
@@ -789,12 +799,15 @@ func reflowArgs(work, lang string, epub bool) ([]string, error) {
 	if err := os.WriteFile(filepath.Join(work, "crossref.yaml"), []byte(crossrefMeta(lang)), 0o644); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(filepath.Join(work, "autolabels.lua"), []byte(autoLabels), 0o644); err != nil {
-		return nil, err
+	for name, src := range map[string]string{"autolabels.lua": autoLabels, "droplabels.lua": dropLabels} {
+		if err := os.WriteFile(filepath.Join(work, name), []byte(src), 0o644); err != nil {
+			return nil, err
+		}
 	}
 	args := []string{
 		"--lua-filter", "autolabels.lua",
 		"--filter", "pandoc-crossref", "--metadata-file=crossref.yaml",
+		"--lua-filter", "droplabels.lua",
 		// The book class numbers chapters, sections and subsections.
 		"-M", "numberSections=true", "-M", "sectionsDepth=3",
 	}

@@ -462,7 +462,9 @@ Do not relax one without understanding what it cost.
     chapter 3, and pandoc's epub writer left a link to a figure in another
     chapter dangling, which epubcheck refused. So crossref numbers the
     headings too, autolabels.lua labels every captioned float first, each
-    appendix carries its letter as a label, Repair leaves the captions alone,
+    appendix carries its letter as a label — dropped once crossref has read it,
+    since pandoc 3.1 wrote label="A" into the .epub's HTML and epubcheck
+    refused it —, Repair leaves the captions alone,
     and an .epub's numbers are not links.
     → `internal/build/thesis_test.go`, `internal/brand/thesis_test.go`,
     `testdata/thesis.md`, `traps/thesis-*.md`.
