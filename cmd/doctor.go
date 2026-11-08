@@ -66,6 +66,8 @@ func toolChecks() []check {
 	// vl2svg cannot apply a locale (see internal/fig/locale.go).
 	bin("vl2vg", "npm i -g vega-lite  ·  https://vega.github.io/vega-lite/", false)
 	bin("vg2svg", "npm i -g vega-cli@latest (6.4.0 or later)  ·  https://vega.github.io/vega/usage/#cli", false)
+	// style thesis numbers figures, tables and equations with it.
+	bin("pandoc-crossref", "the release built for your pandoc  ·  https://github.com/lierdakil/pandoc-crossref/releases", false)
 	bin("pdftotext", "apt install poppler-utils (brew install poppler)  ·  https://poppler.freedesktop.org/", false)
 	// --to pptx estimates which slides' text does not fit by rendering the
 	// deck in LibreOffice; without it the build says it did not look.

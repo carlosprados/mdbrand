@@ -416,6 +416,16 @@ var citeRe = regexp.MustCompile(`MDBRAND-CITE (\S+)`)
 // author, a citation to pandoc.
 var crossrefPrefixes = []string{"fig:", "tbl:", "sec:", "eq:", "lst:"}
 
+// isCrossref reports whether a citation key is a pandoc-crossref label.
+func isCrossref(key string) bool {
+	for _, p := range crossrefPrefixes {
+		if strings.HasPrefix(key, p) {
+			return true
+		}
+	}
+	return false
+}
+
 // citationProblems stops a build whose citations would print wrong. With a
 // bibliography, a key it lacks prints as "(key?)"; without one, every
 // [@key] prints as written. pandoc exits 0 either way.
@@ -431,6 +441,10 @@ else would have told you. Fix the key or add the entry.`,
 		return nil
 	}
 	keys := uniqueMatches(citeRe, pandocOut)
+	// A thesis's cross-references are pandoc-crossref's, not citations.
+	if m.Options.Thesis != nil {
+		keys = slices.DeleteFunc(keys, isCrossref)
+	}
 	if len(keys) == 0 {
 		return nil
 	}

@@ -140,16 +140,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if err != nil {
 		return err
 	}
-	if err := citationProblems(d.Meta, pandocOut, "PDF"); err != nil {
-		return err
-	}
-	if err := filterProblems(pandocOut, b); err != nil {
-		return err
-	}
-	if err := pandocWarnings(pandocOut, "PDF", rep); err != nil {
-		return err
-	}
-	if err := accentContrast(b, pandocOut, slides, rep); err != nil {
+	if err := pdfPandocProblems(d.Meta, b, string(pandocOut), slides, rep); err != nil {
 		return err
 	}
 
@@ -195,6 +186,24 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	}
 	rep.Outputs = append(rep.Outputs, Output{Format: "pdf", Path: out, Pages: sc.Pages, built: filepath.Join(work, stem+".pdf")})
 	return nil
+}
+
+// pdfPandocProblems reads what pandoc and the filters said while writing the
+// PDF's LaTeX, and stops on what would print wrong.
+func pdfPandocProblems(m doc.Meta, b *brand.Brand, out string, slides bool, rep *Report) error {
+	if err := citationProblems(m, out, "PDF"); err != nil {
+		return err
+	}
+	if err := crossrefMisses(out); err != nil {
+		return err
+	}
+	if err := filterProblems(out, b); err != nil {
+		return err
+	}
+	if err := pandocWarnings(out, "PDF", rep); err != nil {
+		return err
+	}
+	return accentContrast(b, out, slides, rep)
 }
 
 // runXeLaTeX typesets stem.tex in work, passes times, and names a fatal
@@ -369,7 +378,11 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		return nil, err
 	}
 	if p.style == tex.Thesis {
-		args = append(args, thesisArgs(d.Meta.Lang)...)
+		more, err := thesisArgs(p.work, d.Meta.Lang)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, more...)
 	}
 	cites, err := citeArgs(d, o.Input, inputs)
 	if err != nil {
@@ -505,6 +518,11 @@ For italic or bold in the bundle's fonts.body, declare fonts.synthesize:
 or choose a body face that has it. Small caps cannot be drawn: drop the
 [words]{.smallcaps}, or choose a face with them (OpenType smcp)`,
 			strings.Join(sc.Shapes, "\n  "))
+	}
+	// In LaTeX pandoc-crossref writes \ref{fig:x} and says nothing, so a
+	// thesis's reference to a missing label reaches only this log.
+	if xr := crossrefRefs(sc.Undefined); len(xr) > 0 {
+		return crossrefMissError(xr)
 	}
 	if len(sc.Undefined) > 0 {
 		return fmt.Errorf(`%d reference(s) in raw LaTeX to something nothing defines, printed as "??"

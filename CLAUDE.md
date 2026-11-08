@@ -451,7 +451,12 @@ Do not relax one without understanding what it cost.
     over 4000 or on a citation, formula or footnote in it, and `torture.sh`
     reads the page numbers off the PDF: none on the first two, i on the
     third, 1 at the first chapter. The school's names come from the bundle's
-    `thesis:` section and an abbreviated one stops.
+    `thesis:` section and an abbreviated one stops. Cross-references are
+    pandoc-crossref's, run before citeproc and refused when built for
+    another pandoc (exit 3); mdbrand used to drop a figure's `{#fig:x}` with
+    its source, so the id is carried to the rendered figure; and in LaTeX a
+    reference to nothing is a silent `\ref`, so the log's undefined labels
+    are named as cross-references.
     → `internal/build/thesis_test.go`, `internal/brand/thesis_test.go`,
     `testdata/thesis.md`, `traps/thesis-*.md`.
 

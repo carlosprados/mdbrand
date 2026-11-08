@@ -764,8 +764,14 @@ thesis:
 ```
 
 `logo` is the university's escudo, on the cubierta and the portada;
-`logo_secondary` the school's, on the portada. For now a thesis builds as a
-PDF; cross-references and the .docx for the director come next.
+`logo_secondary` the school's, on the portada. Cross-references are pandoc-crossref's, which a thesis requires — the
+release built for the running pandoc, which the build checks: label a figure
+`![…](x.d2){#fig:arq}` (or ```` ```d2 #fig:arq caption="…" ````), a table
+`: Caption {#tbl:x}`, an equation `$$ … $$ {#eq:x}`, a chapter
+`# Title {#sec:x}`, and write `[@fig:arq]` — "figura 2.1" in Spanish,
+"figure 2.1" in English — or `capítulo [-@sec:x]` for the number alone. A
+reference to a label nothing carries stops the build. For now a thesis builds
+as a PDF; the .docx for the director comes next.
 
 ### A picture on the cover
 
