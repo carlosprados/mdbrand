@@ -109,14 +109,83 @@ func thesisFormats(style string, formats []string) error {
 	return nil
 }
 
-// readThesis reads a thesis's front parts, before any figure is rendered.
+// readThesis reads a thesis's parts, before any figure is rendered: the
+// chapters and appendices into the body, so every check after sees one
+// document, and the front parts aside.
 func (p *prepared) readThesis(inputs *[]string) error {
 	if p.style != tex.Thesis {
 		return nil
 	}
+	if err := p.assembleChapters(inputs); err != nil {
+		return err
+	}
 	var err error
 	p.thesis, err = readThesisParts(p.o, p.d.Meta.Options.Thesis, p.work, p.rep, inputs)
 	return err
+}
+
+// assembleChapters puts the chapter and appendix files named by
+// mdbrand.thesis in the body, in order, each rebased to the master's
+// directory. The first appendix is marked {.appendix} for thesisBody.
+func (p *prepared) assembleChapters(inputs *[]string) error {
+	t, d := p.d.Meta.Options.Thesis, p.d
+	if len(t.Chapters) == 0 {
+		if len(t.Appendices) > 0 {
+			return fmt.Errorf("mdbrand.thesis.appendices names files, and chapters: does not: name the chapters' files too, or write the appendices in %s after a # … {.appendix} heading", filepath.Base(p.o.Input))
+		}
+		return nil
+	}
+	if strings.TrimSpace(d.Body) != "" {
+		return fmt.Errorf(`%s has a body, and mdbrand.thesis.chapters names the chapters' files: the
+body would have no place in the thesis. Move it into a chapter's file, or drop
+chapters: and write the chapters in the body`, filepath.Base(p.o.Input))
+	}
+	dir := filepath.Dir(mustAbs(p.o.Input))
+	var b strings.Builder
+	for i, list := range [][]string{t.Chapters, t.Appendices} {
+		files, err := doc.ExpandParts(dir, list)
+		if err != nil {
+			return fmt.Errorf("mdbrand.thesis.%s: %w", map[int]string{0: "chapters", 1: "appendices"}[i], err)
+		}
+		for j, f := range files {
+			*inputs = append(*inputs, f)
+			text, err := doc.ReadPart(f, dir)
+			if err != nil {
+				return err
+			}
+			rel, _ := filepath.Rel(dir, f)
+			if err := doc.CheckChapter(rel, text); err != nil {
+				return err
+			}
+			if i == 1 && j == 0 {
+				text = markAppendix(text)
+			}
+			b.WriteString(strings.TrimRight(text, "\n") + "\n\n")
+		}
+	}
+	d.Body = b.String()
+	return nil
+}
+
+var chapterHeadRe = regexp.MustCompile(`(?m)^# [^\n]*$`)
+
+// markAppendix adds the appendix class to a part's chapter heading, inside
+// its attributes when it has some.
+func markAppendix(text string) string {
+	spans := mdtext.Protected(text)
+	for _, m := range chapterHeadRe.FindAllStringIndex(text, -1) {
+		if mdtext.Inside(spans, m[0]) {
+			continue
+		}
+		h := strings.TrimRight(text[m[0]:m[1]], " \t")
+		if strings.HasSuffix(h, "}") && strings.Contains(h, "{") {
+			h = h[:len(h)-1] + " .appendix}"
+		} else {
+			h += " {.appendix}"
+		}
+		return text[:m[0]] + h + text[m[1]:]
+	}
+	return text
 }
 
 // readThesisParts reads the front parts and holds the Resumen and the
@@ -131,14 +200,13 @@ func readThesisParts(o Options, t *doc.Thesis, work string, rep *Report, inputs 
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(dir, rel)
 		}
-		raw, err := os.ReadFile(path)
-		if err != nil {
+		*inputs = append(*inputs, path)
+		if _, err := os.Stat(path); err != nil {
 			return "", fmt.Errorf("mdbrand.thesis.%s: %s: no such file beside the document", key, rel)
 		}
-		*inputs = append(*inputs, path)
-		text := string(raw)
-		if strings.HasPrefix(text, "---\n") {
-			return "", fmt.Errorf("%s: a part carries no front matter; the thesis's is in %s", rel, filepath.Base(o.Input))
+		text, err := doc.ReadPart(path, dir)
+		if err != nil {
+			return "", err
 		}
 		if h := firstHeading(text); h != "" {
 			return "", fmt.Errorf("%s: front parts are headless — %q: mdbrand writes the heading the UPM's template names. Delete it", rel, h)

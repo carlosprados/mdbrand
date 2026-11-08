@@ -605,6 +605,22 @@ if [ $status -eq 0 ]; then
 		&& bad "a summary's section is numbered 0.1" || ok "the summaries' sections are unnumbered"
 fi
 
+# The same thesis with its chapters and appendix in files of their own, a
+# figure linked from ../diagramas/ — a path that means something only from
+# the chapter's directory — and the front parts in another directory: the
+# assembled thesis must print exactly the one-file thesis's text.
+echo
+echo "testdata/thesis-parts/tesis.md — the thesis from its parts"
+out="$("$bin" build "$root/testdata/thesis-parts/tesis.md" --brands-dir "$root/testdata/brands" -o "$work/thesis-parts.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ] && [ -f "$work/thesis.pdf" ]; then
+	cmp -s <(pdftotext "$work/thesis.pdf" -) <(pdftotext "$work/thesis-parts.pdf" -) \
+		&& ok "prints the one-file thesis's text, character for character" || bad "the parts print a different thesis"
+fi
+
 # mdbrand audit reads a PDF something else built — a mandated template, a
 # journal's class — with the checks a build makes on its own. A clean one
 # passes in silence; one with a defect of each kind names every one.
@@ -995,6 +1011,10 @@ traps=(
 	"thesis-letter-paper.md|fail|and a UPM thesis is A4|--brands-dir $root/testdata/brands"
 	"thesis-centre-abbreviated.md|fail|holds ETSI|--brands-dir $root/testdata/brands"
 	"thesis-on-report.md|fail|build it with style: thesis, or drop thesis:|--brands-dir $root/testdata/brands"
+	"thesis-chapter-two-heads.md|fail|holds 2 chapters (# Uno, # Dos): one chapter per file|--brands-dir $root/testdata/brands"
+	"thesis-part-front-matter.md|fail|thesis/with-front-matter.md: a part carries no front matter|--brands-dir $root/testdata/brands"
+	"thesis-body-and-chapters.md|fail|has a body, and mdbrand.thesis.chapters names the chapters' files|--brands-dir $root/testdata/brands"
+	"thesis-chapters-none.md|fail|thesis/capitulos/*.md matches no file beside the document|--brands-dir $root/testdata/brands"
 	"thesis-abstract-spanish.md|fail|style thesis builds as a PDF; its --to docx|--to docx --brands-dir $root/testdata/brands"
 )
 
