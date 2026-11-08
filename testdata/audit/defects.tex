@@ -1,0 +1,17 @@
+% A PDF mdbrand did not build, with one defect of each kind mdbrand audit
+% reads: a reference to nothing, a glyph the face lacks, a line run past the
+% measure, a picture stretched far past its pixels, letter paper, two pages.
+\documentclass[letterpaper]{article}
+\usepackage{fontspec}
+\usepackage{graphicx}
+\begin{document}
+\section{Introduction}
+See Section~\ref{sec:nowhere}. A box the face has no glyph for: ☐.
+
+\noindent Averyveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongwordthatcannotbreak.
+
+\includegraphics[width=\textwidth]{../traps/pictures/tiny.png}
+\newpage
+\section{References}
+None.
+\end{document}

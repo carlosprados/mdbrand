@@ -568,6 +568,36 @@ else
 	bad "--to epub alone (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
 fi
 
+# mdbrand audit reads a PDF something else built — a mandated template, a
+# journal's class — with the checks a build makes on its own. A clean one
+# passes in silence; one with a defect of each kind names every one.
+echo
+echo "testdata/audit — a PDF mdbrand did not build"
+mkdir -p "$work/audit"
+for t in clean defects; do
+	(cd "$root/testdata/audit" && for pass in 1 2; do
+		xelatex -interaction=nonstopmode -output-directory="$work/audit" "$t.tex" >/dev/null 2>&1
+	done)
+done
+out="$("$bin" audit "$work/audit/clean.pdf" --paper a4 --max-pages 1 --body-until References 2>&1)"
+status=$?
+if [ $status -eq 0 ] && ! printf '%s\n' "$out" | has '^  [!✗]'; then
+	ok "a clean PDF passes, without a warning"
+else
+	bad "clean.pdf (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+out="$("$bin" audit "$work/audit/defects.pdf" --paper a4 --max-pages 1 --body-until References 2>&1)"
+status=$?
+[ $status -eq 1 ] && ok "a PDF with defects exits 1" || bad "defects.pdf: exit $status, want 1"
+for phrase in "the paper is letter, and a4 was asked for" \
+	'2 pages up to "References", and the limit is 1' \
+	"picture(s) under 72 ppi" \
+	"☐ (U+2610) missing from" \
+	'\ref{sec:nowhere}' \
+	"overflow the measure by more than 5pt"; do
+	printf '%s\n' "$out" | has -F "$phrase" && ok "names: $phrase" || bad "never says: $phrase"
+done
+
 # Markdown about Markdown: a d2 fence inside a ````markdown sample was
 # rendered as a figure, and a picture link in code printed this machine's
 # absolute path. Both are examples and must print as written.

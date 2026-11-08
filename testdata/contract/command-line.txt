@@ -1,4 +1,5 @@
 command mdbrand
+command mdbrand audit
 command mdbrand brand
 command mdbrand brand list
 command mdbrand brand new
@@ -24,6 +25,10 @@ exit 2 usage
 exit 3 environment
 flag mdbrand --brands-dir (string)
 flag mdbrand --config (string)
+flag mdbrand audit --body-until (string)
+flag mdbrand audit --log (string)
+flag mdbrand audit --max-pages (int)
+flag mdbrand audit --paper (string)
 flag mdbrand build --allow-missing-glyphs (bool)
 flag mdbrand build --brand (string)
 flag mdbrand build --out -o (string)
