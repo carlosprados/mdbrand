@@ -61,3 +61,4 @@ style letter
 style note
 style report
 style slides
+style thesis

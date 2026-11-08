@@ -43,6 +43,9 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 
 	slides := p.style == tex.Slides
 	body := p.pdfBody()
+	// A thesis is assembled before anything reads the body, so its front
+	// parts' characters are checked against the faces with the rest.
+	thesisPg, body := p.assembleThesis(body)
 
 	fallbackFont, fallbackChars, err := fallback(b, body, d.Meta)
 	if err != nil {
@@ -74,6 +77,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 		Greeting:                d.Meta.Options.Greeting,
 		Signature:               d.Meta.Options.Signature,
 	}
+	data.Thesis = thesisPg
 	if s := d.Meta.Options.Signature; s != "" {
 		data.SignatureLines = strings.Split(s, "\n")
 	}
@@ -118,7 +122,11 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	// The document pandoc will read: original front matter, rewritten body.
 	stem := workStem(o.Input)
 	mdName := stem + ".md"
-	source, err := writePDFSource(filepath.Join(work, mdName), o.Input, d.FrontMatter, body)
+	front, err := p.pdfFrontMatter()
+	if err != nil {
+		return err
+	}
+	source, err := writePDFSource(filepath.Join(work, mdName), o.Input, front, body)
 	if err != nil {
 		return err
 	}
@@ -182,11 +190,7 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if err := checkTextLayer(work, stem+".pdf", source, rep); err != nil {
 		return err
 	}
-	refs := p.d.Refs
-	if p.cover != "" {
-		refs = append(slices.Clip(refs), p.cover)
-	}
-	if err := checkResolution(work, stem+".pdf", refs, rep); err != nil {
+	if err := checkResolution(work, stem+".pdf", p.pictures(), rep); err != nil {
 		return err
 	}
 	rep.Outputs = append(rep.Outputs, Output{Format: "pdf", Path: out, Pages: sc.Pages, built: filepath.Join(work, stem+".pdf")})
@@ -336,27 +340,14 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		return slideArgs(p, stem, inputs)
 	}
 
-	// The header's height depends on the shape of the logo that goes in it, so
-	// it is measured rather than assumed. See tex.HeaderHeightMM.
-	var logoAspect float64
-	if logo := b.LogoPath(); logo != "" {
-		a, err := imgsize.Aspect(logo)
-		switch {
-		case err != nil:
-			// An unreadable size is not a defect in the artwork, so it must not
-			// fail the build; but the header geometry is then a guess, and a
-			// guess the reader should hear about.
-			o.logf("  warning: cannot measure %s (%v) — header height left at %s, "+
-				"which is wrong if the mark is not wide", filepath.Base(logo), err, b.Page.HeadHeight)
-		case a > 0:
-			logoAspect = a
+	// A thesis has no running header, so only the margin sets its page.
+	geometry := "margin=" + b.Page.Margin
+	if p.style != tex.Thesis {
+		var err error
+		if geometry, err = headerGeometry(o, b); err != nil {
+			return nil, err
 		}
 	}
-	headHeight, err := tex.HeaderHeightSpec(b, logoAspect)
-	if err != nil {
-		return nil, err
-	}
-	geometry := fmt.Sprintf("margin=%s,headheight=%s,headsep=%s", b.Page.Margin, headHeight, b.Page.HeadSep)
 	filter, err := writeSpanFilter(p.work, p.b)
 	if err != nil {
 		return nil, err
@@ -376,6 +367,9 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 	args, err = bodyFontArgs(b, rep, args)
 	if err != nil {
 		return nil, err
+	}
+	if p.style == tex.Thesis {
+		args = append(args, thesisArgs(d.Meta.Lang)...)
 	}
 	cites, err := citeArgs(d, o.Input, inputs)
 	if err != nil {
@@ -398,6 +392,31 @@ var linkVars = []string{
 
 // slideArgs is pandocArgs for a deck: beamer at 16:9, a frame per level-two
 // heading, and none of the page's geometry.
+// headerGeometry is geometry's setting for a page with a running header.
+func headerGeometry(o Options, b *brand.Brand) (string, error) {
+	// The header's height depends on the shape of the logo that goes in it, so
+	// it is measured rather than assumed. See tex.HeaderHeightMM.
+	var logoAspect float64
+	if logo := b.LogoPath(); logo != "" {
+		a, err := imgsize.Aspect(logo)
+		switch {
+		case err != nil:
+			// An unreadable size is not a defect in the artwork, so it must not
+			// fail the build; but the header geometry is then a guess, and a
+			// guess the reader should hear about.
+			o.logf("  warning: cannot measure %s (%v) — header height left at %s, "+
+				"which is wrong if the mark is not wide", filepath.Base(logo), err, b.Page.HeadHeight)
+		case a > 0:
+			logoAspect = a
+		}
+	}
+	headHeight, err := tex.HeaderHeightSpec(b, logoAspect)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("margin=%s,headheight=%s,headsep=%s", b.Page.Margin, headHeight, b.Page.HeadSep), nil
+}
+
 func slideArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 	o, d, b, rep := p.o, p.d, p.b, p.rep
 	filter, err := writeSpanFilter(p.work, p.b)
@@ -661,6 +680,15 @@ characters the body face lacks`, b.Name, b.Fonts.Fallback))
 		return "", nil, nil
 	}
 	return b.Fonts.Fallback, tex.FallbackChars(rs), nil
+}
+
+// pictures are the raster pictures the document places: those its body
+// links, and the cover's.
+func (p *prepared) pictures() []string {
+	if p.cover == "" {
+		return p.d.Refs
+	}
+	return append(slices.Clip(p.d.Refs), p.cover)
 }
 
 // prepareCover lands the cover picture in the work directory, where xelatex

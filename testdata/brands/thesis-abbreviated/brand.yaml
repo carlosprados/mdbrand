@@ -1,0 +1,10 @@
+# The centre written as everyone says it, not as the UPM's template asks:
+# "the official name, in Spanish and unabbreviated".
+name: thesis-abbreviated
+display_name: Prueba
+colors: {primary: "1F1F1F", text: "000000", rule: "9A9A9A", link: "1F4E79"}
+fonts: {body: DejaVu Sans}
+page: {papersize: a4, margin: 25mm}
+thesis:
+  university: Universidad Politécnica de Madrid
+  centre: ETSI de Telecomunicación

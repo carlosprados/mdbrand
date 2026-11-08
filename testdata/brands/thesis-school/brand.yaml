@@ -1,0 +1,22 @@
+# A school for style thesis: the university and the centre the three fixed
+# pages print, and an escudo of our own — a university's real marks never
+# enter this public repository.
+name: thesis-school
+display_name: Universidad de Prueba
+logo: escudo.svg
+logo_secondary: escudo-escuela.svg
+colors:
+  primary: "1F1F1F"
+  text: "000000"
+  rule: "9A9A9A"
+  link: "1F4E79"
+fonts:
+  body: DejaVu Sans
+page:
+  papersize: a4
+  margin: 25mm
+thesis:
+  university: Universidad Politécnica de Madrid
+  centre: Escuela Técnica Superior de Ingenieros de Telecomunicación
+  programmes:
+    - Ingeniería de Sistemas Telemáticos

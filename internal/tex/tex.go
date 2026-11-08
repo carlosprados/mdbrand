@@ -19,10 +19,14 @@ import (
 var files embed.FS
 
 // Styles are the document shapes mdbrand knows.
-var Styles = []string{"report", "note", "letter", "slides"}
+var Styles = []string{"report", "note", "letter", "slides", "thesis"}
 
 // Slides is the style that is a deck rather than a page: beamer, not article.
 const Slides = "slides"
+
+// Thesis is the doctoral thesis as the UPM's template lays it out: the book
+// class, three fixed pages, roman then arabic numbers.
+const Thesis = "thesis"
 
 // A deck is beamer's 16:9 frame, the shape every projector and screen now
 // has. It is not the bundle's to change: the legibility band below is
@@ -97,6 +101,21 @@ func FallbackChars(rs []rune) []FallbackChar {
 	return out
 }
 
+// ThesisPages are the strings of a thesis's three fixed pages, the school's
+// from the bundle and the rest from the document. EN sets them in English.
+type ThesisPages struct {
+	University, Centre, Programme, Degree, Year, Funding string
+	Directors                                            []ThesisDirector
+	EN                                                   bool
+	TOCDepth                                             int
+}
+
+// ThesisDirector is one director as the pages print them.
+type ThesisDirector struct {
+	Name, Position, Institution string
+	Co                          bool
+}
+
 // Data is what the templates see.
 type Data struct {
 	Brand *brand.Brand
@@ -109,6 +128,9 @@ type Data struct {
 	// and CoverCredit the line under it; "" when the cover has none.
 	CoverImageFile string
 	CoverCredit    string
+
+	// Thesis is what style thesis prints on its three pages; nil otherwise.
+	Thesis *ThesisPages
 
 	CoverLogoWidth          string
 	CoverLogoSecondaryWidth string

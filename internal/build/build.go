@@ -156,6 +156,9 @@ func pipeline(o Options, inputs *[]string) (*Report, error) {
 		return nil, err
 	}
 	defer p.close()
+	if err := thesisFormats(p.style, formats); err != nil {
+		return nil, err
+	}
 	// Deferred, so that it also holds what a chart read through a name.
 	defer func() { *inputs = append(*inputs, p.refs()...) }()
 	if slices.Contains(formats, "docx") {
@@ -187,6 +190,9 @@ or note`, p.style, map[string]string{tex.Slides: "deck's frames", "letter": "let
 build it with --to pdf, or as a deck with --style slides`, p.style)
 	}
 	if formats, err = coverFirst(p, formats); err != nil {
+		return nil, err
+	}
+	if err := p.readThesis(inputs); err != nil {
 		return nil, err
 	}
 	if err := p.fill(inputs); err != nil {

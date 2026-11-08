@@ -104,7 +104,7 @@ bibliography: refs.bib            # optional; one path or a list. Turns citation
 csl: apa.csl                      # optional, with a bibliography
 mdbrand:
   brand: amplia                   # bundle name; none = built-in defaults
-  style: report                   # report | note | letter | slides
+  style: report                   # report | note | letter | slides | thesis
   reference: "Oferta AS-2164-26"  # report cover, optional
   confidential: "Confidencial"    # report: cover + footers; note: title + footers; letter: under the date; slides: footer
   short_title: "Oferta Acme"      # the running header's title when the real one is too long
@@ -131,6 +131,10 @@ Under 45 mm of room the build stops — shorten the title or subtitle. The
 - `note` — no cover; title block plus header from page 1.
 - `letter` — letterhead; `title` prints as the subject line.
 - `slides` — a 16:9 beamer deck. See *Slides*.
+- `thesis` — a UPM doctoral thesis: the template's three fixed pages, roman
+  then arabic numbers, lists, lettered appendices, a Resumen and an Abstract
+  checked against the UPM's 4000 characters of plain text. See *A doctoral thesis*
+  in the README. PDF only for now; no cross-references yet.
 
 ## Word count
 

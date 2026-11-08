@@ -149,6 +149,7 @@ type Options struct {
 	Reference    string    `yaml:"reference"`    // file/offer number on the cover
 	ShortTitle   string    `yaml:"short_title"`  // the running header's title, when the full one is too long
 	Cover        Cover     `yaml:"cover"`        // a picture on the report's cover, and the .epub's
+	Thesis       *Thesis   `yaml:"thesis"`       // style thesis: its three pages and front parts
 	WordCount    WordCount `yaml:"wordcount"`
 	// Data replaces the default data/ beside the document with these
 	// directories or files, resolved against the document.
@@ -660,7 +661,11 @@ func (m Meta) Printed() (display, body []string) {
 	o := m.Options
 	display = append([]string{m.Title, o.ShortTitle, m.Subtitle, m.AuthorString(), m.Date,
 		o.Reference, o.Confidential, o.Place, o.Signature}, o.To...)
-	return display, []string{o.Greeting, o.Cover.Credit}
+	body = []string{o.Greeting, o.Cover.Credit}
+	if o.Thesis != nil {
+		body = append(body, o.Thesis.Printed()...)
+	}
+	return display, body
 }
 
 // LiftAbstract takes abstract: out of the front matter and returns it as

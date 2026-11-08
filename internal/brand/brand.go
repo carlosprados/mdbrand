@@ -40,6 +40,7 @@ type Brand struct {
 	Page     Page     `yaml:"page"`
 	Diagrams Diagrams `yaml:"diagrams"`
 	Slides   Slides   `yaml:"slides"`
+	Thesis   Thesis   `yaml:"thesis"`
 	Figures  Figures  `yaml:"figures"`
 	Footer   string   `yaml:"footer"`
 
@@ -666,12 +667,46 @@ func checkArtwork(label, logo string, problems, warnings *[]string) {
 	}
 }
 
+// Thesis is the school's identity as a doctoral thesis's three pages print it:
+// the UPM's template asks for the university and the centre by their official
+// names, which are the school's, not the document's.
+type Thesis struct {
+	University string `yaml:"university"`
+	Centre     string `yaml:"centre"`
+	// Programmes, when given, are the only ones a thesis may name: the one
+	// place the official list can live.
+	Programmes []string `yaml:"programmes"`
+}
+
+// abbrRe is an abbreviation as a word: capitals with or without dots (ETSIT,
+// E.T.S.I., UPM), or a short word ending in a dot (Fac., Esc.).
+var abbrRe = regexp.MustCompile(`^(?:(?:\p{Lu}\.){2,}|\p{Lu}{2,}|\p{L}{1,4}\.)$`)
+
+// Abbreviations lists the words of s that are abbreviations. Words are
+// compared whole, so Ingenieros does not trip on ETSI.
+func Abbreviations(s string) []string {
+	var out []string
+	for _, w := range strings.Fields(s) {
+		w = strings.Trim(w, ",;:()")
+		if abbrRe.MatchString(w) {
+			out = append(out, w)
+		}
+	}
+	return out
+}
+
 // Check validates a bundle and returns human-readable problems and warnings.
 // It knows the two traps that cost real time: an SVG that is only a wrapper
 // around a small bitmap, and text kept as <foreignObject>, which rsvg-convert
 // silently drops.
 func (b *Brand) Check() (problems, warnings []string) {
 	add := func(dst *[]string, f string, a ...any) { *dst = append(*dst, fmt.Sprintf(f, a...)) }
+
+	for _, f := range []struct{ key, v string }{{"thesis.university", b.Thesis.University}, {"thesis.centre", b.Thesis.Centre}} {
+		if abbr := Abbreviations(f.v); len(abbr) > 0 {
+			add(&problems, "%s: %q holds %s — a thesis prints the official name, in Spanish and unabbreviated", f.key, f.v, strings.Join(abbr, ", "))
+		}
+	}
 
 	if b.Name == "" {
 		add(&problems, "name: empty")
