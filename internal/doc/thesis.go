@@ -26,6 +26,11 @@ type Thesis struct {
 	Abstract         string // English, whatever the thesis's language
 	Resumen          string // Spanish, likewise
 	Acronyms         string
+
+	// Chapters and Appendices name the files of the body: globs, directories
+	// or files, each sorted by name. With no Chapters, the master's body is
+	// the chapters.
+	Chapters, Appendices []string
 }
 
 // Director is one director of the thesis: the portada prints the name, the
@@ -36,7 +41,7 @@ type Director struct {
 }
 
 var thesisKeys = []string{"programme", "degree", "directors", "funding",
-	"dedication", "acknowledgements", "abstract", "resumen", "acronyms"}
+	"dedication", "acknowledgements", "abstract", "resumen", "acronyms", "chapters", "appendices"}
 
 // UnmarshalYAML decodes by hand because YAML drops an unknown field in
 // silence: `director:` would have built a thesis with no director.
@@ -58,6 +63,18 @@ func (t *Thesis) UnmarshalYAML(n *yaml.Node) error {
 			*dst = strings.TrimSpace(v.Value)
 			continue
 		}
+		if k == "chapters" || k == "appendices" {
+			list, err := pathList(v)
+			if err != nil {
+				return fmt.Errorf("mdbrand.thesis.%s: %w", k, err)
+			}
+			if k == "chapters" {
+				t.Chapters = list
+			} else {
+				t.Appendices = list
+			}
+			continue
+		}
 		if k != "directors" {
 			return unknownKey("mdbrand.thesis", k, thesisKeys)
 		}
@@ -73,6 +90,24 @@ func (t *Thesis) UnmarshalYAML(n *yaml.Node) error {
 		}
 	}
 	return nil
+}
+
+// pathList is one path or a list of them.
+func pathList(n *yaml.Node) ([]string, error) {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		return []string{strings.TrimSpace(n.Value)}, nil
+	case yaml.SequenceNode:
+		var out []string
+		for _, it := range n.Content {
+			if it.Kind != yaml.ScalarNode {
+				return nil, fmt.Errorf("expected a path, a glob or a directory")
+			}
+			out = append(out, strings.TrimSpace(it.Value))
+		}
+		return out, nil
+	}
+	return nil, fmt.Errorf("expected a path, a glob or a directory, or a list of them")
 }
 
 var directorKeys = []string{"name", "position", "institution", "role"}

@@ -724,16 +724,19 @@ mdbrand:
     abstract: preliminares/abstract.md                 # English
     resumen: preliminares/resumen.md                   # Spanish
     acronyms: preliminares/acronimos.md
+    chapters: capitulos                                # a directory, a glob or a list
+    appendices: anexos/*.md                            # optional
 ---
-
-# Introducción
-…
-# Cuestionario {.appendix}
-…
 ```
 
-The body holds the chapters, one per `#`; the first `# … {.appendix}` and
-every chapter after it are the appendices, lettered A, B… The build writes the
+`chapters:` names the chapters' files — a directory or a glob read in name
+order (`01-introduccion.md`, `02-estado.md`…), or a list in the order written
+— and `appendices:` the appendices', lettered A, B… Each file holds one
+chapter and opens with its `#` title; a link or a picture in it is written
+from its own directory, as any Markdown viewer reads it. The master file then
+has no body. Without `chapters:`, the master's body holds the chapters, one
+per `#`, and the first `# … {.appendix}` and every chapter after it are the
+appendices. The build writes the
 cubierta, portada and página de créditos with the template's words and nothing
 else, the front parts under the template's headings (a part has no heading of
 its own; `##` sections are allowed in the summaries), the contents and the
@@ -762,8 +765,7 @@ thesis:
 
 `logo` is the university's escudo, on the cubierta and the portada;
 `logo_secondary` the school's, on the portada. For now a thesis builds as a
-PDF in one file; cross-references, chapters in files of their own and the
-.docx for the director come next.
+PDF; cross-references and the .docx for the director come next.
 
 ### A picture on the cover
 
