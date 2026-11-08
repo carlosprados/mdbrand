@@ -1,6 +1,7 @@
 % A PDF mdbrand did not build, with one defect of each kind mdbrand audit
 % reads: a reference to nothing, a glyph the face lacks, a line run past the
-% measure, a picture stretched far past its pixels, letter paper, two pages.
+% measure, a picture stretched far past its pixels, letter paper, a body
+% that runs onto a second page, a label scaled under 6pt, no title or author.
 \documentclass[letterpaper]{article}
 \usepackage{fontspec}
 \usepackage{graphicx}
@@ -11,7 +12,11 @@ See Section~\ref{sec:nowhere}. A box the face has no glyph for: ☐.
 \noindent Averyveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongwordthatcannotbreak.
 
 \includegraphics[width=\textwidth]{../traps/pictures/tiny.png}
+
+\scalebox{0.4}{An axis label drawn wide and scaled to the column}
 \newpage
+The body goes on onto a second page before its references.
+
 \section{References}
 None.
 \end{document}

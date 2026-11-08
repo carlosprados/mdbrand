@@ -36,6 +36,7 @@ runs:
           lmodern \
           librsvg2-bin \
           poppler-utils \
+          mupdf-tools \
           just
 
     - name: d2

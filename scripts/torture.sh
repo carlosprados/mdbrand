@@ -691,13 +691,20 @@ out="$("$bin" audit "$work/audit/defects.pdf" --paper a4 --max-pages 1 --body-un
 status=$?
 [ $status -eq 1 ] && ok "a PDF with defects exits 1" || bad "defects.pdf: exit $status, want 1"
 for phrase in "the paper is letter, and a4 was asked for" \
-	'2 pages up to "References", and the limit is 1' \
+	'pages up to "References", and the limit is 1' \
+	"text under 6pt" \
+	"the PDF has no title" \
 	"picture(s) under 72 ppi" \
 	"☐ (U+2610) missing from" \
 	'\ref{sec:nowhere}' \
 	"overflow the measure by more than 5pt"; do
 	printf '%s\n' "$out" | has -F "$phrase" && ok "names: $phrase" || bad "never says: $phrase"
 done
+
+out="$("$bin" audit "$work/audit/clean.pdf" --anonymous 2>&1)"
+status=$?
+[ $status -eq 1 ] && printf '%s\n' "$out" | has -F 'names its author, "Nombre Apellido", and the submission is anonymous' \
+	&& ok "--anonymous stops a PDF that names its author" || { bad "--anonymous (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'; }
 
 # Markdown about Markdown: a d2 fence inside a ````markdown sample was
 # rendered as a figure, and a picture link in code printed this machine's

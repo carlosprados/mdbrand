@@ -64,3 +64,45 @@ F52                                  Type 3            Custom           yes no  
 		t.Errorf("warnings = %q, want F52 as Type 3", a.Warnings)
 	}
 }
+
+// mutool writes &#xffff; for a glyph it cannot map, and the decoder stopped
+// there: the small text after it went unread, with no error.
+func TestJudgeTextSizesReadsPastAnUnmappedGlyph(t *testing.T) {
+	stext := `<document><page id="page1">
+<font name="A" size="9.96"><char c="&#xffff;"/><char c="x"/></font>
+<font name="A" size="3.98"><char c="A"/><char c="x"/><char c="i"/><char c="s"/></font>
+<font name="A" size="4.5"><char c="2"/></font>
+</page></document>`
+	a := &Audit{}
+	a.judgeTextSizes([]byte(stext))
+	if len(a.Warnings) != 1 || !strings.Contains(a.Warnings[0], `page 1: 4.0pt "Axis"`) {
+		t.Errorf("warnings = %q, want the 4pt run named and the lone digit left out", a.Warnings)
+	}
+}
+
+func TestTitleIsFileName(t *testing.T) {
+	for title, want := range map[string]bool{
+		"report": true, "report.pdf": true, "main.tex": true, "Untitled": true,
+		"Microsoft Word - informe.docx": true, "Predicting Hospital Readmission": false,
+	} {
+		if got := titleIsFileName(title, "report.pdf"); got != want {
+			t.Errorf("titleIsFileName(%q) = %v, want %v", title, got, want)
+		}
+	}
+}
+
+// A heading at the top of a page ends the body on the page before: counted
+// by its page, a 10-page body with References atop page 11 was 11 pages.
+func TestBodyLengthMeasuresToTheHeadingsLine(t *testing.T) {
+	page := func(lines ...layoutLine) []layoutLine { return lines }
+	full := page(layoutLine{72, 82, "Text"}, layoutLine{760, 770, "more"})
+	pages := [][]layoutLine{full, full,
+		page(layoutLine{72, 86, "3 References"}, layoutLine{100, 110, "[1] A."})}
+	if got, ok := bodyLength(pages, "References"); !ok || got != 2 {
+		t.Errorf("bodyLength = %v, %v; want 2, true", got, ok)
+	}
+	pages[2] = page(layoutLine{72, 82, "Text"}, layoutLine{421, 435, "References"})
+	if got, _ := bodyLength(pages, "References"); got < 2.49 || got > 2.51 {
+		t.Errorf("a heading halfway down page 3: bodyLength = %v, want 2.5", got)
+	}
+}

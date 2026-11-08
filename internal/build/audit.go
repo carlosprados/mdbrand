@@ -1,6 +1,7 @@
 package build
 
 import (
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"math"
@@ -10,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/carlosprados/mdbrand/internal/exit"
@@ -26,6 +28,9 @@ type AuditOptions struct {
 	// a limit that leaves out references and appendices.
 	BodyUntil string
 	Paper     string // "a4" or "letter"; "" accepts any
+	// Anonymous is a submission that must not name its author: an author in
+	// the PDF's properties is then a defect, not a missing field.
+	Anonymous bool
 }
 
 // Audit is what reading a finished PDF and its log found. Defects are
@@ -33,10 +38,18 @@ type AuditOptions struct {
 type Audit struct {
 	Pages     int
 	Paper     string
-	BodyPages int    // the pages counted against MaxPages; 0 without BodyUntil
-	Log       string // the log read; "" when there was none
-	Defects   []string
-	Warnings  []string
+	BodyPages int // the pages counted against MaxPages; 0 without BodyUntil
+	// BodyLength is the body's length in pages, the last one in part: 9.6
+	// says how much there is to cut, or how much room is left.
+	BodyLength float64
+	Log        string // the log read; "" when there was none
+	// Underfull counts the lines TeX set loose, and WorstBadness the worst:
+	// spacing, never text out of place, so neither is a warning.
+	Underfull, WorstBadness int
+	Defects                 []string
+	Warnings                []string
+	// Notes say what was not measured, and why.
+	Notes []string
 }
 
 // RunAudit makes the checks a build makes on its own PDF on someone else's: a PDF from
@@ -62,6 +75,7 @@ func RunAudit(o AuditOptions) (*Audit, error) {
 		return nil, err
 	}
 	a.Pages, a.Paper = pdfPages(string(info))
+	a.judgeMeta(string(info), pdf, o.Anonymous)
 	if paper != "" && a.Paper != paper {
 		a.Defects = append(a.Defects, fmt.Sprintf("the paper is %s, and %s was asked for", a.Paper, paper))
 	}
@@ -70,7 +84,15 @@ func RunAudit(o AuditOptions) (*Audit, error) {
 	if err != nil {
 		return nil, err
 	}
-	a.countPages(o, strings.Split(string(text), "\f"))
+	var layout string
+	if o.BodyUntil != "" {
+		raw, err := run.Stdout(dir, "pdftotext", "-enc", "UTF-8", "-bbox-layout", pdf, "-")
+		if err != nil {
+			return nil, err
+		}
+		layout = string(raw)
+	}
+	a.countPages(o, strings.Split(string(text), "\f"), layout)
 	if bad := privateUse(string(text), ""); len(bad) > 0 {
 		a.Defects = append(a.Defects, "the text layer holds private-use characters, so copying, search and a plagiarism checker read garbage at:\n    "+
 			strings.Join(bad, "\n    ")+"\n  the face maps alternate glyphs to private-use code points: set it with contextual alternates off, or use another face")
@@ -94,6 +116,15 @@ func RunAudit(o AuditOptions) (*Audit, error) {
 		return nil, err
 	}
 	a.judgeImages(string(images))
+	if run.Have("mutool") {
+		stext, err := run.Stdout(dir, "mutool", "draw", "-q", "-F", "stext", "-o", "-", pdf)
+		if err != nil {
+			return nil, err
+		}
+		a.judgeTextSizes(stext)
+	} else {
+		a.Notes = append(a.Notes, "text sizes not measured: mutool is not installed (apt install mupdf-tools, brew install mupdf-tools)")
+	}
 
 	if err := a.judgeLaTeXLog(o, a.Pages); err != nil {
 		return nil, err
@@ -137,21 +168,32 @@ func paperName(w, h float64) string {
 	return fmt.Sprintf("%.0f × %.0f pt", w, h)
 }
 
-// countPages holds the document to its page limit: all its pages, or those
-// up to the page where the BodyUntil heading starts, that page included,
-// since the body may end on it.
-func (a *Audit) countPages(o AuditOptions, pages []string) {
-	counted, what := a.Pages, "pages"
+// countPages holds the document to its page limit: all its pages, or the
+// body up to the BodyUntil heading. The body's length is measured to the
+// heading's line, so a heading at the top of page 11 leaves a 10-page body;
+// without a layout to measure, the heading's page counts whole.
+func (a *Audit) countPages(o AuditOptions, pages []string, layout string) {
+	counted, what := a.Pages, fmt.Sprintf("%d pages", a.Pages)
 	if o.BodyUntil != "" {
-		if p := headingPage(pages, o.BodyUntil); p > 0 {
-			a.BodyPages, counted = p, p
-			what = fmt.Sprintf("pages up to %q", o.BodyUntil)
-		} else {
+		p := headingPage(pages, o.BodyUntil)
+		switch {
+		case p == 0:
 			a.Warnings = append(a.Warnings, fmt.Sprintf("no line reads %q, so every page was counted against the limit", o.BodyUntil))
+		default:
+			a.BodyPages, counted = p, p
+			what = fmt.Sprintf("%d pages up to %q", p, o.BodyUntil)
+			if length, ok := bodyLength(layoutPages(layout), o.BodyUntil); ok {
+				a.BodyLength = length
+				// A heading under the running header at the top of a page
+				// starts that page: the body ended on the one before.
+				a.BodyPages = max(int(math.Ceil(length-0.05)), 1)
+				counted = a.BodyPages
+				what = fmt.Sprintf("the body runs %.1f pages up to %q", length, o.BodyUntil)
+			}
 		}
 	}
 	if o.MaxPages > 0 && counted > o.MaxPages {
-		a.Defects = append(a.Defects, fmt.Sprintf("%d %s, and the limit is %d", counted, what, o.MaxPages))
+		a.Defects = append(a.Defects, fmt.Sprintf("%s, and the limit is %d", what, o.MaxPages))
 	}
 }
 
@@ -263,6 +305,9 @@ var anyMissingRe = regexp.MustCompile(`Missing character: There is no (.+?) in f
 // or citations are from the pass before.
 var rerunRe = regexp.MustCompile(`Rerun to get|Label\(s\) may have changed|Please \(re\)run`)
 
+// underfullRe is a line or a page TeX set looser than it liked.
+var underfullRe = regexp.MustCompile(`Underfull \\[hv]box \(badness (\d+)\)`)
+
 // judgeLaTeXLog reads what the LaTeX run said and nobody read. The log must
 // be this PDF's: one from another run would vouch for a different document.
 func (a *Audit) judgeLaTeXLog(o AuditOptions, pages int) error {
@@ -315,6 +360,12 @@ func (a *Audit) judgeLaTeXLog(o AuditOptions, pages int) error {
 	if sc.HeadShortPt > 0 {
 		a.Warnings = append(a.Warnings, fmt.Sprintf("the running header is %.1fpt taller than \\headheight: the first pages are laid out differently from the rest — raise \\headheight", sc.HeadShortPt))
 	}
+	for _, m := range underfullRe.FindAllStringSubmatch(log, -1) {
+		a.Underfull++
+		if b, _ := strconv.Atoi(m[1]); b > a.WorstBadness {
+			a.WorstBadness = b
+		}
+	}
 	if rerunRe.MatchString(log) {
 		a.Warnings = append(a.Warnings, "LaTeX asked for another run: references, contents or citations may be the previous pass's — compile again")
 	}
@@ -331,4 +382,254 @@ func (a *Audit) judgeLaTeXLog(o AuditOptions, pages int) error {
 		a.Warnings = append(a.Warnings, w.String())
 	}
 	return nil
+}
+
+// pdfInfoField is one field of pdfinfo's output, trimmed.
+func pdfInfoField(info, key string) string {
+	for _, ln := range strings.Split(info, "\n") {
+		if k, v, ok := strings.Cut(ln, ":"); ok && strings.TrimSpace(k) == key {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
+}
+
+// judgeMeta reads the title and author the PDF carries in its properties:
+// what a reader's tab, a library and a marking system show. An anonymous
+// submission that names its author has given itself away.
+func (a *Audit) judgeMeta(info, file string, anonymous bool) {
+	title, author := pdfInfoField(info, "Title"), pdfInfoField(info, "Author")
+	const fix = `\hypersetup{pdftitle={…}, pdfauthor={…}} after \usepackage{hyperref}`
+	switch {
+	case title == "":
+		a.Warnings = append(a.Warnings, "the PDF has no title, so a reader's tab and a library show the file name: "+fix)
+	case titleIsFileName(title, file):
+		a.Warnings = append(a.Warnings, fmt.Sprintf("the PDF's title is %q, a file's name rather than the document's: %s", title, fix))
+	}
+	switch {
+	case anonymous && author != "":
+		a.Defects = append(a.Defects, fmt.Sprintf(`the PDF names its author, %q, and the submission is anonymous: set \hypersetup{pdfauthor={}}, and check the text for the name too`, author))
+	case !anonymous && author == "":
+		a.Warnings = append(a.Warnings, "the PDF names no author: "+fix+" — or pass --anonymous for a submission that must not")
+	}
+}
+
+// titleIsFileName tells a title some tool filled in from a file: the PDF's
+// own name, a source's, "untitled", or Word's "Microsoft Word - x.docx".
+func titleIsFileName(title, file string) bool {
+	t := strings.ToLower(strings.TrimSpace(title))
+	f := strings.ToLower(file)
+	if t == f || t == strings.TrimSuffix(f, filepath.Ext(f)) || t == "untitled" || strings.HasPrefix(t, "microsoft word - ") {
+		return true
+	}
+	for _, ext := range []string{".tex", ".pdf", ".dvi", ".docx", ".doc", ".md"} {
+		if strings.HasSuffix(t, ext) {
+			return true
+		}
+	}
+	return false
+}
+
+// smallTextPt is the size under which the audit names text as too small to
+// read on paper. Below the 7pt of a template's running header and a
+// subscript's, where a figure scaled to the column lands its labels.
+const smallTextPt = 6.0
+
+// judgeTextSizes reads mutool's structured text, where each run of text
+// carries the size it prints at — a figure's font scaled by its placement,
+// which is how a chart drawn at 15 cm and set at \textwidth gets 5pt
+// labels. A run counts when it has two letters: a lone sub-subscript or a
+// footnote mark is not prose.
+func (a *Audit) judgeTextSizes(stext []byte) {
+	dec := xml.NewDecoder(strings.NewReader(xmlSafe(string(stext))))
+	page, size := 0, 0.0
+	var run strings.Builder
+	var found []string
+	more := 0
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			break
+		}
+		switch t := tok.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "page":
+				page++
+			case "font":
+				size, run = 0, strings.Builder{}
+				for _, at := range t.Attr {
+					if at.Name.Local == "size" {
+						size, _ = strconv.ParseFloat(at.Value, 64)
+					}
+				}
+			case "char":
+				for _, at := range t.Attr {
+					if at.Name.Local == "c" {
+						run.WriteString(at.Value)
+					}
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local != "font" || size <= 0 || size >= smallTextPt || letters(run.String()) < 2 {
+				continue
+			}
+			if len(found) < 8 {
+				found = append(found, fmt.Sprintf("page %d: %.1fpt %q", page, size, strings.TrimSpace(run.String())))
+			} else {
+				more++
+			}
+		}
+	}
+	if len(found) == 0 {
+		return
+	}
+	if more > 0 {
+		found = append(found, fmt.Sprintf("and %d more", more))
+	}
+	a.Warnings = append(a.Warnings, fmt.Sprintf("text under %.0fpt, too small to read on paper — usually a figure drawn wide and scaled to the column;\n"+
+		"    draw it at the width it prints (matplotlib: figsize in inches of that width) with labels of 8pt or more:\n    %s",
+		smallTextPt, strings.Join(found, "\n    ")))
+}
+
+// xmlSafe drops the characters XML does not allow, written or as a
+// reference. mutool writes &#xffff; for a glyph it cannot map — exactly the
+// PDFs worth auditing — and Go's decoder stopped there, so every page after
+// it went unread with no error.
+func xmlSafe(s string) string {
+	s = strings.Map(func(r rune) rune {
+		if xmlChar(r) {
+			return r
+		}
+		return -1
+	}, s)
+	return charRefRe.ReplaceAllStringFunc(s, func(ref string) string {
+		body := strings.TrimSuffix(strings.TrimPrefix(ref, "&#"), ";")
+		var n int64
+		var err error
+		if strings.HasPrefix(body, "x") || strings.HasPrefix(body, "X") {
+			n, err = strconv.ParseInt(body[1:], 16, 32)
+		} else {
+			n, err = strconv.ParseInt(body, 10, 32)
+		}
+		if err != nil || !xmlChar(rune(n)) {
+			return ""
+		}
+		return ref
+	})
+}
+
+var charRefRe = regexp.MustCompile(`&#[xX]?[0-9a-fA-F]+;`)
+
+func xmlChar(r rune) bool {
+	return r == '\t' || r == '\n' || r == '\r' || (r >= 0x20 && r <= 0xD7FF) || (r >= 0xE000 && r <= 0xFFFD) || (r >= 0x10000 && r <= 0x10FFFF)
+}
+
+func letters(s string) int {
+	n := 0
+	for _, r := range s {
+		if unicode.IsLetter(r) {
+			n++
+		}
+	}
+	return n
+}
+
+// layoutLine is one line of pdftotext's -bbox-layout, in points from the
+// top of its page.
+type layoutLine struct {
+	yMin, yMax float64
+	text       string
+}
+
+// layoutPages reads pdftotext -bbox-layout into each page's lines.
+func layoutPages(layout string) [][]layoutLine {
+	var pages [][]layoutLine
+	dec := xml.NewDecoder(strings.NewReader(xmlSafe(layout)))
+	var line *layoutLine
+	var words []string
+	inWord := false
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			break
+		}
+		switch t := tok.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "page":
+				pages = append(pages, nil)
+			case "line":
+				line, words = &layoutLine{}, nil
+				for _, at := range t.Attr {
+					v, _ := strconv.ParseFloat(at.Value, 64)
+					switch at.Name.Local {
+					case "yMin":
+						line.yMin = v
+					case "yMax":
+						line.yMax = v
+					}
+				}
+			case "word":
+				inWord = true
+			}
+		case xml.CharData:
+			if inWord {
+				words = append(words, string(t))
+			}
+		case xml.EndElement:
+			switch t.Name.Local {
+			case "word":
+				inWord = false
+			case "line":
+				if line != nil && len(pages) > 0 {
+					line.text = strings.Join(words, " ")
+					pages[len(pages)-1] = append(pages[len(pages)-1], *line)
+				}
+				line = nil
+			}
+		}
+	}
+	return pages
+}
+
+// bodyLength is how many pages the body fills before the heading: the
+// pages before the heading's, and the part of that one above it, measured
+// against the text's usual top and bottom.
+func bodyLength(pages [][]layoutLine, heading string) (float64, bool) {
+	want := strings.ToLower(strings.TrimSpace(heading))
+	var tops, bottoms []float64
+	for _, pg := range pages {
+		if len(pg) == 0 {
+			continue
+		}
+		top, bottom := pg[0].yMin, pg[0].yMax
+		for _, l := range pg {
+			top, bottom = math.Min(top, l.yMin), math.Max(bottom, l.yMax)
+		}
+		tops, bottoms = append(tops, top), append(bottoms, bottom)
+	}
+	if len(tops) == 0 {
+		return 0, false
+	}
+	top, bottom := median(tops), median(bottoms)
+	if bottom <= top {
+		return 0, false
+	}
+	for i, pg := range pages {
+		for _, l := range pg {
+			t := strings.ToLower(strings.TrimSpace(sectionNumberRe.ReplaceAllString(strings.TrimSpace(l.text), "")))
+			if t == want {
+				fill := math.Max(0, math.Min(1, (l.yMin-top)/(bottom-top)))
+				return float64(i) + fill, true
+			}
+		}
+	}
+	return 0, false
+}
+
+func median(v []float64) float64 {
+	s := slices.Clone(v)
+	slices.Sort(s)
+	return s[len(s)/2]
 }
