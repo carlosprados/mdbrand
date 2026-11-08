@@ -264,6 +264,7 @@ mdbrand example ensayo && mdbrand build ensayo.md --watch   # edit it: the cover
 | `mdbrand example [name] [dir]` | List the worked examples, or write one out to start from. `--show` prints it instead |
 | `mdbrand new <doc.md>` | Scaffold a bare document that already builds. `--title` · `--subtitle` · `--author` · `--brand` · `--style` · `--toc` |
 | `mdbrand diagrams <doc.md>` | Figure sizes and smallest label size, without building, with the document's brand and style (a slide's frame is not a page). `--brand` · `--style` override them · `--out <dir>` also keeps the rendered PDFs |
+| `mdbrand audit <doc.pdf>` | Check a PDF mdbrand did not build — a university's or a journal's LaTeX template, Overleaf — with the checks a build makes on its own: missing glyphs, undefined references, overfull lines and pages from the log beside it; private-use characters in the text layer, lines cut at the sheet's edge, faces not embedded or Type 3, pictures under 72/150 ppi from the PDF. `--max-pages N` · `--body-until References` counts only the body · `--paper a4\|letter` · `--log <file>` |
 | `mdbrand data <doc.md> [path]` | The data files a document can print, with their shape; or what one path names |
 | `mdbrand doctor` | Check the toolchain — beamer for decks, vega-cli 6.4.0 for charts in a decimal-comma language included — and the installed bundles; prints the install command for anything missing |
 | `mdbrand brand list` · `show` · `validate` · `new` · `path` | Create and diagnose brand bundles: unknown keys, `requires:`, the slides section's contrast, the logo and fonts |
@@ -1265,6 +1266,32 @@ directory. `--brand none` builds as ever; a named brand needs `--brands-dir` or
 `MDBRAND_BRANDS_DIR`, and `config init` or `skill install` without `--dir` stop
 and say so, rather than writing `.config/` or `.claude/` into the current
 directory.
+
+### A PDF from someone else's template
+
+When the document must be built with a template mdbrand does not own — a
+course's arXiv-style `.sty`, a journal's class, a thesis on Overleaf — build it
+there, then read the result with the same checks a build makes on its own:
+
+```sh
+mdbrand audit sample.pdf --max-pages 10 --body-until References --paper a4
+```
+
+It reads the `.log` beside the PDF (Overleaf: *Logs and output files*), or
+`--log`: missing glyphs, undefined references and citations, a style the face
+lacks, pages overfilled while shipping out — defects, exit 1 — and overfull
+lines, a stale run, a log of another build — warnings. And it reads the PDF:
+private-use characters in the text layer (what a plagiarism checker sees),
+lines cut at the sheet's edge, faces not embedded, pictures under 72 ppi —
+defects — and Type 3 faces and pictures under 150 ppi — warnings.
+`--body-until` counts pages up to the heading that ends the body, for a limit
+that leaves out references and appendices.
+
+What it cannot see is what a template does not write anywhere: a figure scaled
+down with its labels. Draw a figure at the width it is placed at — in
+matplotlib, `figsize` in inches equal to that width, fonts at 8–9 pt — rather
+than scaling it: the size printed is the size drawn × placed width ÷ drawn
+width.
 
 ## Troubleshooting
 

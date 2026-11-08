@@ -69,9 +69,17 @@ mdbrand example [name] [dir]      # worked examples, carried in the binary
 mdbrand new doc.md --style note   # a bare scaffold, when no example is near
 mdbrand data doc.md               # every {{data…}} name the document can use
 mdbrand diagrams doc.md           # figure sizes and label point size, without a build
+mdbrand audit doc.pdf             # check a PDF mdbrand did NOT build (a mandated LaTeX template)
 mdbrand doctor                    # the toolchain, and the install command for what's missing
 mdbrand brand list|show|validate|new
 ```
+
+When a university or a journal mandates its own LaTeX template, mdbrand does
+not build the document: build it with the template, then run
+`mdbrand audit doc.pdf --max-pages N --body-until References --paper a4`,
+which reads the PDF and the `.log` beside it with mdbrand's checks and exits 1
+on a defect. Draw figures at the width they are placed at (matplotlib
+`figsize` in inches = that width, fonts 8–9 pt) instead of scaling them.
 
 `mdbrand <cmd> --help` is the complete manual; read it rather than guess a flag.
 Flags (`--brand`, `--style`, `--to`, `-o`, `--work`) override the front matter
