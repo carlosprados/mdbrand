@@ -476,10 +476,12 @@ func thesisBody(parts *thesisParts, body string, en, cites bool) string {
 	if parts.acknowledgements != "" {
 		b.WriteString("# " + names[1] + " {.unnumbered}\n\n" + frontSections(parts.acknowledgements) + "\n\n")
 	}
-	// Each summary is set in its own language's hyphenation, whatever the
-	// thesis's.
-	b.WriteString("# " + names[2] + " {.unnumbered}\n\n::: {lang=en-GB}\n" + frontSections(parts.abstract) + "\n:::\n\n")
-	b.WriteString("# " + names[3] + " {.unnumbered}\n\n::: {lang=es-ES}\n" + frontSections(parts.resumen) + "\n:::\n\n")
+	// The summary in the other language is set in that language's
+	// hyphenation. Only that one: a div in the thesis's own language made an
+	// older pandoc load the main language a second time, and xelatex stopped
+	// on \spanishdate defined twice.
+	b.WriteString("# " + names[2] + " {.unnumbered}\n\n" + inLang(!en, "en-GB", frontSections(parts.abstract)))
+	b.WriteString("# " + names[3] + " {.unnumbered}\n\n" + inLang(en, "es-ES", frontSections(parts.resumen)))
 	b.WriteString(raw(`\tableofcontents` + "\n" + `\listoffigures` + "\n" + `\listoftables`))
 	b.WriteString("# " + names[4] + " {.unnumbered}\n\n" + parts.acronyms + "\n\n")
 	b.WriteString(raw(`\mainmatter`))
@@ -494,6 +496,14 @@ func thesisBody(parts *thesisParts, body string, en, cites bool) string {
 		b.WriteString("\n\n" + raw(`\appendix`) + appendices)
 	}
 	return b.String()
+}
+
+// inLang wraps text in a div of another language when other is set.
+func inLang(other bool, lang, text string) string {
+	if !other {
+		return text + "\n\n"
+	}
+	return "::: {lang=" + lang + "}\n" + text + "\n:::\n\n"
 }
 
 var plainSubheadRe = regexp.MustCompile(`(?m)^(#{2,6} [^\n{]*?)[ \t]*$`)
@@ -543,9 +553,8 @@ func thesisArgs(lang string) []string {
 		"-V", "documentclass=book", "-V", "classoption=oneside", "-V", "classoption=openany",
 		"-V", "fontsize=11pt",
 	}
-	// es-lcroman belongs to babel-spanish's spanish.ldf. Where only babel's
-	// own ini file provides Spanish — CI's runner, without texlive-lang-spanish
-	// — the option made babel define the language twice and xelatex stop.
+	// es-lcroman is an option of babel-spanish's spanish.ldf; where Spanish
+	// comes only from babel's own ini file there is no such option to pass.
 	if strings.HasPrefix(strings.ToLower(lang), "es") && haveSpanishLdf() {
 		args = append(args, "-V", "babeloptions=es-lcroman")
 	}
