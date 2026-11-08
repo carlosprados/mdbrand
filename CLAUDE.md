@@ -456,7 +456,14 @@ Do not relax one without understanding what it cost.
     another pandoc (exit 3); mdbrand used to drop a figure's `{#fig:x}` with
     its source, so the id is carried to the rendered figure; and in LaTeX a
     reference to nothing is a silent `\ref`, so the log's undefined labels
-    are named as cross-references.
+    are named as cross-references. A .docx or an .epub has no LaTeX to number
+    anything: Repair numbered the captions over crossref's ("Figura 1:
+    Figura 2.1"), an unlabelled table had no number, an appendix printed as
+    chapter 3, and pandoc's epub writer left a link to a figure in another
+    chapter dangling, which epubcheck refused. So crossref numbers the
+    headings too, autolabels.lua labels every captioned float first, each
+    appendix carries its letter as a label, Repair leaves the captions alone,
+    and an .epub's numbers are not links.
     → `internal/build/thesis_test.go`, `internal/brand/thesis_test.go`,
     `testdata/thesis.md`, `traps/thesis-*.md`.
 

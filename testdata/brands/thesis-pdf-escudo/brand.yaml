@@ -1,0 +1,26 @@
+# thesis-school with the school's escudo as a PDF, as the ETSIT publishes
+# its own: a .docx cannot hold a PDF, and the thesis's .docx draws no escudo,
+# so it must still build.
+name: thesis-pdf-escudo
+display_name: Universidad de Prueba
+logo: escudo.svg
+logo_secondary: escudo-escuela.pdf
+colors:
+  primary: "1F1F1F"
+  text: "000000"
+  rule: "9A9A9A"
+  link: "1F4E79"
+fonts:
+  body: DejaVu Sans
+  office:            # the faces the .docx asks for; every fontconfig has them
+    body: DejaVu Sans
+    display: DejaVu Sans
+    mono: DejaVu Sans Mono
+page:
+  papersize: a4
+  margin: 25mm
+thesis:
+  university: Universidad Politécnica de Madrid
+  centre: Escuela Técnica Superior de Ingenieros de Telecomunicación
+  programmes:
+    - Ingeniería de Sistemas Telemáticos

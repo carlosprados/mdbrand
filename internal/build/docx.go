@@ -54,7 +54,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 			return err
 		}
 		body = strings.Replace(body, f.Placeholder,
-			fmt.Sprintf("![%s](%s){width=%.1fmm}", res.Fig.Caption, png, res.WidthMM), 1)
+			res.Picture(png, res.WidthMM), 1)
 	}
 
 	meta := docx.Meta{
@@ -67,31 +67,17 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err := docxCover(p, &meta); err != nil {
 		return err
 	}
+	thesis := p.style == tex.Thesis
+	body = docxThesis(p, &meta, look, body)
 	if err := plainFront(work, &meta, &look); err != nil {
 		return err
 	}
-	if meta.Logo, err = docxLogoFile(b.LogoPath(), work, "docx-logo"); err != nil {
+	if err := docxLogos(p, &meta, &look); err != nil {
 		return err
-	}
-	if meta.LogoSecondary, err = docxLogoFile(b.LogoSecondaryPath(), work, "docx-logo-secondary"); err != nil {
-		return err
-	}
-	// The .docx draws a logo at the width it can read, and one it could not
-	// read came out 0 mm wide — no logo on the cover, and no word about it.
-	if meta.LogoWMM, err = docxLength("page.logo_width_cover", b.Page.LogoWidthCover); err != nil {
-		return err
-	}
-	if meta.LogoSecondaryWMM, err = docxLength("page.logo_width_cover_secondary", b.Page.LogoWidthCoverSecondary); err != nil {
-		return err
-	}
-	if meta.Logo != "" {
-		if look.Logo, err = os.ReadFile(filepath.Join(work, meta.Logo)); err != nil {
-			return err
-		}
-		look.LogoAspect, _ = imgsize.Aspect(filepath.Join(work, meta.Logo))
 	}
 	display, plain := d.Meta.Printed()
-	unchecked, err := officeGlyphs(officeFaces{look.Body, look.Display, look.Mono}, ".docx", body, append(display, b.Footer), plain, o.AllowHoles)
+	display = append(display, b.Footer, b.Thesis.University, b.Thesis.Centre)
+	unchecked, err := officeGlyphs(officeFaces{look.Body, look.Display, look.Mono}, ".docx", body, display, plain, o.AllowHoles)
 	if err != nil {
 		return err
 	}
@@ -147,8 +133,8 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		// The table of contents is the cover's to place, after the cover.
 		"-M", "toc=false",
 	}
-	if d.Meta.NumberSections {
-		args = append(args, "--number-sections")
+	if args, err = numberingArgs(p, args, false); err != nil {
+		return err
 	}
 	cites, err := citeArgs(d, o.Input, inputs)
 	if err != nil {
@@ -160,7 +146,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err != nil {
 		return err
 	}
-	if err := citationProblems(d.Meta, pandocOut, "document"); err != nil {
+	if err := reflowProblems(d.Meta, pandocOut); err != nil {
 		return err
 	}
 	if err := filterProblems(pandocOut, b); err != nil {
@@ -181,7 +167,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		return err
 	}
 	fixed, warns, err := docx.Repair(raw, docx.Fix{
-		Look: look, Labels: docx.LabelsFor(d.Meta.Lang), TOC: meta.TOC, KeepRows: tex.TableKeep,
+		Look: look, Labels: docx.LabelsFor(d.Meta.Lang), TOC: meta.TOC || thesis, Numbered: thesis, KeepRows: tex.TableKeep,
 	})
 	if err != nil {
 		return err
@@ -193,6 +179,51 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	}
 	rep.Outputs = append(rep.Outputs, Output{Format: "docx", Path: out, built: built})
 	return nil
+}
+
+// docxLogos readies the logos the cover and the header draw. A thesis's
+// .docx draws none — its escudos are the PDF's fixed pages' — so a bundle
+// whose escudo is a PDF, which a .docx cannot hold, still builds one.
+func docxLogos(p *prepared, meta *docx.Meta, look *docx.Look) error {
+	if p.style == tex.Thesis {
+		return nil
+	}
+	var err error
+	if meta.Logo, err = docxLogoFile(p.b.LogoPath(), p.work, "docx-logo"); err != nil {
+		return err
+	}
+	if meta.LogoSecondary, err = docxLogoFile(p.b.LogoSecondaryPath(), p.work, "docx-logo-secondary"); err != nil {
+		return err
+	}
+	// The .docx draws a logo at the width it can read, and one it could not
+	// read came out 0 mm wide — no logo on the cover, and no word about it.
+	if meta.LogoWMM, err = docxLength("page.logo_width_cover", p.b.Page.LogoWidthCover); err != nil {
+		return err
+	}
+	if meta.LogoSecondaryWMM, err = docxLength("page.logo_width_cover_secondary", p.b.Page.LogoWidthCoverSecondary); err != nil {
+		return err
+	}
+	if meta.Logo != "" {
+		if look.Logo, err = os.ReadFile(filepath.Join(p.work, meta.Logo)); err != nil {
+			return err
+		}
+		look.LogoAspect, _ = imgsize.Aspect(filepath.Join(p.work, meta.Logo))
+	}
+	return nil
+}
+
+// docxThesis readies a thesis's .docx: the portada's data as its title
+// block, and the body in the template's order with Word's contents where the
+// PDF's are. Any other document's body comes back as it was.
+func docxThesis(p *prepared, meta *docx.Meta, look docx.Look, body string) string {
+	if p.style != tex.Thesis {
+		return body
+	}
+	meta.Thesis = thesisTitlePage(p.d, p.b)
+	meta.TOC, meta.TOCDepth = false, thesisPages(p.d, p).TOCDepth
+	p.rep.Warnings = append(p.rep.Warnings, "the .docx numbers its pages as Word does, from the title block: "+
+		"the three fixed pages and the roman numbers of the front parts are the PDF's, and the page numbers to quote are the PDF's")
+	return p.reflowThesis(body, docx.TOC(*meta, look))
 }
 
 var pdfPictureRe = regexp.MustCompile(`(?i)!\[[^\]]*\]\(<?([^)\s>]+\.pdf)>?`)

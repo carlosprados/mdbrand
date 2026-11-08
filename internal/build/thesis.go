@@ -13,6 +13,7 @@ import (
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/doc"
+	"github.com/carlosprados/mdbrand/internal/docx"
 	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/mdtext"
 	"github.com/carlosprados/mdbrand/internal/run"
@@ -95,20 +96,6 @@ var yearRe = regexp.MustCompile(`\b(19|20)\d\d\b`)
 
 // thesisYear is the year the cover prints, read from date:.
 func thesisYear(date string) string { return yearRe.FindString(date) }
-
-// thesisFormats refuses any output but the PDF for a thesis, before another
-// format's own checks speak of a bundle the thesis does not need yet. Its
-// .docx and .epub come later; built as a report's, they would be a different
-// document under the same name.
-func thesisFormats(style string, formats []string) error {
-	if style != tex.Thesis {
-		return nil
-	}
-	if i := slices.IndexFunc(formats, func(f string) bool { return f != "pdf" }); i >= 0 {
-		return fmt.Errorf("style thesis builds as a PDF; its --to %s is not written yet. Build it with --to pdf", formats[i])
-	}
-	return nil
-}
 
 // readThesis reads a thesis's parts, before any figure is rendered: the
 // chapters and appendices into the body, so every check after sees one
@@ -463,16 +450,34 @@ func thesisPages(d *doc.File, p *prepared) *tex.ThesisPages {
 	return pages
 }
 
+// thesisMarks are what a format writes at the template's three turns: the
+// contents and lists, the first chapter, and the first appendix. Lettered
+// asks for each appendix's letter as a heading label, for pandoc-crossref to
+// number by where LaTeX's \appendix does not reach.
+type thesisMarks struct {
+	contents, mainmatter, appendix string
+	lettered                       bool
+}
+
+func rawLaTeX(latex string) string { return "```{=latex}\n" + latex + "\n```\n\n" }
+
+// latexMarks are the PDF's: LaTeX numbers the pages, the chapters and the
+// appendices itself.
+var latexMarks = thesisMarks{
+	contents:   rawLaTeX(`\tableofcontents` + "\n" + `\listoffigures` + "\n" + `\listoftables`),
+	mainmatter: rawLaTeX(`\mainmatter`),
+	appendix:   rawLaTeX(`\appendix`),
+}
+
 // thesisBody assembles the thesis in the order the UPM's template fixes:
 // the front parts under the template's headings, the contents and the lists,
 // the acronyms, then the chapters with arabic numbers, the references before
 // the appendices, and the appendices lettered.
-func thesisBody(parts *thesisParts, body string, en, cites bool) string {
+func thesisBody(parts *thesisParts, body string, en, cites bool, marks thesisMarks) string {
 	names := map[bool][5]string{
 		false: {"Dedicatoria", "Agradecimientos", "Abstract", "Resumen", "Abreviaturas y Acrónimos"},
 		true:  {"Dedication", "Acknowledgements", "Abstract", "Resumen", "Abbreviations and Acronyms"},
 	}[en]
-	raw := func(latex string) string { return "```{=latex}\n" + latex + "\n```\n\n" }
 	var b strings.Builder
 	if parts.dedication != "" {
 		b.WriteString("# " + names[0] + " {.unnumbered .unlisted}\n\n" + parts.dedication + "\n\n")
@@ -486,9 +491,9 @@ func thesisBody(parts *thesisParts, body string, en, cites bool) string {
 	// on \spanishdate defined twice.
 	b.WriteString("# " + names[2] + " {.unnumbered}\n\n" + inLang(!en, "en-GB", frontSections(parts.abstract)))
 	b.WriteString("# " + names[3] + " {.unnumbered}\n\n" + inLang(en, "es-ES", frontSections(parts.resumen)))
-	b.WriteString(raw(`\tableofcontents` + "\n" + `\listoffigures` + "\n" + `\listoftables`))
+	b.WriteString(marks.contents)
 	b.WriteString("# " + names[4] + " {.unnumbered}\n\n" + parts.acronyms + "\n\n")
-	b.WriteString(raw(`\mainmatter`))
+	b.WriteString(marks.mainmatter)
 
 	main, appendices := splitAppendices(body)
 	b.WriteString(main)
@@ -497,9 +502,36 @@ func thesisBody(parts *thesisParts, body string, en, cites bool) string {
 		b.WriteString("\n\n# " + title + " {.unnumbered}\n\n::: {#refs}\n:::\n\n")
 	}
 	if appendices != "" {
-		b.WriteString("\n\n" + raw(`\appendix`) + appendices)
+		if marks.lettered {
+			appendices = letterAppendices(appendices)
+		}
+		b.WriteString("\n\n" + marks.appendix + appendices)
 	}
 	return b.String()
+}
+
+// letterAppendices labels each appendix's chapter heading with its letter,
+// A, B, C…, which pandoc-crossref prints and numbers its figures by.
+func letterAppendices(text string) string {
+	spans := mdtext.Protected(text)
+	var b strings.Builder
+	last, n := 0, 0
+	for _, m := range chapterHeadRe.FindAllStringIndex(text, -1) {
+		if mdtext.Inside(spans, m[0]) {
+			continue
+		}
+		label := fmt.Sprintf("label=%c", 'A'+n)
+		n++
+		h := strings.TrimRight(text[m[0]:m[1]], " \t")
+		if strings.HasSuffix(h, "}") && strings.Contains(h, "{") {
+			h = h[:len(h)-1] + " " + label + "}"
+		} else {
+			h += " {" + label + "}"
+		}
+		b.WriteString(text[last:m[0]] + h)
+		last = m[1]
+	}
+	return b.String() + text[last:]
 }
 
 // inLang wraps text in a div of another language when other is set.
@@ -677,7 +709,7 @@ func (p *prepared) assembleThesis(body string) (*tex.ThesisPages, string) {
 		return nil, body
 	}
 	pages := thesisPages(p.d, p)
-	return pages, thesisBody(p.thesis, body, pages.EN, p.d.Meta.CitesFrom())
+	return pages, thesisBody(p.thesis, body, pages.EN, p.d.Meta.CitesFrom(), latexMarks)
 }
 
 // pdfFrontMatter is the front matter pandoc reads for the PDF.
@@ -698,4 +730,105 @@ func (p *prepared) pdfFrontMatter() (string, error) {
 // "false", which is true.
 func thesisFrontMatter(front string) (string, error) {
 	return doc.StripKeys(front, "toc", "toc-depth", "lof", "lot")
+}
+
+// autoLabels gives every captioned figure and table without an identifier
+// one, before pandoc-crossref runs: crossref numbers only what is labelled,
+// and LaTeX numbers every captioned float, so a .docx of the same thesis
+// printed "Figura 2.1" in the PDF as a caption with no number at all.
+const autoLabels = `-- Written by mdbrand for a thesis's .docx and .epub.
+local n = 0
+local function label(el, prefix)
+  if el.identifier == "" and #el.caption.long > 0 then
+    n = n + 1
+    el.identifier = prefix .. "mdbrand-" .. n
+    return el
+  end
+end
+function Figure(el) return label(el, "fig:") end
+function Table(el) return label(el, "tbl:") end
+`
+
+// reflowArgs are pandoc's settings for a thesis's .docx and .epub, where no
+// LaTeX numbers anything: pandoc-crossref numbers the chapters, sections to
+// the PDF's depth, figures, tables and equations, and the appendices by the
+// letters thesisBody labels them with. In an .epub the numbers are not
+// links: pandoc's epub writer leaves a link to a figure in another chapter
+// pointing into the chapter it is in, and epubcheck refuses it (RSC-012).
+func reflowArgs(work, lang string, epub bool) ([]string, error) {
+	if err := os.WriteFile(filepath.Join(work, "crossref.yaml"), []byte(crossrefMeta(lang)), 0o644); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(filepath.Join(work, "autolabels.lua"), []byte(autoLabels), 0o644); err != nil {
+		return nil, err
+	}
+	args := []string{
+		"--lua-filter", "autolabels.lua",
+		"--filter", "pandoc-crossref", "--metadata-file=crossref.yaml",
+		// The book class numbers chapters, sections and subsections.
+		"-M", "numberSections=true", "-M", "sectionsDepth=3",
+	}
+	if epub {
+		args = append(args, "-M", "linkReferences=false")
+	}
+	return args, nil
+}
+
+// reflowThesis is a thesis's body for a .docx or an .epub, contents at the
+// template's place: Word's own field in a .docx, the reader's menu in an
+// .epub (contents "").
+func (p *prepared) reflowThesis(body, contents string) string {
+	en := strings.HasPrefix(strings.ToLower(p.d.Meta.Lang), "en")
+	return thesisBody(p.thesis, body, en, p.d.Meta.CitesFrom(), thesisMarks{contents: contents, lettered: true})
+}
+
+// thesisTitlePage is the portada's data for a .docx's title block, in the
+// thesis's language and the PDF's words.
+func thesisTitlePage(d *doc.File, b *brand.Brand) *docx.ThesisPage {
+	t := d.Meta.Options.Thesis
+	en := strings.HasPrefix(strings.ToLower(d.Meta.Lang), "en")
+	pick := func(es, eng string) string {
+		if en {
+			return eng
+		}
+		return es
+	}
+	page := &docx.ThesisPage{
+		University: b.Thesis.University, Centre: b.Thesis.Centre,
+		Programme:    pick("Doctorado en ", "Doctoral Programme in ") + t.Programme,
+		Kind:         pick("TESIS DOCTORAL", "DOCTORAL THESIS"),
+		SubmittedBy:  pick("Presentada para optar al título de Doctor por:", "Submitted for the degree of Doctor by:"),
+		Degree:       t.Degree,
+		SupervisedBy: pick("Bajo la dirección de:", "Supervised by:"),
+		PlaceYear:    "Madrid, " + thesisYear(d.Meta.Date),
+	}
+	for _, dir := range t.Directors {
+		page.Directors = append(page.Directors, dir.Name)
+	}
+	return page
+}
+
+// numberingArgs adds how a .docx or an .epub numbers its headings: pandoc's
+// --number-sections when the document asks, pandoc-crossref's for a thesis.
+func numberingArgs(p *prepared, args []string, epub bool) ([]string, error) {
+	if p.style == tex.Thesis {
+		more, err := reflowArgs(p.work, p.d.Meta.Lang, epub)
+		return append(args, more...), err
+	}
+	if p.d.Meta.NumberSections {
+		args = append(args, "--number-sections")
+	}
+	return args, nil
+}
+
+// reflowProblems stops a .docx or an .epub on a citation or, in a thesis, a
+// cross-reference that leads nowhere.
+func reflowProblems(m doc.Meta, pandocOut string) error {
+	if err := citationProblems(m, pandocOut, "document"); err != nil {
+		return err
+	}
+	if m.Options.Thesis != nil {
+		return crossrefMisses(pandocOut)
+	}
+	return nil
 }

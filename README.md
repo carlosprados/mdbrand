@@ -770,8 +770,15 @@ release built for the running pandoc, which the build checks: label a figure
 `: Caption {#tbl:x}`, an equation `$$ … $$ {#eq:x}`, a chapter
 `# Title {#sec:x}`, and write `[@fig:arq]` — "figura 2.1" in Spanish,
 "figure 2.1" in English — or `capítulo [-@sec:x]` for the number alone. A
-reference to a label nothing carries stops the build. For now a thesis builds
-as a PDF; the .docx for the director comes next.
+reference to a label nothing carries stops the build.
+
+`--to docx` writes the thesis for a director who comments in Word: a title
+block with the portada's data, the parts in the template's order, Word's own
+contents where the PDF's are, and pandoc-crossref's numbers — "figura 2.1",
+appendix A, "Tabla A.1". It numbers its pages as Word does, and the build
+says so: the page numbers to quote are the PDF's. `--to epub` writes it for
+an e-reader, without the three fixed pages and with the same numbers, not
+linked. Both build beside the PDF: `--to pdf,docx`.
 
 ### A picture on the cover
 

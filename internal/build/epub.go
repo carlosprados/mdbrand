@@ -31,6 +31,11 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err != nil {
 		return err
 	}
+	if p.style == tex.Thesis {
+		// The three fixed pages have no meaning on an e-reader, and the
+		// reader's menu is the contents.
+		body = p.reflowThesis(body, "")
+	}
 
 	// The front matter goes as written: pandoc's title page prints the
 	// abstract under its own localised heading, where the body's copy the
@@ -69,8 +74,8 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 		// is one more page to turn past.
 		"-M", "toc=false",
 	}
-	if d.Meta.NumberSections {
-		args = append(args, "--number-sections")
+	if args, err = numberingArgs(p, args, true); err != nil {
+		return err
 	}
 	if p.cover != "" {
 		cover, err := epubCover(p, inputs)
@@ -89,7 +94,7 @@ Export it as SVG, which mdbrand sizes like a figure, or as PNG`, o.Input, pic[1]
 	if err != nil {
 		return err
 	}
-	if err := citationProblems(d.Meta, pandocOut, "document"); err != nil {
+	if err := reflowProblems(d.Meta, pandocOut); err != nil {
 		return err
 	}
 	if err := filterProblems(pandocOut, b); err != nil {
@@ -216,7 +221,7 @@ func epubFigures(p *prepared, body string) (string, error) {
 			return "", err
 		}
 		body = strings.Replace(body, f.Placeholder,
-			fmt.Sprintf("![%s](%s){width=%.1fmm}", res.Fig.Caption, png, res.WidthMM), 1)
+			res.Picture(png, res.WidthMM), 1)
 	}
 
 	smallFigures(small, b.Diagrams.MinTextPt, rep)
