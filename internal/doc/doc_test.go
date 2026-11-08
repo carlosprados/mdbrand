@@ -505,3 +505,20 @@ func TestStripKeysLeavesTheRestAlone(t *testing.T) {
 		t.Errorf("got %q, %v", got, err)
 	}
 }
+
+// A linked figure's attributes come in braces: {width=80mm} read as
+// "80mm}", which no width parses, and the build refused a valid width.
+func TestLinkedFigureAttributesLoseTheirBraces(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "x.d2"), []byte("a -> b\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f := &File{Path: filepath.Join(dir, "doc.md"), Body: "![Pie](x.d2){#fig:a width=80mm}\n"}
+	_, figs, err := f.ExtractFigs(t.TempDir())
+	if err != nil || len(figs) != 1 {
+		t.Fatalf("figs %v, err %v", figs, err)
+	}
+	if figs[0].Attrs["width"] != "80mm" || figs[0].ID != "fig:a" {
+		t.Errorf("width %q, id %q; want 80mm and fig:a", figs[0].Attrs["width"], figs[0].ID)
+	}
+}
