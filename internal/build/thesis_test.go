@@ -73,3 +73,37 @@ func TestFrontSectionsUnnumbersOnlyBareSubheadings(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+// pandoc-crossref letters an appendix only by its heading's label: without
+// one, the .docx printed "3 Cuestionario" where the PDF prints Anexo A. A
+// heading in a code block is an example, not an appendix.
+func TestLetterAppendicesLabelsEachChapterHeading(t *testing.T) {
+	in := "# Cuestionario {.appendix}\n\nText.\n\n```\n# not a heading\n```\n\n# Datos\n\n## Sub\n"
+	got := letterAppendices(in)
+	want := "# Cuestionario {.appendix label=A}\n\nText.\n\n```\n# not a heading\n```\n\n# Datos {label=B}\n\n## Sub\n"
+	if got != want {
+		t.Errorf("letterAppendices:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+// A .docx or an .epub drops raw LaTeX with a warning, so the body they get
+// carries none of the PDF's three turns, and the PDF's keeps all three.
+func TestThesisBodyMarksByFormat(t *testing.T) {
+	parts := &thesisParts{abstract: "An abstract.", resumen: "Un resumen.", acronyms: "IoT"}
+	body := "# Uno\n\nTexto.\n\n# Anexo {.appendix}\n\nMás.\n"
+	reflow := thesisBody(parts, body, false, true, thesisMarks{contents: "TOC\n\n", lettered: true})
+	if strings.Contains(reflow, "{=latex}") {
+		t.Errorf("the reflowed body carries raw LaTeX:\n%s", reflow)
+	}
+	for _, want := range []string{"TOC\n\n# Abreviaturas", "# Anexo {.appendix label=A}", "# Referencias {.unnumbered}"} {
+		if !strings.Contains(reflow, want) {
+			t.Errorf("the reflowed body lacks %q:\n%s", want, reflow)
+		}
+	}
+	pdf := thesisBody(parts, body, false, true, latexMarks)
+	for _, want := range []string{`\tableofcontents`, `\mainmatter`, "```{=latex}\n\\appendix\n```\n\n# Anexo {.appendix}\n"} {
+		if !strings.Contains(pdf, want) {
+			t.Errorf("the PDF's body lacks %q:\n%s", want, pdf)
+		}
+	}
+}

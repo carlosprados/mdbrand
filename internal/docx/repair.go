@@ -13,6 +13,10 @@ type Fix struct {
 	Look   Look
 	Labels Labels
 	TOC    bool
+	// Numbered says the captions already carry their label and number, as
+	// pandoc-crossref writes them for a thesis: numbered again, they read
+	// "Figura 1: Figura 2.1: …".
+	Numbered bool
 	// KeepRows is the fewest body rows a page break may leave on either side
 	// of one, the rule the PDF follows.
 	KeepRows int
@@ -31,7 +35,9 @@ func Repair(b []byte, f Fix) ([]byte, []string, error) {
 	var warn []string
 
 	doc = dropTitleBlock(doc)
-	doc = numberCaptions(doc, f.Labels)
+	if !f.Numbered {
+		doc = numberCaptions(doc, f.Labels)
+	}
 	doc, w := tables(doc, f)
 	warn = append(warn, w...)
 	doc, w = codeBlocks(doc, f.Look)

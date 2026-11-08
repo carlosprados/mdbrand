@@ -633,6 +633,42 @@ if [ $status -eq 0 ] && [ -f "$work/thesis.pdf" ]; then
 		&& ok "prints the one-file thesis's text, character for character" || bad "the parts print a different thesis"
 fi
 
+# The thesis for the director's Word and the owner's e-reader. No LaTeX
+# numbers anything there, so pandoc-crossref numbers the chapters, figures
+# and tables, and the appendix by its letter; Repair numbered the captions a
+# second time ("Figura 1: Figura 2.1"), and an unlabelled table had no number
+# at all. The .docx opens with the portada's data; the .epub has no fixed
+# page, and a cross-chapter link in it failed epubcheck.
+echo
+echo "testdata/thesis.md --to docx,epub — the thesis for Word and an e-reader"
+out="$("$bin" build "$root/testdata/thesis.md" --brands-dir "$root/testdata/brands" --to docx,epub -o "$work/thesis-r" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds, and epubcheck passes"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	printf '%s\n' "$out" | has -F "the page numbers to quote are the PDF's" && ok "the .docx says its page numbers are not the PDF's" || bad "no word on the .docx's page numbers"
+	# crossref ties "figura" to its number with a no-break space.
+	docx="$(pandoc "$work/thesis-r.docx" -t plain --wrap=none 2>/dev/null | sed 's/\xc2\xa0/ /g')"
+	epub="$(pandoc "$work/thesis-r.epub" -t plain --wrap=none 2>/dev/null | sed 's/\xc2\xa0/ /g')"
+	for want in "la figura 2.1 dibuja" "la ecuación 1.1" "en el capítulo 1:" "Figura 2.1: Un agente" \
+		"Tabla A.1: Respuestas" "A Cuestionario" "1.1 Motivación" "Resumen"; do
+		has -F "$want" <<<"$docx" && ok ".docx prints $want" || bad ".docx never prints $want"
+		has -F "$want" <<<"$epub" && ok ".epub prints $want" || bad ".epub never prints $want"
+	done
+	for want in "TESIS DOCTORAL" "Bajo la dirección de:" "Madrid, 2029"; do
+		has -F "$want" <<<"$docx" && ok ".docx's title block prints $want" || bad ".docx's title block lacks $want"
+	done
+	has -E "Figura [0-9]+: Figura" <<<"$docx" && bad ".docx numbers its captions twice" || ok ".docx numbers each caption once"
+	has -F "TESIS DOCTORAL" <<<"$epub" && bad ".epub prints the fixed pages" || ok ".epub leaves the fixed pages out"
+fi
+# The ETSIT publishes its escudo as a PDF, which a .docx cannot hold; the
+# thesis's .docx draws no escudo, and stopped on it anyway.
+out="$("$bin" build "$root/testdata/thesis.md" --brands-dir "$root/testdata/brands" --brand thesis-pdf-escudo --to docx -o "$work/thesis-pdf-escudo.docx" 2>&1)"
+status=$?
+[ $status -eq 0 ] && ok "a PDF escudo does not stop the thesis's .docx" \
+	|| { bad "PDF escudo, .docx (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'; }
+
 # mdbrand audit reads a PDF something else built — a mandated template, a
 # journal's class — with the checks a build makes on its own. A clean one
 # passes in silence; one with a defect of each kind names every one.
@@ -1028,7 +1064,8 @@ traps=(
 	"thesis-body-and-chapters.md|fail|has a body, and mdbrand.thesis.chapters names the chapters' files|--brands-dir $root/testdata/brands"
 	"thesis-chapters-none.md|fail|thesis/capitulos/*.md matches no file beside the document|--brands-dir $root/testdata/brands"
 	"thesis-xref-undefined.md|fail|cross-reference(s) to nothing: @fig:nope|--brands-dir $root/testdata/brands"
-	"thesis-abstract-spanish.md|fail|style thesis builds as a PDF; its --to docx|--to docx --brands-dir $root/testdata/brands"
+	"thesis-xref-undefined.md|fail|cross-reference(s) to nothing: @fig:nope|--to docx --brands-dir $root/testdata/brands"
+	"thesis-xref-undefined.md|fail|cross-reference(s) to nothing: @fig:nope|--to epub --brands-dir $root/testdata/brands"
 )
 
 echo

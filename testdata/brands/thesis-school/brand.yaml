@@ -12,6 +12,10 @@ colors:
   link: "1F4E79"
 fonts:
   body: DejaVu Sans
+  office:            # the faces the .docx asks for; every fontconfig has them
+    body: DejaVu Sans
+    display: DejaVu Sans
+    mono: DejaVu Sans Mono
 page:
   papersize: a4
   margin: 25mm

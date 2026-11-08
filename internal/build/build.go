@@ -156,9 +156,6 @@ func pipeline(o Options, inputs *[]string) (*Report, error) {
 		return nil, err
 	}
 	defer p.close()
-	if err := thesisFormats(p.style, formats); err != nil {
-		return nil, err
-	}
 	// Deferred, so that it also holds what a chart read through a name.
 	defer func() { *inputs = append(*inputs, p.refs()...) }()
 	if slices.Contains(formats, "docx") {

@@ -25,6 +25,23 @@ type Meta struct {
 	Cover              string
 	CoverWMM, CoverHMM float64
 	CoverCredit        string
+
+	// Thesis is a thesis's title block; nil for any other document.
+	Thesis *ThesisPage
+}
+
+// ThesisPage is what a thesis's .docx prints before its front parts: the
+// portada's data, in the portada's order and the document's language. The
+// three fixed pages themselves are the PDF's.
+type ThesisPage struct {
+	University, Centre string
+	Programme          string // "Doctorado en …"
+	Kind               string // "TESIS DOCTORAL"
+	SubmittedBy        string // "Presentada para optar al título de Doctor por:"
+	Degree             string
+	SupervisedBy       string // "Bajo la dirección de:"
+	Directors          []string
+	PlaceYear          string // "Madrid, 2029"
 }
 
 // Labels are the words a document prints in its own language.
@@ -59,6 +76,8 @@ func Front(layout string, m Meta, l Look) (before, after string) {
 		return cover(m, l), ""
 	case "letter":
 		return letterhead(m, l), signature(m, l)
+	case "thesis":
+		return thesisTitle(m, l), ""
 	default:
 		return noteTitle(m, l), ""
 	}
@@ -119,6 +138,41 @@ func cover(m Meta, l Look) string {
 	b.WriteString(raw(x.String()))
 	return b.String()
 }
+
+// thesisTitle is one centred page of the portada's data, for a director
+// who comments the body in Word. The official pages, escudos and all, are
+// the PDF's; nothing here pretends to be them.
+func thesisTitle(m Meta, l Look) string {
+	t := m.Thesis
+	if t == nil {
+		return noteTitle(m, l)
+	}
+	line := func(before int, pt float64, bold bool, text string) string {
+		if text == "" {
+			return ""
+		}
+		return para(pPr(twips(float64(before)), 0, 0, "center", "", "", false), run(l.Display, l.Text, pt, bold, text))
+	}
+	var x strings.Builder
+	x.WriteString(line(0, 12, false, strings.ToUpper(t.University)))
+	x.WriteString(line(2, 11, false, t.Centre))
+	x.WriteString(line(12, 11, true, t.Programme))
+	x.WriteString(line(30, 20, true, m.Title))
+	x.WriteString(line(10, 11, true, t.Kind))
+	x.WriteString(line(10, 11, false, t.SubmittedBy))
+	x.WriteString(line(3, 11, true, m.Author))
+	x.WriteString(line(1, 11, false, t.Degree))
+	x.WriteString(line(10, 11, false, t.SupervisedBy))
+	for i, d := range t.Directors {
+		x.WriteString(line(map[bool]int{true: 3, false: 1}[i == 0], 11, false, d))
+	}
+	x.WriteString(para(pPr(twips(30), 0, 0, "center", "", "", false), run(l.Display, l.Text, 11, false, t.PlaceYear)+pageBreak))
+	return raw(x.String())
+}
+
+// TOC is the table of contents as a block of its own, for a document that
+// places it rather than having the cover place it.
+func TOC(m Meta, l Look) string { return raw(tocField(m, l)) }
 
 func noteTitle(m Meta, l Look) string {
 	if m.Title == "" && m.Subtitle == "" {
