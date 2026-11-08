@@ -543,10 +543,19 @@ func thesisArgs(lang string) []string {
 		"-V", "documentclass=book", "-V", "classoption=oneside", "-V", "classoption=openany",
 		"-V", "fontsize=11pt",
 	}
-	if strings.HasPrefix(strings.ToLower(lang), "es") {
+	// es-lcroman belongs to babel-spanish's spanish.ldf. Where only babel's
+	// own ini file provides Spanish — CI's runner, without texlive-lang-spanish
+	// — the option made babel define the language twice and xelatex stop.
+	if strings.HasPrefix(strings.ToLower(lang), "es") && haveSpanishLdf() {
 		args = append(args, "-V", "babeloptions=es-lcroman")
 	}
 	return args
+}
+
+// haveSpanishLdf reports whether babel-spanish is installed.
+func haveSpanishLdf() bool {
+	out, err := run.Stdout("", "kpsewhich", "spanish.ldf")
+	return err == nil && strings.TrimSpace(string(out)) != ""
 }
 
 // assembleThesis is the body of a thesis in the template's order, and the
