@@ -135,7 +135,9 @@ Under 45 mm of room the build stops — shorten the title or subtitle. The
   then arabic numbers, lists, lettered appendices, a Resumen and an Abstract
   checked against the UPM's 4000 characters of plain text. See *A doctoral thesis*
   in the README. Chapters in files of their own (`mdbrand.thesis.chapters:
-  capitulos`), one `#` each. PDF only for now; no cross-references yet.
+  capitulos`), one `#` each. Cross-references via pandoc-crossref (required,
+  built for the running pandoc): `{#fig:x}` on a figure, `[@fig:x]` prints
+  "figura 2.1"; `capítulo [-@sec:x]` for a bare number. PDF only for now.
 
 ## Word count
 

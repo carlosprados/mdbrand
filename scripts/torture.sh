@@ -596,7 +596,8 @@ if [ $status -eq 0 ]; then
 	[ -n "$ch1" ] && [ "$(foot "$ch1")" = "1" ] && ok "Capítulo 1 is page 1" || bad "Capítulo 1 on page '${ch1}' numbered '$( [ -n "$ch1" ] && foot "$ch1")'"
 	[ -n "$app" ] && ok "the appendix is Anexo A" || bad "no page opens with Anexo A"
 	text="$(pdftotext "$work/thesis.pdf" -)"
-	for want in "Tabla de Contenido" "Lista de Figuras" "Lista de Tablas" "Figura 2.1" "Tabla A.1" "Bajo la dirección de:" "(Codirector)"; do
+	for want in "Tabla de Contenido" "Lista de Figuras" "Lista de Tablas" "Figura 2.1" "Tabla A.1" "Bajo la dirección de:" "(Codirector)" \
+		"La tabla 1.1 resume" "la figura 2.1 dibuja" "la ecuación 1.1" "en el capítulo 1:"; do
 		has -F "$want" <<<"$text" && ok "prints $want" || bad "never prints $want"
 	done
 	pdftotext -f 4 -l "$((ch1 - 1))" -layout "$work/thesis.pdf" - | has -E '^ *[IVX]+$' \
@@ -604,6 +605,17 @@ if [ $status -eq 0 ]; then
 	has -F "0.1" <<<"$(pdftotext -f 4 -l "$((ch1 - 1))" "$work/thesis.pdf" -)" \
 		&& bad "a summary's section is numbered 0.1" || ok "the summaries' sections are unnumbered"
 fi
+
+# pandoc-crossref is a filter on pandoc's own data: one built for another
+# pandoc must stop the build as the environment's fault, naming the version.
+mkdir -p "$work/stub-crossref"
+printf '#!/bin/sh\necho "pandoc-crossref v0.3.0 built with Pandoc v3.0.1"\n' >"$work/stub-crossref/pandoc-crossref"
+chmod +x "$work/stub-crossref/pandoc-crossref"
+out="$(PATH="$work/stub-crossref:$PATH" "$bin" build "$root/testdata/thesis.md" --brands-dir "$root/testdata/brands" -o "$work/stub.pdf" 2>&1)"
+status=$?
+[ $status -eq 3 ] && printf '%s\n' "$out" | has -F "pandoc-crossref was built for pandoc 3.0.1" \
+	&& ok "a pandoc-crossref built for another pandoc stops the build, exit 3" \
+	|| { bad "mismatched pandoc-crossref (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'; }
 
 # The same thesis with its chapters and appendix in files of their own, a
 # figure linked from ../diagramas/ — a path that means something only from
@@ -1015,6 +1027,7 @@ traps=(
 	"thesis-part-front-matter.md|fail|thesis/with-front-matter.md: a part carries no front matter|--brands-dir $root/testdata/brands"
 	"thesis-body-and-chapters.md|fail|has a body, and mdbrand.thesis.chapters names the chapters' files|--brands-dir $root/testdata/brands"
 	"thesis-chapters-none.md|fail|thesis/capitulos/*.md matches no file beside the document|--brands-dir $root/testdata/brands"
+	"thesis-xref-undefined.md|fail|cross-reference(s) to nothing: @fig:nope|--brands-dir $root/testdata/brands"
 	"thesis-abstract-spanish.md|fail|style thesis builds as a PDF; its --to docx|--to docx --brands-dir $root/testdata/brands"
 )
 

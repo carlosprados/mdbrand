@@ -354,10 +354,13 @@ type Fig struct {
 	// BaseDir is what a relative path inside the source means relative to:
 	// the document's directory for a fenced block, whose source is only a copy
 	// written into the work directory, and the file's own for a side file.
-	BaseDir     string
-	Caption     string            //
-	Attrs       map[string]string // width=120mm, scale=0.6, …
-	Placeholder string            // token left in the body
+	BaseDir string
+	Caption string            //
+	Attrs   map[string]string // width=120mm, scale=0.6, …
+	// ID is the figure's identifier, {#fig:arq}: what a cross-reference
+	// names. It was dropped with the source it was written on.
+	ID          string
+	Placeholder string // token left in the body
 	Index       int
 	// Lang is the document's lang, which a chart formats its numbers and
 	// dates in; "" for a source rendered on its own.
@@ -384,6 +387,16 @@ func normKind(k string) string {
 		return "d2"
 	}
 	return "vega"
+}
+
+var idRe = regexp.MustCompile(`(?:^|[\s{])#([A-Za-z][\w:.-]*)`)
+
+// parseID is the #identifier in a figure's attributes, or "".
+func parseID(s string) string {
+	if m := idRe.FindStringSubmatch(s); m != nil {
+		return m[1]
+	}
+	return ""
 }
 
 func parseAttrs(s string) map[string]string {
@@ -449,7 +462,7 @@ func (f *File) ExtractFigs(srcDir string) (body string, figs []*Fig, err error) 
 		}
 		idx := len(figs)
 		ph := fmt.Sprintf("@@MDBRAND_FIG_%d@@", idx)
-		figs = append(figs, &Fig{Kind: kind, SrcPath: p, BaseDir: filepath.Dir(p), Caption: m[1], Attrs: attrs, Placeholder: ph, Index: idx, Lang: f.Meta.Lang})
+		figs = append(figs, &Fig{Kind: kind, SrcPath: p, BaseDir: filepath.Dir(p), Caption: m[1], Attrs: attrs, ID: parseID(m[3]), Placeholder: ph, Index: idx, Lang: f.Meta.Lang})
 		f.Refs = append(f.Refs, p)
 		return ph
 	})
@@ -571,6 +584,7 @@ func (f *File) extractFenced(srcDir, baseDir string) (string, []*Fig, error) {
 		}
 		kind := normKind(m[1])
 		attrs := parseAttrs(m[2])
+		id := parseID(m[2])
 		ext := ".d2"
 		if kind == "vega" {
 			ext = ".vl.json"
@@ -581,7 +595,7 @@ func (f *File) extractFenced(srcDir, baseDir string) (string, []*Fig, error) {
 			return "", nil, err
 		}
 		ph := fmt.Sprintf("@@MDBRAND_FIG_%d@@", idx)
-		figs = append(figs, &Fig{Kind: kind, SrcPath: src, BaseDir: baseDir, Caption: attrs["caption"], Attrs: attrs, Placeholder: ph, Index: idx, Lang: f.Meta.Lang})
+		figs = append(figs, &Fig{Kind: kind, SrcPath: src, BaseDir: baseDir, Caption: attrs["caption"], Attrs: attrs, ID: id, Placeholder: ph, Index: idx, Lang: f.Meta.Lang})
 		out = append(out, ph)
 	}
 	return strings.Join(out, "\n"), figs, nil

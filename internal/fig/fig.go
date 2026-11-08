@@ -495,11 +495,20 @@ func minFontSize(src string) (float64, bool) {
 // Markdown is the include that replaces the figure's placeholder.
 func (r *Result) Markdown() string {
 	caption := r.Fig.Caption
-	return fmt.Sprintf("![%s](%s){width=%.1fmm}", caption, filepath.Base(r.PDF), r.WidthMM)
+	return fmt.Sprintf("![%s](%s){%swidth=%.1fmm}", caption, filepath.Base(r.PDF), r.idAttr(), r.WidthMM)
+}
+
+// idAttr is the figure's #identifier as an attribute, with the space after
+// it; "" for a figure without one, whose attributes stay as they were.
+func (r *Result) idAttr() string {
+	if r.Fig.ID == "" {
+		return ""
+	}
+	return "#" + r.Fig.ID + " "
 }
 
 // MarkdownBox is Markdown with the height written out as well, for a writer
 // that would otherwise fit the figure to a box of its own.
 func (r *Result) MarkdownBox() string {
-	return fmt.Sprintf("![%s](%s){width=%.1fmm height=%.1fmm}", r.Fig.Caption, filepath.Base(r.PDF), r.WidthMM, r.HeightMM)
+	return fmt.Sprintf("![%s](%s){%swidth=%.1fmm height=%.1fmm}", r.Fig.Caption, filepath.Base(r.PDF), r.idAttr(), r.WidthMM, r.HeightMM)
 }

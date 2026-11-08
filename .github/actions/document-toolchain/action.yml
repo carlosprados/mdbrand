@@ -55,6 +55,20 @@ runs:
         sudo install -m755 "/tmp/d2-v${D2_VERSION}/bin/d2" /usr/local/bin/d2
         d2 --version
 
+    - name: pandoc-crossref
+      shell: bash
+      env:
+        # The release built for the pandoc apt installs (3.1.3 on noble): a
+        # filter reads pandoc's own data, and mdbrand refuses a mismatch.
+        PANDOC_CROSSREF_VERSION: v0.3.16.0a
+      run: |
+        set -euo pipefail
+        url="https://github.com/lierdakil/pandoc-crossref/releases/download/${PANDOC_CROSSREF_VERSION}/pandoc-crossref-Linux.tar.xz"
+        curl -fsSL "$url" -o /tmp/pandoc-crossref.tar.xz
+        tar -xJf /tmp/pandoc-crossref.tar.xz -C /tmp
+        sudo install -m755 /tmp/pandoc-crossref /usr/local/bin/pandoc-crossref
+        pandoc-crossref --version
+
     - name: vega-lite
       shell: bash
       run: |

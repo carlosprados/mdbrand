@@ -13,6 +13,7 @@ import (
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/doc"
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/mdtext"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/carlosprados/mdbrand/internal/tex"
@@ -115,6 +116,9 @@ func thesisFormats(style string, formats []string) error {
 func (p *prepared) readThesis(inputs *[]string) error {
 	if p.style != tex.Thesis {
 		return nil
+	}
+	if err := crossrefReady(); err != nil {
+		return err
 	}
 	if err := p.assembleChapters(inputs); err != nil {
 		return err
@@ -545,20 +549,119 @@ func splitAppendices(body string) (main, appendices string) {
 }
 
 // thesisArgs are pandoc's settings for a thesis: the book class, chapters
-// at the top, sections numbered, and lower-case roman page numbers, which
-// babel's Spanish otherwise prints in capitals.
-func thesisArgs(lang string) []string {
+// at the top, sections numbered, lower-case roman page numbers, which
+// babel's Spanish otherwise prints in capitals, and pandoc-crossref with the
+// thesis's language, before citeproc so [@fig:x] is not read as a citation.
+func thesisArgs(work, lang string) ([]string, error) {
+	meta := filepath.Join(work, "crossref.yaml")
+	if err := os.WriteFile(meta, []byte(crossrefMeta(lang)), 0o644); err != nil {
+		return nil, err
+	}
 	args := []string{
 		"--top-level-division=chapter", "--number-sections",
 		"-V", "documentclass=book", "-V", "classoption=oneside", "-V", "classoption=openany",
 		"-V", "fontsize=11pt",
+		"--filter", "pandoc-crossref", "--metadata-file=crossref.yaml",
 	}
 	// es-lcroman is an option of babel-spanish's spanish.ldf; where Spanish
 	// comes only from babel's own ini file there is no such option to pass.
 	if strings.HasPrefix(strings.ToLower(lang), "es") && haveSpanishLdf() {
 		args = append(args, "-V", "babeloptions=es-lcroman")
 	}
-	return args
+	return args, nil
+}
+
+// crossrefMeta is pandoc-crossref's settings in the thesis's language:
+// figures, tables and equations numbered by chapter, and the words it
+// prints before a number. In the PDF LaTeX numbers them; the words are
+// crossref's.
+func crossrefMeta(lang string) string {
+	words := `figureTitle: Figura
+tableTitle: Tabla
+figPrefix: [figura, figuras]
+tblPrefix: [tabla, tablas]
+eqnPrefix: [ecuación, ecuaciones]
+secPrefix: [sección, secciones]
+`
+	if strings.HasPrefix(strings.ToLower(lang), "en") {
+		words = `figureTitle: Figure
+tableTitle: Table
+figPrefix: [figure, figures]
+tblPrefix: [table, tables]
+eqnPrefix: [equation, equations]
+secPrefix: [section, sections]
+`
+	}
+	return words + "chapters: true\nlinkReferences: true\n"
+}
+
+var (
+	crossrefBuiltRe   = regexp.MustCompile(`built with Pandoc v?([0-9][0-9.]*[0-9])`)
+	pandocVersionRe   = regexp.MustCompile(`^pandoc(?:\.exe)? ([0-9][0-9.]*[0-9])`)
+	crossrefMissingRe = regexp.MustCompile(`Undefined cross-reference: (\S+)`)
+)
+
+// crossrefReady stops a thesis build without pandoc-crossref, or with one
+// built against another pandoc: a filter speaks pandoc's AST, and a
+// mismatched one fails, or mangles the document, in ways its own message
+// does not explain.
+func crossrefReady() error {
+	const releases = "https://github.com/lierdakil/pandoc-crossref/releases"
+	if !run.Have("pandoc-crossref") {
+		return exit.AsEnvironment(fmt.Errorf(`style thesis numbers figures, tables and equations with pandoc-crossref, which is not installed.
+Install the release built for your pandoc (pandoc --version names it):
+  %s
+  run: mdbrand doctor`, releases))
+	}
+	xr, err := run.Stdout("", "pandoc-crossref", "--version")
+	if err != nil {
+		return err
+	}
+	pd, err := run.Stdout("", "pandoc", "--version")
+	if err != nil {
+		return err
+	}
+	built, running := crossrefBuiltRe.FindStringSubmatch(string(xr)), pandocVersionRe.FindStringSubmatch(string(pd))
+	if built == nil || running == nil {
+		return nil // an unreadable version is not a reason to refuse
+	}
+	if built[1] != running[1] {
+		return exit.AsEnvironment(fmt.Errorf(`pandoc-crossref was built for pandoc %s and this is pandoc %s: a filter reads
+pandoc's own data, and a mismatched one fails or garbles the document. Install
+the pandoc-crossref release built for pandoc %s:
+  %s`, built[1], running[1], running[1], releases))
+	}
+	return nil
+}
+
+// crossrefMisses stops a build that refers to a figure, table, equation or
+// section nothing labels. pandoc-crossref prints "¿fig:x?" in the text and
+// exits 0; only its warning says so.
+func crossrefMisses(pandocOut string) error {
+	if refs := uniqueMatches(crossrefMissingRe, pandocOut); len(refs) > 0 {
+		return crossrefMissError(refs)
+	}
+	return nil
+}
+
+var crossrefRefRe = regexp.MustCompile(`^\\(?:c|C)?ref\{((?:fig|tbl|eq|sec|lst):[^}]+)\}$`)
+
+// crossrefRefs are the labels among a log's undefined references that are
+// pandoc-crossref's.
+func crossrefRefs(undefined []string) []string {
+	var out []string
+	for _, u := range undefined {
+		if m := crossrefRefRe.FindStringSubmatch(u); m != nil {
+			out = append(out, m[1])
+		}
+	}
+	return out
+}
+
+func crossrefMissError(refs []string) error {
+	return fmt.Errorf(`%d cross-reference(s) to nothing: @%s
+Nothing carries the label: give the figure, table, equation or heading its
+{#fig:…}, {#tbl:…}, {#eq:…} or {#sec:…}, or fix the reference`, len(refs), strings.Join(refs, ", @"))
 }
 
 // haveSpanishLdf reports whether babel-spanish is installed.
