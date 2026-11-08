@@ -1058,6 +1058,7 @@ traps=(
 	"thesis-lang-fr.md|fail|a UPM thesis is written in Spanish or English|--brands-dir $root/testdata/brands"
 	"thesis-letter-paper.md|fail|and a UPM thesis is A4|--brands-dir $root/testdata/brands"
 	"thesis-centre-abbreviated.md|fail|holds ETSI|--brands-dir $root/testdata/brands"
+	"thesis-centre-disagrees.md|fail|the bundle's is the official name|--brands-dir $root/testdata/brands"
 	"thesis-on-report.md|fail|build it with style: thesis, or drop thesis:|--brands-dir $root/testdata/brands"
 	"thesis-chapter-two-heads.md|fail|holds 2 chapters (# Uno, # Dos): one chapter per file|--brands-dir $root/testdata/brands"
 	"thesis-part-front-matter.md|fail|thesis/with-front-matter.md: a part carries no front matter|--brands-dir $root/testdata/brands"

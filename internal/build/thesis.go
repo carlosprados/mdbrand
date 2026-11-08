@@ -53,6 +53,9 @@ front parts. See: mdbrand example tesis`)
 	if !strings.EqualFold(b.Page.PaperSize, "a4") && !strings.EqualFold(b.Page.PaperSize, "a4paper") {
 		return fmt.Errorf("brand %q sets page.papersize %s, and a UPM thesis is A4", b.Name, b.Page.PaperSize)
 	}
+	if err := settleSchool(t, b); err != nil {
+		return err
+	}
 	if _, abstract, _ := doc.LiftAbstract(d.FrontMatter); abstract != "" {
 		return fmt.Errorf("abstract: in the front matter — a thesis's Abstract is a file of its own, read through mdbrand.thesis.abstract, beside its Resumen")
 	}
@@ -61,7 +64,8 @@ front parts. See: mdbrand example tesis`)
 		{"title", d.Meta.Title}, {"author", d.Meta.AuthorString()}, {"date (the year on the cover)", thesisYear(d.Meta.Date)},
 		{"mdbrand.thesis.programme", t.Programme}, {"mdbrand.thesis.degree", t.Degree},
 		{"mdbrand.thesis.abstract", t.Abstract}, {"mdbrand.thesis.resumen", t.Resumen}, {"mdbrand.thesis.acronyms", t.Acronyms},
-		{"thesis.university in the bundle", b.Thesis.University}, {"thesis.centre in the bundle", b.Thesis.Centre},
+		{"thesis.university (in the bundle, or mdbrand.thesis.university without one)", b.Thesis.University},
+		{"thesis.centre (in the bundle, or mdbrand.thesis.centre without one)", b.Thesis.Centre},
 	} {
 		if strings.TrimSpace(f.v) == "" {
 			missing = append(missing, f.key)
@@ -88,6 +92,32 @@ and the credits page each director's position and institution`)
 	if list := b.Thesis.Programmes; len(list) > 0 && !slices.Contains(list, t.Programme) {
 		return fmt.Errorf("mdbrand.thesis.programme %q is not one of the programmes brand %q lists, which are its official names:\n  %s",
 			t.Programme, b.Name, strings.Join(list, "\n  "))
+	}
+	return nil
+}
+
+// settleSchool puts the university and the centre a thesis names in its
+// front matter where the bundle's would be: a thesis built without a bundle
+// names them itself. A bundle that names them too must agree, since a
+// school's official name has one spelling, and either is held to the
+// bundle's rule: written out, never abbreviated.
+func settleSchool(t *doc.Thesis, b *brand.Brand) error {
+	for _, f := range []struct {
+		key, own string
+		bundle   *string
+	}{{"university", t.University, &b.Thesis.University}, {"centre", t.Centre, &b.Thesis.Centre}} {
+		if f.own == "" {
+			continue
+		}
+		if *f.bundle != "" && *f.bundle != f.own {
+			return fmt.Errorf("mdbrand.thesis.%s is %q, and brand %q names it %q: the bundle's is the official name. Drop the document's",
+				f.key, f.own, b.Name, *f.bundle)
+		}
+		if abbr := brand.Abbreviations(f.own); len(abbr) > 0 {
+			return fmt.Errorf("mdbrand.thesis.%s: %q holds %s — a thesis prints the official name, in Spanish and unabbreviated",
+				f.key, f.own, strings.Join(abbr, ", "))
+		}
+		*f.bundle = f.own
 	}
 	return nil
 }
