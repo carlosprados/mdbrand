@@ -400,6 +400,10 @@ func parseID(s string) string {
 }
 
 func parseAttrs(s string) map[string]string {
+	// A linked figure's attributes come with their braces, and the closing
+	// one stuck to the last value: {width=80mm} read as "80mm}", which no
+	// width parses.
+	s = strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(s), "{"), "}")
 	out := map[string]string{}
 	for _, m := range attrRe.FindAllStringSubmatch(s, -1) {
 		if m[1] != "" {
