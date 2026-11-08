@@ -37,6 +37,8 @@ var catalogue = []example{
 		"{{words}} on the cover, {.nocount} sections, bibliography: refs.bib and [@key, p. 12] citations"},
 	{"charla", "a deck for a talk, with speaker notes",
 		"style slides, formats [pdf, notes]: sections, a diagram and a chart for the frame, columns, pauses, incremental lists, notes"},
+	{"tesis", "a UPM doctoral thesis, also as Word for the director",
+		"style thesis: the three fixed pages, front parts, chapters and an appendix in files of their own, cross-references, --to pdf,docx"},
 }
 
 func exampleCmd() *cobra.Command {

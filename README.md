@@ -251,6 +251,7 @@ mdbrand build carta.md
 | [`datos`](examples/datos/datos.md) | Numbers kept in data files | `{{data…}}` values, `table` blocks filtered, sorted, totalled and transposed, a CSV linked whole, a chart reading the same data |
 | [`ensayo`](examples/ensayo/ensayo.md) | An essay with a word limit | `{{words}}` on the cover, `{.nocount}` sections, a bibliography and citations |
 | [`charla`](examples/charla/charla.md) | A talk | `slides` with `formats: [pdf, notes]`: sections, figures for the frame, columns, pauses, incremental lists, speaker notes |
+| [`tesis`](examples/tesis/tesis.md) | A UPM doctoral thesis | `thesis`: the three fixed pages, front parts, chapters and an appendix in files of their own, cross-references, the director's `.docx` |
 
 ```sh
 mdbrand example ensayo && mdbrand build ensayo.md --watch   # edit it: the cover keeps count
@@ -762,6 +763,10 @@ thesis:
   centre: Escuela Técnica Superior de Ingenieros de Telecomunicación
   programmes: [Ingeniería de Sistemas Telemáticos]   # optional: then programme must be one
 ```
+
+Without a bundle (`brand: none`, as `mdbrand example tesis` starts), the
+thesis names them itself in `mdbrand.thesis.university` and `centre`; a
+bundle that names them too must agree, and the build says so when it does not.
 
 `logo` is the university's escudo, on the cubierta and the portada;
 `logo_secondary` the school's, on the portada. Cross-references are pandoc-crossref's, which a thesis requires — the

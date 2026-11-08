@@ -14,6 +14,10 @@ import (
 // < > slots and no other information" on those pages, so each slot is a key
 // and nothing else can reach them.
 type Thesis struct {
+	// University and Centre are the bundle's thesis: names, written here
+	// for a thesis built without one (brand: none).
+	University, Centre string
+
 	Programme string // printed as "Doctorado en …"
 	Degree    string // the candidate's previous degree
 	Directors []Director
@@ -40,7 +44,7 @@ type Director struct {
 	Co                          bool // role: codirector
 }
 
-var thesisKeys = []string{"programme", "degree", "directors", "funding",
+var thesisKeys = []string{"university", "centre", "programme", "degree", "directors", "funding",
 	"dedication", "acknowledgements", "abstract", "resumen", "acronyms", "chapters", "appendices"}
 
 // UnmarshalYAML decodes by hand because YAML drops an unknown field in
@@ -50,6 +54,7 @@ func (t *Thesis) UnmarshalYAML(n *yaml.Node) error {
 		return fmt.Errorf("mdbrand.thesis: expected a mapping of %s", strings.Join(thesisKeys, ", "))
 	}
 	text := map[string]*string{
+		"university": &t.University, "centre": &t.Centre,
 		"programme": &t.Programme, "degree": &t.Degree, "funding": &t.Funding,
 		"dedication": &t.Dedication, "acknowledgements": &t.Acknowledgements,
 		"abstract": &t.Abstract, "resumen": &t.Resumen, "acronyms": &t.Acronyms,
@@ -152,7 +157,7 @@ func unknownKey(where, k string, known []string) error {
 
 // Printed is every string of the thesis that its three pages print.
 func (t Thesis) Printed() []string {
-	out := []string{t.Programme, t.Degree, t.Funding}
+	out := []string{t.University, t.Centre, t.Programme, t.Degree, t.Funding}
 	for _, d := range t.Directors {
 		out = append(out, d.Name, d.Position, d.Institution)
 	}

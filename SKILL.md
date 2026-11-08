@@ -57,6 +57,7 @@ a build that would print a defective document fails naming the fix.
 | Numbers kept in a spreadsheet, YAML or JSON | `datos` | `{{data…}}` values, ```` ```table ```` blocks, a CSV linked whole, a chart reading the same data |
 | An essay with a word limit; anything with citations | `ensayo` | `{{words}}` on the cover, `{.nocount}`, `bibliography:` and `[@key, p. 12]` |
 | Slides for a talk; speaker notes | `charla` | `slides`, `formats: [pdf, notes]`: sections, figures for the frame, columns, pauses, notes |
+| A UPM doctoral thesis | `tesis` | `thesis`: fixed pages, front parts, chapters and appendix in files, `[@fig:x]` cross-references, `--to pdf,docx` |
 
 They combine: a proposal quoting a price list is `informe` with the data and
 table blocks of `datos`.
@@ -135,7 +136,8 @@ Under 45 mm of room the build stops — shorten the title or subtitle. The
   then arabic numbers, lists, lettered appendices, a Resumen and an Abstract
   checked against the UPM's 4000 characters of plain text. See *A doctoral thesis*
   in the README. Chapters in files of their own (`mdbrand.thesis.chapters:
-  capitulos`), one `#` each. Cross-references via pandoc-crossref (required,
+  capitulos`), one `#` each. Start from `mdbrand example tesis`; without a
+  bundle, `mdbrand.thesis.university` and `centre` name the school. Cross-references via pandoc-crossref (required,
   built for the running pandoc): `{#fig:x}` on a figure, `[@fig:x]` prints
   "figura 2.1"; `capítulo [-@sec:x]` for a bare number. `--to pdf,docx` adds
   the director's Word copy (title block, crossref's numbers, page numbers are

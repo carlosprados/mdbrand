@@ -26,7 +26,7 @@ var docs embed.FS
 // from one that builds. Sources only: a PDF built beside them must not be
 // carried into the binary.
 //
-//go:embed examples/*/*.md examples/*/*.bib examples/*/data/*
+//go:embed examples/*/*.md examples/*/*.bib examples/*/data/* examples/*/*/*.md
 var examples embed.FS
 
 func main() {
