@@ -112,3 +112,30 @@
 \let\verbatim\mdbrandcode
 \let\endverbatim\endmdbrandcode
 {{end}}
+
+{{define "thesisPage"}}% -------------------------------------------------------------- thesis page ---
+% A thesis has no running header: the UPM's template centres the number alone
+% at the foot, roman on the initial pages and arabic from the first chapter.
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+% pandoc's template calls \mainmatter before the body, and the body opens with
+% the front parts — Abstract, Resumen, the lists — which take roman numbers.
+% That first call is swallowed and restores the real macro, which mdbrand
+% calls before the first chapter.
+\let\mdbrandMainmatter\mainmatter
+\renewcommand{\mainmatter}{\global\let\mainmatter\mdbrandMainmatter}
+% "Anexo A" on the page and "A." in the contents.
+\usepackage[titletoc]{appendix}
+\setcounter{tocdepth}{ {{- .Thesis.TOCDepth -}} }
+{{end}}
+
+{{define "thesisNames"}}
+% The contents, lists and appendices under the names the UPM's template uses.
+\ifdefined\captionsspanish
+  \addto\captionsspanish{\renewcommand{\contentsname}{Tabla de Contenido}\renewcommand{\listfigurename}{Lista de Figuras}\renewcommand{\listtablename}{Lista de Tablas}\renewcommand{\appendixname}{Anexo}}%
+\fi
+{{- end}}

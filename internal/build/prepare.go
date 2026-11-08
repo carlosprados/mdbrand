@@ -38,6 +38,8 @@ type prepared struct {
 	pdfToo bool
 	// cover is the cover picture's absolute path; "" when there is none.
 	cover string
+	// thesis holds a thesis's front parts, read once; nil for other styles.
+	thesis *thesisParts
 }
 
 // close removes the work directory unless it was asked to be kept.
@@ -102,6 +104,9 @@ it, or open an issue for the knob you need:
 		}
 	}
 
+	if err := checkThesisShape(d, b, style); err != nil {
+		return nil, err
+	}
 	cover, err := coverImage(o.Input, d.Meta.Options.Cover, style)
 	if err != nil {
 		return nil, err

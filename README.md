@@ -307,7 +307,7 @@ bibliography: refs.bib   # optional: one path, or a list of them
 csl: apa.csl             # optional, alongside a bibliography
 mdbrand:
   brand: amplia
-  style: report          # report | note | letter | slides
+  style: report          # report | note | letter | slides | thesis
   reference: "Oferta AS-2164-26"
   confidential: "Confidencial"   # every style; see below for where it prints
   short_title: "Oferta Acme"     # optional; the running header, when the title is too long for it
@@ -695,6 +695,75 @@ footer of every page in a `report`, under the title and in every footer in a
 label too long to sit left of the page number stops the build. A `.docx` built
 alone cannot be measured, since Word sets it in the reader's fonts, so there
 a label over about 45 characters is a warning.
+
+### A doctoral thesis
+
+`style: thesis` lays out a doctoral thesis as the UPM's template does — the
+template is a Word file, and its rules are behaviour here, not advice:
+
+```yaml
+---
+title: "Agentes cognitivos distribuidos para el *edge* industrial"
+author: "Nombre Apellido Apellido"
+date: "2029"                     # the year on the cover
+lang: es-ES                      # es or en; nothing else
+toc-depth: 2
+bibliography: refs.bib
+mdbrand:
+  brand: upm-etsit               # a bundle with a thesis: section (below)
+  style: thesis
+  thesis:
+    programme: Ingeniería de Sistemas Telemáticos
+    degree: Ingeniero de Telecomunicación
+    directors:
+      - {name: "Dr. Nombre Apellido", position: Catedrático de Universidad, institution: Universidad Politécnica de Madrid}
+      - {name: "Dra. Nombre Apellido", position: Profesora Titular, institution: Universidad Politécnica de Madrid, role: codirector}
+    funding: "la Agencia Estatal de Investigación, proyecto PID2028-000000"   # optional
+    dedication: preliminares/dedicatoria.md            # optional
+    acknowledgements: preliminares/agradecimientos.md  # optional
+    abstract: preliminares/abstract.md                 # English
+    resumen: preliminares/resumen.md                   # Spanish
+    acronyms: preliminares/acronimos.md
+---
+
+# Introducción
+…
+# Cuestionario {.appendix}
+…
+```
+
+The body holds the chapters, one per `#`; the first `# … {.appendix}` and
+every chapter after it are the appendices, lettered A, B… The build writes the
+cubierta, portada and página de créditos with the template's words and nothing
+else, the front parts under the template's headings (a part has no heading of
+its own; `##` sections are allowed in the summaries), the contents and the
+lists of figures and tables, and the references before the appendices. Pages
+are numbered as the template asks: nothing on the first two, the credits page
+is i, roman to the acronyms, 1 at the first chapter. Figures and tables are
+numbered by chapter.
+
+The build stops on a missing field of the three pages or a director without a
+position or institution, a Resumen or Abstract over 4000 characters including
+spaces (counted as Word counts them) or holding a citation, a formula, a
+footnote, a link or a list, a language other than Spanish or English, a paper
+other than A4, and a centre written abbreviated. It warns on a symbol in a
+summary and on a summary that reads as the other language. The thesis's
+identity with the title registered in THESIS cannot be checked from here.
+
+The school's identity lives in its bundle, outside this repository (the
+escudos are the university's):
+
+```yaml
+thesis:
+  university: Universidad Politécnica de Madrid
+  centre: Escuela Técnica Superior de Ingenieros de Telecomunicación
+  programmes: [Ingeniería de Sistemas Telemáticos]   # optional: then programme must be one
+```
+
+`logo` is the university's escudo, on the cubierta and the portada;
+`logo_secondary` the school's, on the portada. For now a thesis builds as a
+PDF in one file; cross-references, chapters in files of their own and the
+.docx for the director come next.
 
 ### A picture on the cover
 

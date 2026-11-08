@@ -1,0 +1,9 @@
+# A bundle whose reports are US letter: a UPM thesis is A4 whatever the brand.
+name: thesis-letter
+display_name: Prueba
+colors: {primary: "1F1F1F", text: "000000", rule: "9A9A9A", link: "1F4E79"}
+fonts: {body: DejaVu Sans}
+page: {papersize: letter, margin: 25mm}
+thesis:
+  university: Universidad Politécnica de Madrid
+  centre: Escuela Técnica Superior de Ingenieros de Telecomunicación

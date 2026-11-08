@@ -114,7 +114,7 @@
 \newcommand{\brandLogoSecondary}[1]{}
 {{- end}}
 
-% ------------------------------------------------------------------ header ---
+{{if eq .Style "thesis"}}{{template "thesisPage" .}}{{else}}% ------------------------------------------------------------------ header ---
 \newcommand{\brandRunningTitle}{ {{- .Esc .HeaderTitle -}} }
 \pagestyle{fancy}
 \fancyhf{}
@@ -167,7 +167,7 @@
   \ifdim\dimexpr\wd\mdbrandHeadTitleBox+\wd\mdbrandHeadLogoBox+2mm\relax>\textwidth
     \typeout{MDBRAND-TITLE-TOOWIDE over=\the\dimexpr\wd\mdbrandHeadTitleBox+\wd\mdbrandHeadLogoBox+2mm-\textwidth\relax}%
   \fi
-}
+}{{end}}
 
 % Figures placed by mdbrand are already sized in millimetres; centre them and
 % keep the caption small and grey.
@@ -181,6 +181,7 @@
 \ifdefined\captionsspanish
   \addto\captionsspanish{\renewcommand{\tablename}{Tabla}\renewcommand{\listtablename}{Índice de tablas}}%
 \fi
+{{- if eq .Style "thesis"}}{{template "thesisNames" .}}{{end}}
 {{- if .TOC}}
 
 % article boxes a contents number in 1.5em (section) and 2.3em (subsection).

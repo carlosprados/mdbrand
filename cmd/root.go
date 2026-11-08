@@ -78,7 +78,7 @@ Front matter drives everything, so a build needs no flags:
   toc: true
   mdbrand:
     brand: amplia
-    style: report      # report | note | letter | slides
+    style: report      # report | note | letter | slides | thesis
   ---`,
 		SilenceUsage:               true,
 		SilenceErrors:              true,

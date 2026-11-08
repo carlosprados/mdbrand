@@ -25,6 +25,11 @@ document for the owner's own e-reader — reflowed, the reader's type, the PDF's
 figures and structure — and never a site, a theme or a publishing format with
 a cover to design.
 
+`style: thesis` is a doctoral thesis as the UPM's template lays it out —
+three fixed pages, two measured summaries, chapters, lists and appendices —
+and never a second university's rules, a chapter include mechanism of the
+author's own, or a knob on those pages.
+
 The PDF is the product. `--to docx` writes the same document for readers who
 need Word or Google Docs, `--to pptx` a deck for one who must edit it, and
 `--to epub` the document for an e-reader; all three are strictly additive: nothing on the PDF's path
@@ -431,6 +436,24 @@ Do not relax one without understanding what it cost.
     embedded or named. Unmeasured: any real device, and Send-to-Kindle.
     → `internal/epub/epub_test.go`, `internal/fig/fit_test.go`, the epub
     section of `scripts/torture.sh`, `traps/epub-*.md`.
+
+27. **A thesis's rules are behaviour, read back off the PDF.** The UPM's
+    template is a Word file: three fixed pages, roman numbers from the
+    credits page and arabic from the first chapter, a Resumen and an Abstract
+    of at most 4000 characters of plain text, figures and tables numbered by
+    chapter, appendices lettered. pandoc's template calls `\mainmatter` before
+    the body, where the front parts are; babel's Spanish prints roman numbers
+    in capitals; `-V toc=false` is the string "false", which is true; and a
+    summary's `##` under an unnumbered chapter printed as "0.1" — all at exit
+    0. So the preamble swallows pandoc's `\mainmatter`, the build writes the
+    contents and lists itself, passes `es-lcroman`, unnumbers the summaries'
+    sections, counts each summary on pandoc's AST as Word counts and stops
+    over 4000 or on a citation, formula or footnote in it, and `torture.sh`
+    reads the page numbers off the PDF: none on the first two, i on the
+    third, 1 at the first chapter. The school's names come from the bundle's
+    `thesis:` section and an abbreviated one stops.
+    → `internal/build/thesis_test.go`, `internal/brand/thesis_test.go`,
+    `testdata/thesis.md`, `traps/thesis-*.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

@@ -568,6 +568,43 @@ else
 	bad "--to epub alone (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
 fi
 
+# style thesis: the UPM's template, read back off the PDF. The three fixed
+# pages carry no number but the credits page, which is i; the initial pages
+# are roman and the first chapter is 1; figures and tables are numbered by
+# chapter and the appendix is lettered. pandoc's template put \mainmatter
+# before the front parts and babel's Spanish printed the roman numbers in
+# capitals: both would show here.
+echo
+echo "testdata/thesis.md — a UPM doctoral thesis"
+out="$("$bin" build "$root/testdata/thesis.md" --brands-dir "$root/testdata/brands" -o "$work/thesis.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	printf '%s\n' "$out" | has '^  !' && bad "warnings: $(printf '%s\n' "$out" | grep '^  !')" || ok "no warnings"
+	pdfinfo "$work/thesis.pdf" | has 'Page size: *595.* x 841.* pts (A4)' && ok "A4" || bad "not A4"
+	foot() { pdftotext -f "$1" -l "$1" -layout "$work/thesis.pdf" - | grep -v '^\s*$' | tail -1 | sed 's/^ *//;s/ *$//'; }
+	head1() { pdftotext -f "$1" -l "$1" "$work/thesis.pdf" - | grep -v '^\s*$' | head -1; }
+	[ "$(foot 1)" = "Madrid, 2029" ] && [ "$(foot 2)" = "Madrid, 2029" ] && ok "cubierta and portada carry no number" || bad "pages 1-2 end with '$(foot 1)', '$(foot 2)'"
+	[ "$(foot 3)" = "i" ] && ok "the credits page is i" || bad "page 3 ends with '$(foot 3)', want i"
+	pages="$(pdfinfo "$work/thesis.pdf" | awk '/^Pages/{print $2}')"
+	ch1=""; app=""
+	for n in $(seq 1 "$pages"); do
+		case "$(head1 "$n")" in "Capítulo 1") ch1=$n ;; "Anexo A") app=$n ;; esac
+	done
+	[ -n "$ch1" ] && [ "$(foot "$ch1")" = "1" ] && ok "Capítulo 1 is page 1" || bad "Capítulo 1 on page '${ch1}' numbered '$( [ -n "$ch1" ] && foot "$ch1")'"
+	[ -n "$app" ] && ok "the appendix is Anexo A" || bad "no page opens with Anexo A"
+	text="$(pdftotext "$work/thesis.pdf" -)"
+	for want in "Tabla de Contenido" "Lista de Figuras" "Lista de Tablas" "Figura 2.1" "Tabla A.1" "Bajo la dirección de:" "(Codirector)"; do
+		has -F "$want" <<<"$text" && ok "prints $want" || bad "never prints $want"
+	done
+	pdftotext -f 4 -l "$((ch1 - 1))" -layout "$work/thesis.pdf" - | has -E '^ *[IVX]+$' \
+		&& bad "upper-case roman page numbers" || ok "roman page numbers in lower case"
+	has -F "0.1" <<<"$(pdftotext -f 4 -l "$((ch1 - 1))" "$work/thesis.pdf" -)" \
+		&& bad "a summary's section is numbered 0.1" || ok "the summaries' sections are unnumbered"
+fi
+
 # mdbrand audit reads a PDF something else built — a mandated template, a
 # journal's class — with the checks a build makes on its own. A clean one
 # passes in silence; one with a defect of each kind names every one.
@@ -945,6 +982,20 @@ traps=(
 	"cover-on-note.md|fail|style note has none"
 	"cover-typo.md|fail|did you mean credit?"
 	"cover-no-room.md|fail|of height for mdbrand.cover.image"
+	"thesis-no-director.md|fail|mdbrand.thesis.directors is missing|--brands-dir $root/testdata/brands"
+	"thesis-director-string.md|fail|a director is a mapping of name, position and institution|--brands-dir $root/testdata/brands"
+	"thesis-no-resumen.md|fail|a UPM thesis needs mdbrand.thesis.resumen|--brands-dir $root/testdata/brands"
+	"thesis-resumen-long.md|fail|characters including spaces, and the UPM allows 4000|--brands-dir $root/testdata/brands"
+	"thesis-resumen-cite.md|fail|the Resumen holds a citation (@mdbrand2026)|--brands-dir $root/testdata/brands"
+	"thesis-abstract-math.md|fail|the Abstract holds a formula|--brands-dir $root/testdata/brands"
+	"thesis-abstract-spanish.md|ok|reads as Spanish|--brands-dir $root/testdata/brands"
+	"thesis-part-heading.md|fail|front parts are headless|--brands-dir $root/testdata/brands"
+	"thesis-programme-unknown.md|fail|is not one of the programmes brand|--brands-dir $root/testdata/brands"
+	"thesis-lang-fr.md|fail|a UPM thesis is written in Spanish or English|--brands-dir $root/testdata/brands"
+	"thesis-letter-paper.md|fail|and a UPM thesis is A4|--brands-dir $root/testdata/brands"
+	"thesis-centre-abbreviated.md|fail|holds ETSI|--brands-dir $root/testdata/brands"
+	"thesis-on-report.md|fail|build it with style: thesis, or drop thesis:|--brands-dir $root/testdata/brands"
+	"thesis-abstract-spanish.md|fail|style thesis builds as a PDF; its --to docx|--to docx --brands-dir $root/testdata/brands"
 )
 
 echo

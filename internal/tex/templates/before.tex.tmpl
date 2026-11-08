@@ -88,6 +88,76 @@
 \endgroup
 \clearpage
 \setcounter{page}{1}
+{{- else if eq .Style "thesis" -}}
+{{with .Thesis -}}
+% The UPM's three fixed pages: cubierta, portada and créditos, each with "the
+% data in the < > slots and no other information". The escudos are set at the
+% template's sizes, not the bundle's logo widths. Créditos is page i.
+\frontmatter
+\thispagestyle{empty}
+\begin{center}
+{\large\MakeUppercase{ {{- texEscape .University -}} }}\par
+\vspace{4mm}
+{{texEscape .Centre}}\par
+\vspace{14mm}
+\brandLogo{50.8mm}\par
+\vfill
+{\Large\bfseries {{$.Esc $.Title}}\par}
+\vspace{10mm}
+{\bfseries {{if .EN}}DOCTORAL THESIS{{else}}TESIS DOCTORAL{{end}}}\par
+\vspace{10mm}
+{{if .EN}}Submitted for the degree of Doctor by:{{else}}Presentada para optar al título de Doctor por:{{end}}\par
+\vspace{4mm}
+{\bfseries {{$.Esc $.Author}}}\par
+\vspace{2mm}
+{{texEscape .Degree}}\par
+\vfill
+Madrid, {{.Year}}\par
+\end{center}
+\clearpage
+\thispagestyle{empty}
+\noindent\begin{minipage}[c]{0.22\textwidth}\centering\brandLogoSecondary{32.6mm}\end{minipage}%
+\begin{minipage}[c]{0.22\textwidth}\centering\brandLogo{32.6mm}\end{minipage}\hfill
+\begin{minipage}[c]{0.52\textwidth}\raggedright\MakeUppercase{ {{- texEscape .University -}} }\par\vspace{2mm}{{texEscape .Centre}}\end{minipage}
+\begin{center}
+\vspace{18mm}
+{\bfseries {{if .EN}}Doctoral Programme in{{else}}Doctorado en{{end}} {{texEscape .Programme}}}\par
+\vfill
+{\Large\bfseries {{$.Esc $.Title}}\par}
+\vspace{10mm}
+{\bfseries {{if .EN}}DOCTORAL THESIS{{else}}TESIS DOCTORAL{{end}}}\par
+\vspace{8mm}
+{{if .EN}}Submitted for the degree of Doctor by:{{else}}Presentada para optar al título de Doctor por:{{end}}\par
+\vspace{3mm}
+{\bfseries {{$.Esc $.Author}}}\par
+{{texEscape .Degree}}\par
+\vspace{8mm}
+{{if .EN}}Supervised by:{{else}}Bajo la dirección de:{{end}}\par
+\vspace{3mm}
+{{range .Directors}}{{texEscape .Name}}\par
+{{end -}}
+\vfill
+Madrid, {{.Year}}\par
+\end{center}
+\clearpage
+\setcounter{page}{1}
+\begingroup
+\setlength{\parindent}{0pt}\setlength{\parskip}{3mm}
+{{if .EN}}Title{{else}}Título{{end}}: {{$.Esc $.Title}}\par
+{{if .EN}}Author{{else}}Autor{{end}}: {{$.Esc $.Author}}\par
+{{if .EN}}Doctoral Programme{{else}}Programa de Doctorado{{end}}: {{texEscape .Programme}}\par
+{{if .EN}}Supervision{{else}}Dirección de tesis{{end}}:\par\vspace{-2mm}
+{{range .Directors}}{{texEscape .Name}}, {{texEscape .Position}}, {{texEscape .Institution}} ({{if $.Thesis.EN}}{{if .Co}}Co-supervisor{{else}}Supervisor{{end}}{{else}}{{if .Co}}Codirector{{else}}Director{{end}}{{end}})\par
+{{end -}}
+{{if .EN}}External reviewers{{else}}Revisores externos{{end}}:\par
+{{if .EN}}Thesis committee{{else}}Tribunal de tesis{{end}}:\par
+{{if .EN}}Date of defence{{else}}Fecha de defensa{{end}}:\par
+\vfill
+{{if .Funding}}{{if .EN}}This thesis has been partially funded by{{else}}Esta tesis ha sido parcialmente financiada por{{end}} {{texEscape .Funding}}.\par
+{{end -}}
+\endgroup
+\clearpage
+{{- end}}
 {{- else if eq .Style "note" -}}
 % A note has no cover: it opens with its own title block and carries the header
 % from the first page, because it is read at a desk and not handed over.

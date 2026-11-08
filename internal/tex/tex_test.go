@@ -96,7 +96,11 @@ func TestEveryStyleRenders(t *testing.T) {
 	b := brand.Default()
 	for _, s := range Styles {
 		for _, frag := range []string{"preamble", "before", "after"} {
-			if _, err := Render(frag, &Data{Brand: b, Style: s, Title: "T"}); err != nil {
+			d := &Data{Brand: b, Style: s, Title: "T"}
+			if s == "thesis" {
+				d.Thesis = &ThesisPages{Year: "2029", TOCDepth: 2, Directors: []ThesisDirector{{Name: "D"}}}
+			}
+			if _, err := Render(frag, d); err != nil {
 				t.Errorf("style %s fragment %s: %v", s, frag, err)
 			}
 		}

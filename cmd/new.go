@@ -38,6 +38,11 @@ instead: mdbrand example lists them.`,
 			if !tex.ValidStyle(style) {
 				return fmt.Errorf("unknown style %q: pick one of %s", style, strings.Join(tex.Styles, ", "))
 			}
+			// A scaffold would build nothing: a thesis is a master file and its
+			// front parts, and the README shows the whole set.
+			if style == tex.Thesis {
+				return exit.AsUsage(fmt.Errorf("mdbrand new does not scaffold a thesis: it is a master file and the files of its front parts. See the README, \"A doctoral thesis\""))
+			}
 			if brandName == "" {
 				brandName = viper.GetString("brand")
 			}

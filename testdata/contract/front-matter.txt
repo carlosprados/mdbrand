@@ -9,6 +9,7 @@ mdbrand.reference
 mdbrand.short_title
 mdbrand.signature
 mdbrand.style
+mdbrand.thesis
 mdbrand.to
 mdbrand.wordcount
 mdbrand.wordcount.base

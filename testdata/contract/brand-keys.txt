@@ -53,3 +53,7 @@ slides.foreground
 slides.logo
 slides.logo_width
 slides.logo_width_cover
+thesis
+thesis.centre
+thesis.programmes
+thesis.university

@@ -492,3 +492,16 @@ func TestDataRootsShapes(t *testing.T) {
 		t.Error("a name mapped to a list parsed")
 	}
 }
+
+// The thesis strips the contents keys from what pandoc reads; a front matter
+// without them must reach pandoc byte for byte, as every other style's does.
+func TestStripKeysLeavesTheRestAlone(t *testing.T) {
+	front := "title: \"X\"   # a comment\nlang: es-ES\n"
+	if got, err := StripKeys(front, "toc", "lof"); err != nil || got != front {
+		t.Errorf("nothing to strip: got %q, %v", got, err)
+	}
+	got, err := StripKeys("title: X\ntoc: true\ntoc-depth: 2\nlang: es\n", "toc", "toc-depth")
+	if err != nil || got != "title: X\nlang: es" {
+		t.Errorf("got %q, %v", got, err)
+	}
+}
