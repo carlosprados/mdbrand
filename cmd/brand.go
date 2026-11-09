@@ -222,7 +222,11 @@ func brandPathCmd() *cobra.Command {
 // value cannot hold the logo.
 func headerGeometry(b *brand.Brand) (string, error) {
 	logo := b.LogoPath()
-	if logo == "" {
+	// A school's bundle is for its thesis, which has no running header: the
+	// height derived for its square escudo is right and never used, and a
+	// warning about it was noise on every validate. A report built with the
+	// bundle still derives it, and still says so if the logo cannot be read.
+	if logo == "" || b.Thesis.University != "" || b.Thesis.Centre != "" {
 		return "", nil
 	}
 	aspect, err := imgsize.Aspect(logo)
