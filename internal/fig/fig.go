@@ -140,7 +140,7 @@ func Render(f *doc.Fig, b *brand.Brand, workDir string, box tex.Box, ds *Dataset
 		return res, fmt.Errorf("%s would print its smallest label at %.1fpt, below the %.1fpt floor.\n"+
 			"  It is %.0f×%.0f mm on the page%s. In order of preference:\n%s",
 			filepath.Base(f.SrcPath), res.TextPt, b.Diagrams.MinTextPt, res.WidthMM, res.HeightMM,
-			held, illegibleFixes(f.Kind, tall))
+			held, illegibleFixes(f, b, tall))
 	case res.HeightMM > b.Diagrams.MaxHeightMM && explicit > 0:
 		res.Note = fmt.Sprintf("%.0f mm tall with an explicit width= — over the %.0f mm guide",
 			res.HeightMM, b.Diagrams.MaxHeightMM)
@@ -237,27 +237,12 @@ func fitsBox(res *Result, box tex.Box, natWmm, natHmm float64) error {
 // illegibleFixes is the advice for a figure whose labels fall under the
 // floor, by what the figure is and by what held it back. A figure held by
 // the height limit — the usual one on a 16:9 slide — needs to be wider than
-// tall, and shrinking its whitespace does nothing for that; one held by the
-// width needs packing. Vega-Lite has neither a scale nor a layout engine.
-func illegibleFixes(kind string, tall bool) string {
+// tall; one held by the width needs packing or turning. Vega-Lite has
+// neither a scale nor a layout engine.
+func illegibleFixes(f *doc.Fig, b *brand.Brand, tall bool) string {
 	switch {
-	case kind == "d2" && tall:
-		return `   1. lay it out wider than tall: direction: right at the root of the .d2
-      (inside a container d2 ignores it);
-   2. split the figure along a distinction that matters anyway;
-   3. shorten the labels`
-	case kind == "d2":
-		return `   1. lower the scale: scale=0.33 on the fence. mdbrand raises the source font
-      size by the same factor, so what shrinks is the layout whitespace and the
-      text comes back to reading size;
-   2. drop the labels on the edges you can: a single one has widened a
-      dagre layout enough to take its labels from 12pt to under 8pt;
-   3. try the other layout engine, in the .d2 itself:
-        vars: { d2-config: { layout-engine: elk } }
-      ELK often packs a graph tighter than dagre, at the cost of routing the
-      edges differently — look at the result before keeping it;
-   4. split the figure along a distinction that matters anyway, or shorten
-      the labels so the layout is less wide`
+	case f.Kind == "d2":
+		return d2Fixes(f, b, tall)
 	case tall:
 		return `   1. make the chart wider than tall: lower "height" and raise "width" in the
       spec, so the frame's height stops being the limit;
@@ -269,6 +254,78 @@ func illegibleFixes(kind string, tall bool) string {
                    "legend": {"labelFontSize": 14}}
    2. plot fewer categories, or shorten their names`
 	}
+}
+
+// sidewaysRe is a root-level direction that lays a diagram out in a row.
+var sidewaysRe = regexp.MustCompile(`(?m)^direction:\s*(right|left)\s*$`)
+
+// lowestScale is the scale advice stops at: below it, d2's whitespace is
+// already mostly gone and the label is what is wide.
+const lowestScale = 0.34
+
+// scaleFix is the advice to lower d2's scale, which shrinks the layout's
+// whitespace against its text whichever way the figure is held: a chain of
+// ten turned down stood at 7.7pt, 150 mm tall, and read at scale=0.33.
+const scaleFix = `lower the scale: scale=0.33 on the fence. mdbrand raises the source font
+      size by the same factor, so what shrinks is the layout whitespace and the
+      text comes back to reading size`
+
+// d2Fixes is the advice for a d2 figure. The advice to lower the scale was
+// repeated to a fence that already set scale=0.33, so it is given only while
+// there is scale left to lower. A row laid out sideways and held by the width
+// has the page's height to spare, so turning it comes first.
+func d2Fixes(f *doc.Fig, b *brand.Brand, tall bool) string {
+	scale := b.Diagrams.D2Scale
+	if s := f.Scale(); s > 0 {
+		scale = s
+	}
+	var fixes []string
+	if tall {
+		if scale > lowestScale {
+			fixes = append(fixes, scaleFix)
+		}
+		fixes = append(fixes,
+			`lay it out wider than tall: direction: right at the root of the .d2
+      (inside a container d2 ignores it)`,
+			`split the figure along a distinction that matters anyway`,
+			`shorten the labels`)
+		return numbered(fixes, scale)
+	}
+	if src, err := os.ReadFile(f.SrcPath); err == nil && sidewaysRe.Match(src) {
+		fixes = append(fixes, `lay it out taller than wide: direction: down at the root of the .d2,
+      in place of the direction it has — a row runs out of width long before
+      the page runs out of height`)
+	}
+	if scale > lowestScale {
+		fixes = append(fixes, scaleFix)
+	}
+	fixes = append(fixes,
+		`drop the labels on the edges you can: a single one has widened a
+      dagre layout enough to take its labels from 12pt to under 8pt`,
+		`try the other layout engine, in the .d2 itself:
+        vars: { d2-config: { layout-engine: elk } }
+      ELK often packs a graph tighter than dagre, at the cost of routing the
+      edges differently — look at the result before keeping it`,
+		`split the figure along a distinction that matters anyway, or shorten
+      the labels so the layout is less wide`)
+	return numbered(fixes, scale)
+}
+
+// numbered writes the fixes as the error's ordered list, and says so when
+// the scale is already as low as advice goes.
+func numbered(fixes []string, scale float64) string {
+	var out strings.Builder
+	for i, fix := range fixes {
+		sep := ";\n"
+		if i == len(fixes)-1 {
+			sep = ""
+		}
+		fmt.Fprintf(&out, "   %d. %s%s", i+1, fix, sep)
+	}
+	if scale <= lowestScale {
+		fmt.Fprintf(&out, "\n  It already renders at scale=%g, so a lower scale is not the way out.", scale)
+	}
+	return out.String()
 }
 
 func renderD2(f *doc.Fig, b *brand.Brand, out string) error {

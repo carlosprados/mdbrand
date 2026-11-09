@@ -976,6 +976,8 @@ traps=(
 	"wide-code.md|ok|columns, where"
 	"illegible-figure.md|fail|below the 8.0pt floor"
 	"illegible-figure.md|fail|layout-engine: elk"
+	"illegible-figure.md|fail|1. lay it out taller than wide: direction: down"
+	"illegible-figure-scaled.md|fail|It already renders at scale=0.33, so a lower scale is not the way out"
 	"missing-glyph.md|fail|no glyph for"
 	"missing-citation.md|fail|no entry for"
 	"header-includes.md|fail|header-includes"
