@@ -365,6 +365,9 @@ type Fig struct {
 	// Lang is the document's lang, which a chart formats its numbers and
 	// dates in; "" for a source rendered on its own.
 	Lang string
+	// Fenced is a figure written as a fenced block, whose source file is a
+	// copy: an error names the block by its figure and caption instead.
+	Fenced bool
 }
 
 var (
@@ -599,7 +602,7 @@ func (f *File) extractFenced(srcDir, baseDir string) (string, []*Fig, error) {
 			return "", nil, err
 		}
 		ph := fmt.Sprintf("@@MDBRAND_FIG_%d@@", idx)
-		figs = append(figs, &Fig{Kind: kind, SrcPath: src, BaseDir: baseDir, Caption: attrs["caption"], Attrs: attrs, ID: id, Placeholder: ph, Index: idx, Lang: f.Meta.Lang})
+		figs = append(figs, &Fig{Kind: kind, SrcPath: src, BaseDir: baseDir, Caption: attrs["caption"], Attrs: attrs, ID: id, Placeholder: ph, Index: idx, Lang: f.Meta.Lang, Fenced: true})
 		out = append(out, ph)
 	}
 	return strings.Join(out, "\n"), figs, nil

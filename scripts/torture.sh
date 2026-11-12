@@ -1023,6 +1023,8 @@ traps=(
 	"named-colour-typo.md|fail|.OK on \"Verde\" — did you mean .ok?|--to docx --brand none"
 	"display-glyph.md|fail|display face (fonts.office.display), has no glyph|--to docx --brands-dir $root/testdata/brands"
 	"missing-style.md|fail|DejaVuSans: small caps|--brands-dir $root/testdata/brands"
+	"d2-hash.md|fail|line 1 of the d2 block captioned \"Custodia de claves\": b: B. HSM con PKCS#11 {"
+	"d2-syntax.md|fail|line 3 of the d2 block captioned \"Flujo de altas\", column 1:"
 	"cite-no-source.md|fail|2 citation(s) but nothing to cite them from"
 	"cite-no-source.md|fail|@fig:arq read as pandoc-crossref|--to docx --brand none"
 	"dead-anchor.md|fail|#setup — did you mean #set-up?"

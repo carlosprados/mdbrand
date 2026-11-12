@@ -110,8 +110,15 @@ Do not relax one without understanding what it cost.
    `<image href>` led nowhere: a photo in a linked SVG, or a Vega image mark,
    left an empty frame. Every picture an SVG links is resolved against the
    source's directory and inlined as a data URI; a missing or remote one stops.
-   → `internal/fig/images_test.go`, `testdata/svg-image.md`,
-   `traps/svg-image-missing.md`.
+   d2 reads an unquoted `#` as a comment: "PKCS#11" printed "PKCS", exit 0,
+   and with a `{` after it d2 blamed the closing brace, lines below. A `#`
+   glued to a word or before a digit, outside quotes and block strings,
+   stops the build; one after a space and before a word is a comment. d2's
+   own errors name a fenced block's copy in the work directory, so they are
+   rewritten to the block's caption and its own line.
+   → `internal/fig/images_test.go`, `internal/fig/d2hash_test.go`,
+   `testdata/svg-image.md`, `traps/svg-image-missing.md`, `traps/d2-hash.md`,
+   `traps/d2-syntax.md`.
 6. **Settings resolve flag > front matter > configuration**, through
    `build.Pick`. Inverting this made a document declaring `brand: none` build
    with the reader's configured brand.

@@ -270,6 +270,10 @@ To show a fence or a picture link as an example, put it inside code (a
   150 warns), naming the width that prints well — use a larger original.
 - **No `|md|` blocks in d2**: they become `<foreignObject>`, which the PDF
   route drops in silence, so the build refuses them.
+- **Quote a d2 label that holds `#`**: `b: "HSM con PKCS#11" {`. d2 reads an
+  unquoted `#` as a comment and drops the rest of the line, brace included;
+  the build stops on one glued to a word or before a digit. A d2 error in a
+  fence names the block by its caption and the line inside the block.
 - **A chart field the data lacks fails the build** — a typo drew an empty
   chart, or one bar labelled undefined; the message names the nearest column.
 - **A picture inside a figure** — `<image href>` in a linked SVG, a Vega
