@@ -13,7 +13,7 @@ import (
 )
 
 // What scripts and agents type and test for: every command and flag with its
-// type, the exit statuses, and the values style and formats take. Help text
+// type, the exit statuses, and the values style, formats and engine take. Help text
 // is not here — it is meant to get better.
 func TestContractCommandLine(t *testing.T) {
 	var lines []string
@@ -46,6 +46,9 @@ func TestContractCommandLine(t *testing.T) {
 	}
 	for _, f := range build.Formats {
 		lines = append(lines, "format "+f)
+	}
+	for _, e := range build.Engines {
+		lines = append(lines, "engine "+e)
 	}
 	contract.Check(t, "command-line", lines)
 }

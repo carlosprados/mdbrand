@@ -349,7 +349,7 @@ func TestWordCountShapes(t *testing.T) {
 // there. Every string field gets a value of its own; each must come back from
 // Printed unless it is named here as one no page prints.
 func TestPrintedCoversEveryField(t *testing.T) {
-	notPrinted := map[string]bool{"Lang": true, "CSL": true, "Brand": true, "Style": true}
+	notPrinted := map[string]bool{"Lang": true, "CSL": true, "Brand": true, "Style": true, "Engine": true}
 	var m Meta
 	want := map[string]string{}
 	fill := func(v reflect.Value) {

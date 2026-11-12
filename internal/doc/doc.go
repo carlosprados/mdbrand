@@ -145,6 +145,7 @@ func (r *DataRoots) UnmarshalYAML(n *yaml.Node) error {
 type Options struct {
 	Brand        string    `yaml:"brand"`
 	Style        string    `yaml:"style"`
+	Engine       string    `yaml:"engine"`       // the PDF's typesetter: latex (default) or typst
 	Confidential string    `yaml:"confidential"` // stamped under the cover rule
 	Reference    string    `yaml:"reference"`    // file/offer number on the cover
 	ShortTitle   string    `yaml:"short_title"`  // the running header's title, when the full one is too long

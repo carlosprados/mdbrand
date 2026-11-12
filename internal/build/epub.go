@@ -159,7 +159,7 @@ func epubCover(p *prepared, inputs *[]string) (string, error) {
 			return "", err
 		}
 		p.o.logf("  cover page for the .epub")
-		if err := renderPDF(&cp, "", inputs); err != nil {
+		if err := renderFormat(&cp, "pdf", "", inputs); err != nil {
 			return "", fmt.Errorf("typesetting the cover for the .epub: %w", err)
 		}
 		p.rep.Warnings = append(p.rep.Warnings, cp.rep.Warnings...)

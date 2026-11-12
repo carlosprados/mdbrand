@@ -44,6 +44,9 @@ type Options struct {
 	// document's own front matter says otherwise.
 	DefaultBrand string
 	DefaultStyle string
+	// Engine is --engine, the PDF's typesetter; DefaultEngine is configuration's.
+	Engine        string
+	DefaultEngine string
 	// WordCount is the --wordcount profile. It replaces the document's whole
 	// criterion, parts included; DefaultWordCount is configuration's.
 	WordCount        string
@@ -62,6 +65,7 @@ type Report struct {
 	Outputs  []Output // one per format, in the order asked for
 	Brand    string
 	Style    string
+	Engine   string
 	Figures  []*fig.Result
 	Warnings []string
 	WorkDir  string
@@ -148,12 +152,17 @@ func pipeline(o Options, inputs *[]string) (*Report, error) {
 	if err != nil {
 		return nil, err
 	}
-	if missing := run.Missing(toolsFor(formats)...); len(missing) > 0 {
+	engine, err := pickEngine(o, d)
+	if err != nil {
+		return nil, err
+	}
+	if missing := run.Missing(toolsFor(formats, engine)...); len(missing) > 0 {
 		return nil, exit.AsEnvironment(fmt.Errorf("missing tools: %s\n  run: mdbrand doctor", strings.Join(missing, ", ")))
 	}
 	p, err := prepare(o, d, inputs)
 	if err != nil {
 		return nil, err
+
 	}
 	defer p.close()
 	// Deferred, so that it also holds what a chart read through a name.
@@ -199,7 +208,7 @@ build it with --to pdf, or as a deck with --style slides`, p.style)
 	// The notes are made from the deck's .tex, so the deck is typeset first
 	// even when only the notes were asked for; then it is not published.
 	if slices.Contains(formats, "notes") && !p.pdfToo {
-		if err := renderPDF(p, "", inputs); err != nil {
+		if err := renderFormat(p, "pdf", "", inputs); err != nil {
 			return nil, err
 		}
 		p.rep.Outputs = p.rep.Outputs[:len(p.rep.Outputs)-1]
@@ -214,18 +223,7 @@ build it with --to pdf, or as a deck with --style slides`, p.style)
 		if err != nil {
 			return nil, err
 		}
-		switch f {
-		case "pdf":
-			err = renderPDF(p, out, inputs)
-		case "docx":
-			err = renderDOCX(p, out, inputs)
-		case "notes":
-			err = renderNotes(p, out)
-		case "pptx":
-			err = renderPPTX(p, out, inputs)
-		case "epub":
-			err = renderEPUB(p, out, inputs)
-		}
+		err = renderFormat(p, f, out, inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -241,6 +239,30 @@ build it with --to pdf, or as a deck with --style slides`, p.style)
 	return p.rep, nil
 }
 
+// renderFormat writes one format. The engine decides who typesets the PDF
+// and the speaker notes; the other formats have no typesetter to choose.
+func renderFormat(p *prepared, f, out string, inputs *[]string) error {
+	switch f {
+	case "pdf":
+		if p.engine == EngineTypst {
+			return renderTypst(p, out, inputs)
+		}
+		return renderPDF(p, out, inputs)
+	case "docx":
+		return renderDOCX(p, out, inputs)
+	case "notes":
+		if p.engine == EngineTypst {
+			return renderTypstNotes(p, out)
+		}
+		return renderNotes(p, out)
+	case "pptx":
+		return renderPPTX(p, out, inputs)
+	case "epub":
+		return renderEPUB(p, out, inputs)
+	}
+	return nil
+}
+
 // coverFirst readies the formats for a cover picture. The .epub's cover is
 // the PDF's cover page, typeset and rasterised, so it needs what that takes,
 // and the PDF goes first, when it is built at all, to lend its page.
@@ -248,7 +270,7 @@ func coverFirst(p *prepared, formats []string) ([]string, error) {
 	if p.cover == "" || !slices.Contains(formats, "epub") {
 		return formats, nil
 	}
-	if missing := run.Missing("xelatex", "pdftoppm"); len(missing) > 0 {
+	if missing := run.Missing(append(toolsFor([]string{"pdf"}, p.engine), "pdftoppm")...); len(missing) > 0 {
 		return nil, exit.AsEnvironment(fmt.Errorf("the .epub's cover is drawn from the PDF's, and these are missing: %s\n  pdftoppm is in poppler-utils (brew install poppler); run: mdbrand doctor",
 			strings.Join(missing, ", ")))
 	}
@@ -284,10 +306,14 @@ func pickFormats(flag, frontMatter, config []string) ([]string, error) {
 	return out, nil
 }
 
-func toolsFor(formats []string) []string {
+func toolsFor(formats []string, engine string) []string {
 	var out []string
 	for _, f := range formats {
 		for _, t := range tools[f] {
+			// Typst typesets what xelatex would: TeX Live need not be there.
+			if t == "xelatex" && engine == EngineTypst {
+				t = "typst"
+			}
 			if !slices.Contains(out, t) {
 				out = append(out, t)
 			}

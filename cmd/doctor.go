@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
+	"github.com/carlosprados/mdbrand/internal/build"
 	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/fig"
 	"github.com/carlosprados/mdbrand/internal/run"
@@ -33,7 +34,7 @@ as garbage stops the build; without it a build warns that it was not checked.
 Optional: mutool (MuPDF), which mdbrand audit reads text sizes with, and
 soffice (LibreOffice), which --to pptx uses to estimate the slides
 whose text does not fit. Required only for --to epub: epubcheck, which
-validates the package (Java).`,
+validates the package (Java). Required only for engine typst: typst.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
 			fails := printChecks(out, append(toolChecks(), latexChecks()...))
@@ -69,6 +70,8 @@ func toolChecks() []check {
 	bin("vg2svg", "npm i -g vega-cli@latest (6.4.0 or later)  ·  https://vega.github.io/vega/usage/#cli", false)
 	// style thesis numbers figures, tables and equations with it.
 	bin("pandoc-crossref", "the release built for your pandoc  ·  https://github.com/lierdakil/pandoc-crossref/releases", false)
+	// engine typst typesets the PDF with it instead of xelatex.
+	bin("typst", build.TypstInstall, false)
 	bin("pdftotext", "apt install poppler-utils (brew install poppler)  ·  https://poppler.freedesktop.org/", false)
 	// mdbrand audit reads the size each run of text prints at with it.
 	bin("mutool", "apt install mupdf-tools (brew install mupdf-tools)  ·  https://mupdf.com/", false)

@@ -137,6 +137,16 @@ pandoc's --include-in-header and its two siblings, which is how the design gets
 in, replace the metadata fields of those names. Settings that should outlive one
 document belong in the brand bundle.
 
+XeLaTeX typesets the PDF unless the document asks for Typst:
+
+    mdbrand:
+      engine: typst               # or --engine typst; default latex
+
+Every style is there, with the same checks, about twice as fast and without
+TeX Live. Raw LaTeX stops a Typst build, since Typst cannot set it; a
+cross-reference is [@fig:x] on a {#fig:x} label. The .docx, .pptx and .epub
+are the same under either engine.
+
 {{data.maquinas[m5.large].ram}} prints a value from the data files beside the
 document (data/maquinas.yaml), literally and as written; a key that is not
 there stops the build. See mdbrand data --help.
@@ -228,6 +238,7 @@ file. Ctrl-C stops it.
 			o.BrandsDir = brandsDir()
 			o.DefaultBrand = viper.GetString("brand")
 			o.DefaultStyle = viper.GetString("style")
+			o.DefaultEngine = viper.GetString("engine")
 			o.DefaultWordCount = viper.GetString("wordcount")
 			o.DefaultFormats = viper.GetStringSlice("formats")
 			if !quiet {
@@ -266,6 +277,7 @@ file. Ctrl-C stops it.
 	c.Flags().StringSliceVar(&o.Formats, "to", nil, "pdf | docx | notes | pptx | epub, or a list (pdf,epub); overrides the front matter's formats (default pdf)")
 	c.Flags().StringVar(&o.BrandName, "brand", "", "brand bundle to use; overrides the front matter")
 	c.Flags().StringVar(&o.Style, "style", "", "report | note | letter | slides | thesis; overrides the front matter")
+	c.Flags().StringVar(&o.Engine, "engine", "", "latex | typst: who typesets the PDF and the speaker notes; overrides the front matter (default latex)")
 	c.Flags().StringVar(&o.WordCount, "wordcount", "", "ib | all: the {{words}} criterion; replaces the front matter's entirely")
 	c.Flags().StringVar(&o.WorkDir, "work", "", "keep intermediates here (LaTeX, figures, log) for debugging")
 	c.Flags().BoolVar(&o.AllowHoles, "allow-missing-glyphs", false, "build even if the font lacks glyphs the text uses")
@@ -274,15 +286,24 @@ file. Ctrl-C stops it.
 	return c
 }
 
+// engineNote names the engine in the result line when it is not the default,
+// so the line a LaTeX build prints is the one it always printed.
+func engineNote(rep *build.Report) string {
+	if rep.Engine == "" || rep.Engine == build.EngineLaTeX {
+		return ""
+	}
+	return ", engine " + rep.Engine
+}
+
 func printReport(out, errOut io.Writer, rep *build.Report) {
 	for _, o := range rep.Outputs {
 		if o.Format == "pdf" {
-			fmt.Fprintf(out, "%s  (%s, %d words by %s, brand %s, style %s)\n",
-				o.Path, plural(o.Pages, "page"), rep.Words, rep.WordRule, rep.Brand, rep.Style)
+			fmt.Fprintf(out, "%s  (%s, %d words by %s, brand %s, style %s%s)\n",
+				o.Path, plural(o.Pages, "page"), rep.Words, rep.WordRule, rep.Brand, rep.Style, engineNote(rep))
 			continue
 		}
 		if o.Format == "notes" {
-			fmt.Fprintf(out, "%s  (%s of speaker notes, brand %s)\n", o.Path, plural(o.Pages, "A4 page"), rep.Brand)
+			fmt.Fprintf(out, "%s  (%s of speaker notes, brand %s%s)\n", o.Path, plural(o.Pages, "A4 page"), rep.Brand, engineNote(rep))
 			continue
 		}
 		// A .docx has no page count of its own: whatever opens it paginates it.

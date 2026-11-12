@@ -116,6 +116,7 @@ func initConfig() {
 	viper.SetDefault("brands_dir", defaultBrandsDir())
 	viper.SetDefault("brand", "")
 	viper.SetDefault("style", "report")
+	viper.SetDefault("engine", "latex")
 	viper.SetDefault("wordcount", "ib")
 
 	if cfgFile != "" {
@@ -137,7 +138,7 @@ func initConfig() {
 var configErr error
 
 // configKeys are the settings a config file may hold.
-var configKeys = []string{"brands_dir", "brand", "style", "wordcount", "formats"}
+var configKeys = []string{"brands_dir", "brand", "style", "engine", "wordcount", "formats"}
 
 // readConfig reads the config file. Absent from its default place is the
 // normal case. Anything else stops: a file that does not parse, a --config
@@ -240,6 +241,7 @@ unknown key stops every command with exit 2.`,
 			}
 			fmt.Fprintf(out, "brand       : %s\n", orNone(viper.GetString("brand")))
 			fmt.Fprintf(out, "style       : %s\n", viper.GetString("style"))
+			fmt.Fprintf(out, "engine      : %s\n", viper.GetString("engine"))
 			fmt.Fprintf(out, "wordcount   : %s\n", viper.GetString("wordcount"))
 			formats := strings.Join(viper.GetStringSlice("formats"), ",")
 			if formats == "" {
@@ -277,6 +279,9 @@ brands_dir: %s
 # Used when a document's front matter does not name one.
 brand: ""
 style: report
+
+# Who typesets the PDF when a document does not say: latex (XeLaTeX) or typst.
+engine: latex
 
 # The criterion {{words}} counts by when a document does not set one: ib or all.
 wordcount: ib
