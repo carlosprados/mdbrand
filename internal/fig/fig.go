@@ -270,6 +270,12 @@ const scaleFix = `lower the scale: scale=0.33 on the fence. mdbrand raises the s
       size by the same factor, so what shrinks is the layout whitespace and the
       text comes back to reading size`
 
+// nodesFix is the advice to drop a node: a nested overview stood at 7.7pt
+// through scale=0.33, ELK and shorter edge labels, and read once one node
+// and its two edges were gone.
+const nodesFix = `leave out the nodes the figure can do without: one node and its two
+      edges, taken out, brought a nested overview from 7.7pt to reading size`
+
 // d2Fixes is the advice for a d2 figure. The advice to lower the scale was
 // repeated to a fence that already set scale=0.33, so it is given only while
 // there is scale left to lower. A row laid out sideways and held by the width
@@ -287,6 +293,7 @@ func d2Fixes(f *doc.Fig, b *brand.Brand, tall bool) string {
 		fixes = append(fixes,
 			`lay it out wider than tall: direction: right at the root of the .d2
       (inside a container d2 ignores it)`,
+			nodesFix,
 			`split the figure along a distinction that matters anyway`,
 			`shorten the labels`)
 		return numbered(fixes, scale)
@@ -306,6 +313,7 @@ func d2Fixes(f *doc.Fig, b *brand.Brand, tall bool) string {
         vars: { d2-config: { layout-engine: elk } }
       ELK often packs a graph tighter than dagre, at the cost of routing the
       edges differently — look at the result before keeping it`,
+		nodesFix,
 		`split the figure along a distinction that matters anyway, or shorten
       the labels so the layout is less wide`)
 	return numbered(fixes, scale)
@@ -333,6 +341,13 @@ func renderD2(f *doc.Fig, b *brand.Brand, out string) error {
 	if s := f.Scale(); s > 0 {
 		scale = s
 	}
+	raw, err := os.ReadFile(f.SrcPath)
+	if err != nil {
+		return err
+	}
+	if err := refuseD2Hashes(f, string(raw)); err != nil {
+		return err
+	}
 	src, generated, err := d2Source(f, b, scale, filepath.Dir(out))
 	if err != nil {
 		return err
@@ -344,11 +359,11 @@ func renderD2(f *doc.Fig, b *brand.Brand, out string) error {
 	// Both themes pinned to the light one: paper has no prefers-color-scheme,
 	// so a dark-mode media query inside the SVG would decide the ink colour by
 	// the reader's OS at render time and can hand you a dark diagram on white.
-	return run.Quiet(filepath.Dir(f.SrcPath), "d2",
+	return d2Error(run.Quiet(filepath.Dir(f.SrcPath), "d2",
 		"--theme", theme, "--dark-theme", theme,
 		"--pad", strconv.Itoa(b.Diagrams.D2Pad),
 		"--scale", strconv.FormatFloat(scale, 'f', -1, 64),
-		src, out)
+		src, out), f, src)
 }
 
 // How deep the shape globs reach. One selector per level, because the
