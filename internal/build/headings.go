@@ -1,12 +1,14 @@
 package build
 
 import (
+	"cmp"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
 
+	"github.com/carlosprados/mdbrand/internal/tex"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -83,4 +85,19 @@ so the sections under them may be missing too:
 This is mdbrand's defect, not the document's. Build with --work ./out and
 report it with the .tex and the log at https://github.com/carlosprados/mdbrand/issues`,
 		strings.Join(lost, "\n  "))
+}
+
+// soughtHeadings are the headings to find in the PDF's text, and how deep its
+// contents list them. pandoc's toc-depth is 3 unless the document says; a
+// thesis writes its own contents, so its headings are sought once; a deck's
+// titles are frames' and nothing reports them.
+func soughtHeadings(p *prepared, pandocOut string) ([]printedHeading, int) {
+	if p.style == tex.Slides {
+		return nil, 0
+	}
+	tocDepth := 0
+	if p.d.Meta.HasTOC() && p.style != tex.Thesis {
+		tocDepth = cmp.Or(p.d.Meta.TOCDepth, 3)
+	}
+	return reportedHeadings(pandocOut), tocDepth
 }

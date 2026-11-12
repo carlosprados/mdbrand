@@ -5,6 +5,7 @@ import (
 	"image"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
@@ -24,10 +25,12 @@ type prepared struct {
 	d     *doc.File
 	b     *brand.Brand
 	style string
-	work  string
-	keep  bool
-	store *data.Store
-	rep   *Report
+	// engine typesets the PDF and the notes: EngineLaTeX or EngineTypst.
+	engine string
+	work   string
+	keep   bool
+	store  *data.Store
+	rep    *Report
 	// body still holds each figure's placeholder: the figure is sized here, but
 	// how it is referenced belongs to the output format.
 	body    string
@@ -104,6 +107,11 @@ it, or open an issue for the knob you need:
 		}
 	}
 
+	engine, err := pickEngine(o, d)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := checkThesisShape(d, b, style); err != nil {
 		return nil, err
 	}
@@ -120,9 +128,18 @@ it, or open an issue for the knob you need:
 		return nil, err
 	}
 	return &prepared{
-		o: o, d: d, b: b, style: style, work: work, keep: keep, cover: cover,
-		rep: &Report{Brand: b.Name, Style: style, WorkDir: work, Kept: keep},
+		o: o, d: d, b: b, style: style, engine: engine, work: work, keep: keep, cover: cover,
+		rep: &Report{Brand: b.Name, Style: style, Engine: engine, WorkDir: work, Kept: keep},
 	}, nil
+}
+
+// pickEngine settles who typesets the PDF and the notes, flag first.
+func pickEngine(o Options, d *doc.File) (string, error) {
+	engine := Pick(o.Engine, d.Meta.Options.Engine, o.DefaultEngine, EngineLaTeX)
+	if !slices.Contains(Engines, engine) {
+		return "", fmt.Errorf("unknown engine %q: pick one of %s", engine, strings.Join(Engines, ", "))
+	}
+	return engine, nil
 }
 
 // coverImage settles the cover picture: only a report has a cover to set it

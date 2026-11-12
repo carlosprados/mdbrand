@@ -19,6 +19,8 @@ command mdbrand skill install
 command mdbrand skill path
 command mdbrand skill show
 command mdbrand version
+engine latex
+engine typst
 exit 0 ok
 exit 1 defect
 exit 2 usage
@@ -32,6 +34,7 @@ flag mdbrand audit --max-pages (int)
 flag mdbrand audit --paper (string)
 flag mdbrand build --allow-missing-glyphs (bool)
 flag mdbrand build --brand (string)
+flag mdbrand build --engine (string)
 flag mdbrand build --out -o (string)
 flag mdbrand build --quiet -q (bool)
 flag mdbrand build --style (string)

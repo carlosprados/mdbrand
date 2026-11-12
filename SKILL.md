@@ -85,7 +85,7 @@ on text under 6pt (with mutool) and a missing title or author, and
 `figsize` in inches = that width, fonts 8–9 pt) instead of scaling them.
 
 `mdbrand <cmd> --help` is the complete manual; read it rather than guess a flag.
-Flags (`--brand`, `--style`, `--to`, `-o`, `--work`) override the front matter
+Flags (`--brand`, `--style`, `--engine`, `--to`, `-o`, `--work`) override the front matter
 for one build; a document should carry its own settings.
 
 This file is embedded in the binary. If it looks out of step with the tool,
@@ -108,6 +108,7 @@ csl: apa.csl                      # optional, with a bibliography
 mdbrand:
   brand: amplia                   # bundle name; none = built-in defaults
   style: report                   # report | note | letter | slides | thesis
+  engine: latex                   # latex (default) | typst: who typesets the PDF and a deck's notes. See *Typst*
   reference: "Oferta AS-2164-26"  # report cover, optional
   confidential: "Confidencial"    # report: cover + footers; note: title + footers; letter: under the date; slides: footer
   short_title: "Oferta Acme"      # the running header's title when the real one is too long
@@ -419,6 +420,22 @@ size. Offer it when the owner wants to read a document, not print it.
   on the column, chart series one grey on e-ink (order `figures.palette` by
   lightness), code over 45 columns, tables wider than the column, MathML.
 
+## Typst
+
+`engine: typst` (or `--engine typst`) typesets the PDF and a deck's speaker
+notes with [Typst](https://typst.app) instead of XeLaTeX: every style, the same
+bundle, figures, data and checks — a defect still stops the build by name — in
+about half the time, with no TeX Live on the machine. XeLaTeX is the default
+and stays so; choose Typst per document. What changes for the author:
+
+- Raw LaTeX (`\newpage`, `\textcolor{…}`) stops the build, since Typst
+  cannot set it. Write it in Markdown; a cross-reference is `[@fig:x]`,
+  `[@tbl:x]`, `[@sec:x]` on a `{#fig:x}` label, as in a thesis.
+- Only the bundle's faces are used. Code is set in DejaVu Sans Mono, and a
+  built-in bundle, where Inter is absent, falls back to Libertinus Serif.
+- The page is close to XeLaTeX's but not the same: breaks fall elsewhere, so
+  quote page numbers from the PDF that was built.
+
 ## Brand bundles
 
 `brands_dir` (see `mdbrand config`) holds one directory per identity:
@@ -496,6 +513,8 @@ install command and the project's page.
 - Documents with figures: [d2](https://d2lang.com) for diagrams;
   [vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) and
   vega-lite for charts — 6.4.0 or later in a decimal-comma language.
+- `engine: typst` only: [typst](https://github.com/typst/typst/releases)
+  in place of XeLaTeX (`cargo install --locked typst-cli`, `brew install typst`).
 - Recommended: `pdftotext` from [poppler](https://poppler.freedesktop.org/),
   which reads each PDF back to check its text layer.
 - Fonts: the bundle's body face, found through fontconfig. A named bundle whose

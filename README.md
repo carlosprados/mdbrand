@@ -155,6 +155,11 @@ Recommended: **[pdftotext](https://poppler.freedesktop.org/)** from poppler
 Each PDF is read back through it, and a text layer that would copy as garbage
 stops the build; without it the build warns that the check did not run.
 
+For `engine: typst` only: **[typst](https://github.com/typst/typst/releases)**,
+which takes XeLaTeX's place and needs none of the LaTeX packages
+(`cargo install --locked typst-cli`, `brew install typst`, or a binary from its
+releases).
+
 For `--to epub` only: **[epubcheck](https://www.w3.org/publishing/epubcheck/)**,
 which validates every package (`apt install epubcheck`, `brew install
 epubcheck`, or the jar from its [releases](https://github.com/w3c/epubcheck/releases)
@@ -261,7 +266,7 @@ mdbrand example ensayo && mdbrand build ensayo.md --watch   # edit it: the cover
 
 | Command | What it does |
 |---|---|
-| `mdbrand build <doc.md>` | Build the PDF. `--to pdf,docx,notes` which outputs · `-o` output path · `--brand` · `--style` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `-w`/`--watch` rebuild on every save · `--wordcount ib\|all` · `--allow-missing-glyphs` |
+| `mdbrand build <doc.md>` | Build the PDF. `--to pdf,docx,notes` which outputs · `-o` output path · `--brand` · `--style` · `--engine latex\|typst` · `--work <dir>` keep the LaTeX and log · `-q` only the result line · `-w`/`--watch` rebuild on every save · `--wordcount ib\|all` · `--allow-missing-glyphs` |
 | `mdbrand example [name] [dir]` | List the worked examples, or write one out to start from. `--show` prints it instead |
 | `mdbrand new <doc.md>` | Scaffold a bare document that already builds. `--title` · `--subtitle` · `--author` · `--brand` · `--style` · `--toc` |
 | `mdbrand diagrams <doc.md>` | Figure sizes and smallest label size, without building, with the document's brand and style (a slide's frame is not a page). `--brand` · `--style` override them · `--out <dir>` also keeps the rendered PDFs |
@@ -309,6 +314,7 @@ csl: apa.csl             # optional, alongside a bibliography
 mdbrand:
   brand: amplia
   style: report          # report | note | letter | slides | thesis
+  engine: latex          # optional: typst typesets the PDF instead; see Typst below
   reference: "Oferta AS-2164-26"
   confidential: "Confidencial"   # every style; see below for where it prints
   short_title: "Oferta Acme"     # optional; the running header, when the title is too long for it
@@ -1195,6 +1201,33 @@ arquitectura.d2               37.7 × 62.8   mm   text 12.0 pt
 latencia.vl.json             126.7 × 60.2   mm   text 12.0 pt
 ```
 
+## Typst
+
+XeLaTeX typesets every PDF unless a document says otherwise. `engine: typst`
+under `mdbrand:` — or `--engine typst`, or `engine: typst` in the
+configuration — hands the PDF and a deck's speaker notes to
+[Typst](https://typst.app) instead. Every style is there: report, note,
+letter, slides and thesis, with the same bundle, the same sized figures and
+data, and the same rule that a defect stops the build by name. Typst writes
+no log that would name one, so the template measures what XeLaTeX's log used
+to witness — a slide that does not fit, a block that cannot be kept — and
+stops; the PDF is then read back for faces nobody
+chose, a text layer that copies wrong, headings that never printed, lines
+past the measure and pictures under their resolution.
+
+What it buys: a build in about half the time, and a 56 MB program where TeX
+Live is 2 GB. What changes for the author:
+
+- Raw LaTeX in the Markdown (`\newpage`, `\textcolor{…}`) stops the build:
+  Typst cannot set it. A cross-reference is `[@fig:x]`, `[@tbl:x]` or
+  `[@sec:x]` on a `{#fig:x}` label, in any style.
+- Only the bundle's faces are used, never the machine's. Code is set in
+  DejaVu Sans Mono; the built-in bundle's body falls back to Libertinus Serif.
+- The page is close to XeLaTeX's, not the same: page breaks fall elsewhere.
+
+The `.docx`, `.pptx` and `.epub` have no typesetter to choose and are written
+the same way under either engine.
+
 ## Brand bundles
 
 A bundle is a directory. It lives **outside** any code repository, because a
@@ -1335,6 +1368,7 @@ mdbrand config init     # write a starter config file
 brands_dir: /home/you/Dropbox/3-Resources/brands
 brand: amplia
 style: report
+engine: latex   # who typesets the PDF when a document does not say: latex or typst
 wordcount: ib   # the {{words}} criterion when a document sets none
 formats: [pdf]  # what to write when neither --to nor the document says
 ```

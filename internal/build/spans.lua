@@ -51,7 +51,7 @@ end
 -- code, a code block or a link with {color=red} printed in black, exit 0.
 function Header(el)
   check(el)
-  if FORMAT == "latex" then heading(el) end
+  if FORMAT == "latex" or FORMAT == "typst" then heading(el) end
 end
 function Code(el) check(el) end
 
@@ -133,10 +133,10 @@ local function colour(el)
   local found
   for _, c in ipairs(el.classes) do
     if c == "accent" then
-      found = found or { report = "MDBRAND-ACCENT", style = "Accent", tex = "\\textcolor{brandPrimary}{", mark = "\u{E000}" }
+      found = found or { report = "MDBRAND-ACCENT", style = "Accent", tex = "\\textcolor{brandPrimary}{", mark = "\u{E000}", typ = "brand-accent" }
     elseif named[c] then
       found = found or { report = "MDBRAND-NAMED " .. c, style = "Colour-" .. c,
-        tex = "\\textcolor[HTML]{" .. named[c].hex .. "}{", mark = named[c].mark }
+        tex = "\\textcolor[HTML]{" .. named[c].hex .. "}{", mark = named[c].mark, typ = 'rgb("#' .. named[c].hex .. '")' }
     else
       io.stderr:write("MDBRAND-CLASS " .. c .. "\t" .. pandoc.utils.stringify(el):gsub("%s+", " "):sub(1, 50) .. "\n")
     end
@@ -166,6 +166,12 @@ function Span(el)
   -- The stylesheet colours the class.
   if epub then
     return el
+  end
+  if FORMAT == "typst" then
+    local out = pandoc.List({ pandoc.RawInline("typst", "#text(fill: " .. c.typ .. ")[") })
+    out:extend(el.content)
+    out:insert(pandoc.RawInline("typst", "]"))
+    return out
   end
   local out = pandoc.List({ pandoc.RawInline("latex", c.tex) })
   out:extend(el.content)
@@ -257,6 +263,12 @@ local function keep(el)
     out:insert(pandoc.RawBlock("openxml", '<w:bookmarkStart w:id="' .. id .. '" w:name="_mdbrandKeep' .. keeps .. '"/>'))
     out:extend(el.content)
     out:insert(pandoc.RawBlock("openxml", '<w:bookmarkEnd w:id="' .. id .. '"/>'))
+    return out
+  end
+  if FORMAT == "typst" then -- the template's mdbrand-keep measures it
+    out:insert(pandoc.RawBlock("typst", "#mdbrand-keep(" .. string.format("%q", name) .. ")[ /* mdbrandKeepStart */"))
+    out:extend(el.content)
+    out:insert(pandoc.RawBlock("typst", "]"))
     return out
   end
   if keeps == 1 then
@@ -371,7 +383,7 @@ end
 local function rawHTML(el)
   -- A .docx has no LaTeX: \newpage, \vspace or a \textcolor of the author's
   -- went missing from it without a word. Reported by command for a warning.
-  if (FORMAT == "docx" or epub) and (el.format == "latex" or el.format == "tex") then
+  if (FORMAT == "docx" or FORMAT == "typst" or epub) and (el.format == "latex" or el.format == "tex") then
     local cmd = el.text:match("\\[%a@]+") or el.text:sub(1, 30)
     io.stderr:write("MDBRAND-RAWTEX " .. cmd .. "\n")
     return nil

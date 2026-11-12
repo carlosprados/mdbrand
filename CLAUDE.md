@@ -61,7 +61,8 @@ internal/pptx/           reference.pptx from the brand, repairs over pandoc's
 internal/build/          the pipeline: prepare.go is what every output format
                          shares (brand, data, words, sized figures); pdf.go is
                          the PDF's own, and owns the xelatex run and its log;
-                         docx.go is the .docx's, pptx.go and epub.go theirs
+                         docx.go is the .docx's, pptx.go and epub.go theirs;
+                         typst*.go and typst.lua are engine typst's PDF
 internal/run/            external commands, with their output on failure
 internal/exit/           exit statuses: 1 defect, 2 usage, 3 environment
 internal/contract/       the golden check behind testdata/contract/
@@ -88,8 +89,9 @@ only with the reason written beside it.
 
 Do not relax one without understanding what it cost.
 
-1. **XeLaTeX, always.** pdflatex cannot take the Unicode these documents carry.
-   Not a flag, not configurable.
+1. **XeLaTeX, never pdflatex.** pdflatex cannot take the Unicode these
+   documents carry. XeLaTeX is the default engine; Typst is the only other one
+   (invariant 28), and no third is added for a knob's sake.
 2. **mdbrand runs xelatex itself**, rather than pandoc's `--pdf-engine`, because
    pandoc discards the engine's log and that log is the only place a missing
    glyph is reported. A font without `☐` prints *nothing*.
@@ -487,6 +489,25 @@ Do not relax one without understanding what it cost.
     and an .epub's numbers are not links.
     → `internal/build/thesis_test.go`, `internal/brand/thesis_test.go`,
     `testdata/thesis.md`, `traps/thesis-*.md`.
+
+28. **Typst is a second engine, chosen per document, and held to the
+    first's checks.** `engine: typst` (flag > front matter > configuration,
+    default latex) typesets the PDF and the notes; nothing on XeLaTeX's path
+    moves by a byte for it, and spans.lua's Typst branches are reached only
+    when `FORMAT == "typst"`. Typst is silent where XeLaTeX's log spoke: a
+    missing glyph borrowed a system face, a face without italic printed
+    upright, code ran off the margin, all at exit 0. So Typst sees only the
+    bundle's faces (a private font directory, `--ignore-system-fonts`), the
+    glyphs are checked per role before compiling, a fallback that lacks a
+    style the text asks for stops, the template measures slides, kept blocks
+    and code and panics with an `MDBRAND-` message the build names, and the
+    PDF is read back — pdffonts for a face nobody chose, the text layer, the
+    headings, the measure, the pictures' resolution. Raw LaTeX stops the
+    build rather than vanish. Its contents list as deep as pandoc's
+    toc-depth, so the headings check counts the same entries on both.
+    → `internal/build/typst_fonts_test.go`, and `MDBRAND_ENGINE=typst just
+    torture`, whose remaining failures are checks that grep XeLaTeX's own
+    artefacts (the .tex, the log) and wording.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
