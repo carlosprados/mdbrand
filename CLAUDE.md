@@ -259,7 +259,13 @@ Do not relax one without understanding what it cost.
     `\babelfont`, so a `\setmainfont` of our own is undone — and on the
     display faces. The PDF is read back with pdftotext, and a private-use
     character the source does not hold stops the build.
-    → `internal/build/build_test.go`, the brackets check in `testdata/torture.md`.
+    The same read finds every heading: a table in a kept block held the
+    page as a float, and a section, its heading and its table never printed,
+    exit 0. spans.lua reports each heading's text; folded to letters and
+    digits on both sides, each must appear as often as the document prints
+    it, twice when it is in the contents, or the build stops naming it.
+    → `internal/build/build_test.go`, `internal/build/headings_test.go`,
+    the brackets check in `testdata/torture.md`.
 
 17. **A colour pandoc would drop is refused.** `color=`, `colour=`,
     `style=`, `bgcolor=` and `background=`, in any case, vanish on both
