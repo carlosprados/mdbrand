@@ -2,6 +2,7 @@ package build
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"math"
 	"os"
@@ -178,7 +179,13 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 			return err
 		}
 	}
-	if err := checkTextLayer(work, stem+".pdf", source, rep); err != nil {
+	// pandoc's toc-depth is 3 unless the document says; a thesis writes its
+	// own contents, and without a count of them its headings are sought once.
+	tocDepth := 0
+	if d.Meta.HasTOC() && p.style != tex.Thesis {
+		tocDepth = cmp.Or(d.Meta.TOCDepth, 3)
+	}
+	if err := checkTextLayer(work, stem+".pdf", source, reportedHeadings(pandocOut), tocDepth, rep); err != nil {
 		return err
 	}
 	if err := checkResolution(work, stem+".pdf", p.pictures(), rep); err != nil {

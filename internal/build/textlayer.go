@@ -17,8 +17,10 @@ import (
 // ToUnicode table, and copy-paste, search and plagiarism checkers read the
 // code points. Nothing in the log says so; only the text layer does.
 //
+// It also finds every heading in the text, as lostHeadings says why.
+//
 // Without pdftotext the check cannot run, and the reader hears that.
-func checkTextLayer(work, pdf, source string, rep *Report) error {
+func checkTextLayer(work, pdf, source string, heads []printedHeading, tocDepth int, rep *Report) error {
 	if !run.Have("pdftotext") {
 		rep.Warnings = append(rep.Warnings,
 			"pdftotext is not installed, so the PDF's text layer was not checked for unreadable characters (mdbrand doctor)")
@@ -27,6 +29,9 @@ func checkTextLayer(work, pdf, source string, rep *Report) error {
 	out, err := run.Stdout(work, "pdftotext", "-enc", "UTF-8", pdf, "-")
 	if err != nil {
 		return err
+	}
+	if lost := lostHeadings(string(out), heads, tocDepth); len(lost) > 0 {
+		return lostHeadingsError(lost)
 	}
 	bad := privateUse(string(out), source)
 	if len(bad) == 0 {

@@ -28,9 +28,31 @@ local function check(el)
   end
 end
 
+-- Every heading of a page is reported as MDBRAND-HEADING, level, whether it
+-- is unlisted, and its text, so the build can find it in the PDF's text: a
+-- table in a kept block once held the page as a float, and a section, its
+-- heading and the table never printed, exit 0. One whose printed words are
+-- not its source's (a formula, a citation, raw LaTeX) is not reported.
+local function heading(el)
+  local skip = false
+  local plain = el:walk({
+    Math = function() skip = true end,
+    Cite = function() skip = true end,
+    RawInline = function() skip = true end,
+    Note = function() return {} end,
+  })
+  if skip then return end
+  local text = pandoc.utils.stringify(plain):gsub("%s+", " ")
+  local listed = el.classes:includes("unlisted") and "unlisted" or "listed"
+  io.stderr:write("MDBRAND-HEADING " .. el.level .. " " .. listed .. "\t" .. text .. "\n")
+end
+
 -- Any element that takes attributes drops these alike: a heading, inline
 -- code, a code block or a link with {color=red} printed in black, exit 0.
-function Header(el) check(el) end
+function Header(el)
+  check(el)
+  if FORMAT == "latex" then heading(el) end
+end
 function Code(el) check(el) end
 
 -- On an e-reader a code line wider than the screen wraps: each block's
