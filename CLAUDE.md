@@ -394,8 +394,14 @@ Do not relax one without understanding what it cost.
     default) lines and the heading's own three, before every \section to
     \subsubsection, because LaTeX alone kept only two lines and a heading
     with a one-line paragraph sat at the foot with it.
+    A table in a kept block left longtable's end-of-table \penalty-30000 in
+    the box; unpacked, LaTeX's output routine took it for a float and held
+    the page with no goal — the section before the block and the table never
+    printed, and the next figure came out before its heading, exit 0. Inside
+    the box that penalty is +10000.
     → `internal/build/build_test.go`, `internal/docx/docx_test.go`,
-    `internal/tex/tex_test.go`, `testdata/keep.md`, `testdata/headings.md`,
+    `internal/tex/tex_test.go`, `testdata/keep.md`, `testdata/keep-table.md`,
+    `testdata/headings.md`,
     `traps/keep-*.md`.
 
 25. **A `.pptx` is laid out by the reader, so what can be measured is set

@@ -354,6 +354,31 @@ if [ $status -eq 0 ]; then
 	[ "$(grep -o '<w:keepNext/>' <<<"$xml" | wc -l)" -eq 72 ] && ok "the .docx keeps each card's paragraphs with the next" || bad "the .docx does not keep the cards together"
 fi
 
+# A table in a kept block left longtable's end penalty in the box, and on the
+# page LaTeX's output routine took it for a float: the text before the block
+# and the table were lost, and the next figure printed before its heading.
+echo
+echo "testdata/keep-table.md — a kept table, then a figure in a later section"
+out="$("$bin" build "$root/testdata/keep-table.md" -o "$work/keep-table.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	text="$(pdftotext "$work/keep-table.pdf" -)"
+	has -F "Before the table" <<<"$text" && has -F "tool5" <<<"$text" &&
+		ok "the section before the block and the table print" || bad "text before a kept table is missing from the PDF"
+	pages="$(pdfinfo "$work/keep-table.pdf" | awk '/^Pages/ {print $2}')"
+	page_of() {
+		for p in $(seq 1 "$pages"); do
+			pdftotext -f "$p" -l "$p" "$work/keep-table.pdf" - | has -F "$1" && { echo "$p"; return; }
+		done
+	}
+	head="$(page_of "HEADING-BEFORE-FIGURE")" fig="$(page_of "TALL-FIGURE")"
+	[ -n "$head" ] && [ -n "$fig" ] && [ "$fig" -ge "$head" ] &&
+		ok "the figure follows its heading" || bad "the figure (page $fig) prints before its heading (page $head)"
+fi
+
 # Named colours: a table that sorts its rows into kinds wanted more than the
 # accent. Each prints in its colour in every output, set where pandoc would
 # otherwise drop it, and none reaches the preamble.

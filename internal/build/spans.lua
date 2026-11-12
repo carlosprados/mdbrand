@@ -169,12 +169,18 @@ end
 -- height is reserved, as needspace does, and the box is unpacked so its notes
 -- still reach the foot of the page. A block taller than a page is reported to
 -- the log by number, and each block to stderr by number and name, so the
--- build can stop naming it. The macros are written before the first block,
+-- build can stop naming it. A table ends with longtable's \penalty-30000,
+-- which its own output routine takes; unpacked onto the page, it reached
+-- LaTeX's, which read it as a float and held the page with no goal: the
+-- section before the block and the table vanished, and the next figure
+-- printed before its heading, exit 0. Inside the box it is +10000, no break.
+-- The macros are written before the first block,
 -- and only then: a document without one keeps its .tex byte for byte.
 local keepMacros = [[
 \newsavebox\mdbrandKeepBox
 \newdimen\mdbrandKeepHt
-\newcommand\mdbrandKeepStart{\par\setbox\mdbrandKeepBox\vbox\bgroup}
+\newcommand\mdbrandKeepStart{\par\setbox\mdbrandKeepBox\vbox\bgroup
+  \expandafter\def\csname LT@end@pen\endcsname{-10000}}
 \newcommand\mdbrandKeepEnd[1]{\par\egroup
   \mdbrandKeepHt=\dimexpr\ht\mdbrandKeepBox+\dp\mdbrandKeepBox\relax
   \ifdim\mdbrandKeepHt>\textheight
