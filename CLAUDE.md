@@ -517,6 +517,9 @@ Do not relax one without understanding what it cost.
     `fontsize: 12pt` XeLaTeX honoured came out five pages short, exit 0:
     fontsize is honoured, and a variable only XeLaTeX's template reads
     (monofont, indent, documentclass…) stops the build by name.
+    Typst numbers a thesis itself, so pandoc-crossref is required only of
+    an output that takes its numbers from it: XeLaTeX's PDF, the .docx, the
+    .epub.
     → `testdata/fontsize.md`, `traps/typst-latex-var.md`.
     → `internal/build/typst_fonts_test.go`, and `MDBRAND_ENGINE=typst just
     torture`, which CI's document-typst job runs with its own pandoc. A

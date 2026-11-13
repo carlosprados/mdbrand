@@ -671,10 +671,13 @@ fi
 
 # pandoc-crossref is a filter on pandoc's own data: one built for another
 # pandoc must stop the build as the environment's fault, naming the version.
+# Under engine typst only the .docx and the .epub take their numbers from it.
 mkdir -p "$work/stub-crossref"
 printf '#!/bin/sh\necho "pandoc-crossref v0.3.0 built with Pandoc v3.0.1"\n' >"$work/stub-crossref/pandoc-crossref"
 chmod +x "$work/stub-crossref/pandoc-crossref"
-out="$(PATH="$work/stub-crossref:$PATH" "$bin" build "$root/testdata/thesis.md" --brands-dir "$root/testdata/brands" -o "$work/stub.pdf" 2>&1)"
+stubto=pdf
+latex || stubto=docx
+out="$(PATH="$work/stub-crossref:$PATH" "$bin" build "$root/testdata/thesis.md" --brands-dir "$root/testdata/brands" --to "$stubto" -o "$work/stub.$stubto" 2>&1)"
 status=$?
 [ $status -eq 3 ] && printf '%s\n' "$out" | has -F "pandoc-crossref was built for pandoc 3.0.1" \
 	&& ok "a pandoc-crossref built for another pandoc stops the build, exit 3" \
@@ -1197,6 +1200,22 @@ for t in "${traps[@]}"; do
 		printf '%s\n' "$out" | sed 's/^/        /'
 	fi
 done
+
+# Typst numbers a thesis itself: its PDF builds where pandoc-crossref is
+# built for another pandoc, which would stop XeLaTeX's (exit 3).
+if ! latex; then
+	echo
+	echo "testdata/thesis.md — engine typst needs no pandoc-crossref for the PDF"
+	mkdir -p "$work/fakexr"
+	printf '#!/bin/sh\necho "pandoc-crossref v0 built with Pandoc v1.0"\n' >"$work/fakexr/pandoc-crossref"
+	chmod +x "$work/fakexr/pandoc-crossref"
+	if (cd "$root/testdata" && PATH="$work/fakexr:$PATH" "$bin" build thesis.md --brands-dir "$root/testdata/brands" \
+		-o "$work/thesis-noxr.pdf" >/dev/null 2>&1); then
+		ok "the thesis's PDF builds beside a mismatched pandoc-crossref"
+	else
+		bad "the thesis's PDF still asks for pandoc-crossref under engine typst"
+	fi
+fi
 
 # A format that fails publishes nothing, not even the formats before it: a new
 # PDF beside the last build's .docx is a pair that no longer matches.

@@ -141,7 +141,8 @@ Under 45 mm of room the build stops — shorten the title or subtitle. The
   in the README. Chapters in files of their own (`mdbrand.thesis.chapters:
   capitulos`), one `#` each. Start from `mdbrand example tesis`; without a
   bundle, `mdbrand.thesis.university` and `centre` name the school. Cross-references via pandoc-crossref (required,
-  built for the running pandoc): `{#fig:x}` on a figure, `[@fig:x]` prints
+  built for the running pandoc — except for the PDF under `engine: typst`,
+  which numbers them itself): `{#fig:x}` on a figure, `[@fig:x]` prints
   "figura 2.1"; `capítulo [-@sec:x]` for a bare number. `--to pdf,docx` adds
   the director's Word copy (title block, crossref's numbers, page numbers are
   Word's — quote the PDF's); `--to epub` the e-reader's, without the fixed pages.
