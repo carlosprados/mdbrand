@@ -158,7 +158,10 @@ stops the build; without it the build warns that the check did not run.
 For `engine: typst` only: **[typst](https://github.com/typst/typst/releases)**,
 which takes XeLaTeX's place and needs none of the LaTeX packages
 (`cargo install --locked typst-cli`, `brew install typst`, or a binary from its
-releases).
+releases), and **pandoc 3.7 or later**: an older pandoc writes Typst that Typst
+refuses or reads wrong, so the build stops (exit 3) and says so. Ubuntu 24.04's
+apt pandoc is 3.1.3; take a `.deb` from
+[pandoc's releases](https://github.com/jgm/pandoc/releases).
 
 For `--to epub` only: **[epubcheck](https://www.w3.org/publishing/epubcheck/)**,
 which validates every package (`apt install epubcheck`, `brew install

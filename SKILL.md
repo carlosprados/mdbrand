@@ -514,7 +514,8 @@ install command and the project's page.
   [vega-cli](https://github.com/vega/vega/tree/main/packages/vega-cli) and
   vega-lite for charts — 6.4.0 or later in a decimal-comma language.
 - `engine: typst` only: [typst](https://github.com/typst/typst/releases)
-  in place of XeLaTeX (`cargo install --locked typst-cli`, `brew install typst`).
+  in place of XeLaTeX (`cargo install --locked typst-cli`, `brew install typst`),
+  and pandoc 3.7 or later — an older one stops the build (exit 3).
 - Recommended: `pdftotext` from [poppler](https://poppler.freedesktop.org/),
   which reads each PDF back to check its text layer.
 - Fonts: the bundle's body face, found through fontconfig. A named bundle whose

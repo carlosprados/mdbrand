@@ -374,7 +374,7 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 	}
 	args = append(args, linkVars...)
 
-	args, err = bodyFontArgs(b, rep, args)
+	args, err = bodyFontArgs(b, rep, args, "Latin Modern")
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +450,7 @@ func slideArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 		"-V", "aspectratio=169",
 	}
 	args = append(args, linkVars...)
-	args, err = bodyFontArgs(b, rep, args)
+	args, err = bodyFontArgs(b, rep, args, "Latin Modern")
 	if err != nil {
 		return nil, err
 	}
@@ -464,7 +464,8 @@ func slideArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 // bodyFontArgs adds the body font, if the machine can actually supply it. An
 // absent family dies inside fontspec with an error naming XeLaTeX's font
 // machinery and not the bundle, so it is settled here instead.
-func bodyFontArgs(b *brand.Brand, rep *Report, args []string) ([]string, error) {
+// fallback names the face the engine sets the built-in bundle in without it.
+func bodyFontArgs(b *brand.Brand, rep *Report, args []string, fallback string) ([]string, error) {
 	switch {
 	case b.BodyFontInstalled():
 		// mainfontoptions, not a \setmainfont of our own: pandoc's template
@@ -478,7 +479,7 @@ func bodyFontArgs(b *brand.Brand, rep *Report, args []string) ([]string, error) 
 		// that is the whole reason it exists — and it carries no identity that
 		// a substituted face would betray.
 		rep.Warnings = append(rep.Warnings, fmt.Sprintf(
-			"%s is not installed; the default bundle set this document in Latin Modern instead", b.Fonts.Body))
+			"%s is not installed; the default bundle set this document in %s instead", b.Fonts.Body, fallback))
 	default:
 		return nil, exit.AsEnvironment(fmt.Errorf(`the %s bundle sets its body type in %q, and fontconfig cannot find it.
 The document would not be the one the bundle describes, so this stops here

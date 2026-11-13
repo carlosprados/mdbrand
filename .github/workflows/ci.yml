@@ -62,3 +62,24 @@ jobs:
         run: just torture
       - name: The bundled example, with no bundle configured
         run: just example
+
+  # The same fixtures, typeset by Typst (MDBRAND_ENGINE=typst is the
+  # configuration's engine). A check that reads XeLaTeX's own .tex or log is
+  # skipped there, saying so; every trap names its defect in Typst's measure,
+  # or prints whole where the defect does not exist.
+  document-typst:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - name: Build the binary the fixtures will use
+        run: go build -ldflags "-X github.com/carlosprados/mdbrand/cmd.Version=$(git describe --tags --always --dirty)" -o mdbrand .
+      - uses: ./.github/actions/document-toolchain
+      - uses: ./.github/actions/typst-toolchain
+      - name: Fixtures, engine typst
+        run: MDBRAND_ENGINE=typst just torture

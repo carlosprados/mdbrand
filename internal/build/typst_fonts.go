@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/exit"
@@ -228,15 +229,75 @@ func parseTypstFonts(out string) map[string]typstVariant {
 	return seen
 }
 
+// typstOwnCharset is the part of text's characters that a face Typst carries
+// inside itself can set. fontconfig cannot say: without Inter, the built-in
+// bundle's body is Libertinus Serif, and ☐ came out of the code face, exit 0.
+// So Typst is asked, one character to a page, and pdffonts reads which face
+// each page used.
+func typstOwnCharset(f typstFaces, family, text string) (brand.Charset, error) {
+	cs := brand.Charset{{0x20, 0x7e}}
+	var runes []rune
+	seen := map[rune]bool{}
+	for _, r := range text {
+		if r >= 0x80 && !seen[r] && !unicode.IsSpace(r) && !unicode.IsControl(r) {
+			seen[r] = true
+			runes = append(runes, r)
+		}
+	}
+	if len(runes) == 0 {
+		return cs, nil
+	}
+	dir, err := os.MkdirTemp("", "mdbrand-probe-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+	var src strings.Builder
+	fmt.Fprintf(&src, "#set page(width: 20mm, height: 20mm, margin: 1mm)\n#set text(font: %q)\n", family)
+	for i, r := range runes {
+		if i > 0 {
+			src.WriteString("#pagebreak()\n")
+		}
+		fmt.Fprintf(&src, "#str.from-unicode(%d)\n", r)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "probe.typ"), []byte(src.String()), 0o644); err != nil {
+		return nil, err
+	}
+	if _, err := run.Cmd(dir, "typst", "compile", "--ignore-system-fonts", "--font-path", f.Dir, "probe.typ", "probe.pdf"); err != nil {
+		return nil, err
+	}
+	face := strings.ReplaceAll(family, " ", "")
+	for i, r := range runes {
+		page := strconv.Itoa(i + 1)
+		out, err := run.Stdout(dir, "pdffonts", "-f", page, "-l", page, "probe.pdf")
+		if err != nil {
+			return nil, err
+		}
+		if strings.Contains(string(out), face) {
+			cs = append(cs, [2]rune{r, r})
+		}
+	}
+	return cs, nil
+}
+
 // typstGlyphs is Typst's missing-glyph check, made before it runs. Typst says
 // nothing of a glyph its faces lack: it draws it from any face it has —
 // ⭐ came out of its math face and ☐ out of its code face, exit 0 — so the
 // faces are compared with the text first, each with the text it sets.
 func typstGlyphs(f typstFaces, body string, display, plain []string, allow bool) error {
-	cover := func(families ...string) (brand.Charset, bool) {
+	cover := func(text string, families ...string) (brand.Charset, bool) {
 		var all brand.Charset
 		for _, fam := range families {
-			if fam == "" || fam == typstSerif {
+			if fam == "" {
+				continue
+			}
+			if fam == typstSerif {
+				// Typst's own face: fontconfig has never seen it.
+				c, err := typstOwnCharset(f, fam, text)
+				if err != nil {
+					return nil, false
+				}
+				all = append(all, c...)
 				continue
 			}
 			c, ok := brand.FontCharset(fam)
@@ -267,7 +328,7 @@ func typstGlyphs(f typstFaces, body string, display, plain []string, allow bool)
 		{"display", strings.Join(display, "\n"), []string{f.Display, f.DisplayBold, f.Body, f.Fallback}},
 		{"code", code.String(), []string{typstMono}},
 	} {
-		cov, ok := cover(set.families...)
+		cov, ok := cover(set.text, set.families...)
 		if !ok || strings.TrimSpace(set.text) == "" {
 			continue
 		}

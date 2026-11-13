@@ -206,9 +206,14 @@ at this length the number is pushed off the slide. Set mdbrand.short_title to
 a shorter form, or shorten mdbrand.confidential — the title slide has room
 for both in full`, over)
 	case "NOTE-LONG":
-		return fmt.Errorf(`1 speaker note(s) too long for the page beside their slide:
-    %q
-  Cut it to what you need to say, or split the slide`, arg)
+		parts := strings.SplitN(arg, "|", 3)
+		if len(parts) < 3 {
+			return nil
+		}
+		return fmt.Errorf(`1 speaker note(s) run past the bottom of their page:
+    %-40s %3s line(s) too long
+  A note has room for %s lines beside its slide. Cut it to what you need to
+  say, or split the slide and its note with another ## heading`, strconv.Quote(parts[2]), parts[0], parts[1])
 	}
 	return nil
 }
@@ -291,7 +296,13 @@ func renderTypstNotes(p *prepared, out string) error {
     box(stroke: 0.3pt + luma(160), image(%q, page: page-no, width: 100mm)),
     layout(size => {
       let h = measure(block(width: size.width, body)).height + 12pt
-      if h > half - 4mm { panic("MDBRAND-NOTE-LONG " + name) }
+      if h > half - 4mm {
+        // In lines, as the XeLaTeX notes say it: a writer acts on lines.
+        let pitch = measure(block(width: size.width)[x \ x]).height - measure(block(width: size.width)[x]).height
+        let over = calc.ceil((h - (half - 4mm)) / pitch)
+        let room = calc.floor((half - 4mm - 12pt) / pitch)
+        panic("MDBRAND-NOTE-LONG " + str(over) + "|" + str(room) + "|" + name)
+      }
       [#text(size: 8pt, fill: luma(90))[#n / #total] \ #body]
     }))
 ]

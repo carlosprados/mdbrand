@@ -57,3 +57,16 @@ func TestFallbackStyleLosses(t *testing.T) {
 		t.Errorf("fallback with both styles: %q, want nothing", got)
 	}
 }
+
+// The oldest pandoc the Typst engine accepts: 3.6 wrote citations Typst 0.15
+// refuses, and an unread minor ("3.10") must not read as smaller than 3.7.
+func TestVersionAtLeast(t *testing.T) {
+	for v, want := range map[string]bool{
+		"3.7": true, "3.7.0.2": true, "3.8.3": true, "3.10": true, "4.0": true,
+		"3.6.4": false, "3.1.3": false, "3": false, "2.19.2": false,
+	} {
+		if got := versionAtLeast(v, typstPandoc); got != want {
+			t.Errorf("versionAtLeast(%q) = %v, want %v", v, got, want)
+		}
+	}
+}
