@@ -129,13 +129,16 @@ func thesisYear(date string) string { return yearRe.FindString(date) }
 
 // readThesis reads a thesis's parts, before any figure is rendered: the
 // chapters and appendices into the body, so every check after sees one
-// document, and the front parts aside.
-func (p *prepared) readThesis(inputs *[]string) error {
+// document, and the front parts aside. pandoc-crossref is checked only when
+// an output takes its numbers from it.
+func (p *prepared) readThesis(inputs *[]string, crossref bool) error {
 	if p.style != tex.Thesis {
 		return nil
 	}
-	if err := crossrefReady(); err != nil {
-		return err
+	if crossref {
+		if err := crossrefReady(); err != nil {
+			return err
+		}
 	}
 	if err := p.assembleChapters(inputs); err != nil {
 		return err

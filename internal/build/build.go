@@ -203,7 +203,7 @@ build it with --to pdf, or as a deck with --style slides`, p.style)
 	if formats, err = coverFirst(p, formats); err != nil {
 		return nil, err
 	}
-	if err := p.readThesis(inputs); err != nil {
+	if err := p.readThesis(inputs, takesCrossref(formats, p.engine)); err != nil {
 		return nil, err
 	}
 	if err := p.fill(inputs); err != nil {
@@ -309,6 +309,15 @@ func pickFormats(flag, frontMatter, config []string) ([]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// takesCrossref reports whether an output takes its numbers from
+// pandoc-crossref: Typst numbers and refers by itself, so only XeLaTeX's
+// PDF, the .docx and the .epub do.
+func takesCrossref(formats []string, engine string) bool {
+	return slices.ContainsFunc(formats, func(f string) bool {
+		return f == "docx" || f == "epub" || (typesets(f) && engine == EngineLaTeX)
+	})
 }
 
 // typesets reports whether a format is typeset by the engine.

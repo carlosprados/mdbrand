@@ -1231,6 +1231,9 @@ Live is 2 GB. What changes for the author:
 - Only the bundle's faces are used, never the machine's. Code is set in
   DejaVu Sans Mono; the built-in bundle's body falls back to Libertinus Serif.
 - The page is close to XeLaTeX's, not the same: page breaks fall elsewhere.
+- A thesis's PDF needs no pandoc-crossref: Typst numbers figures, tables,
+  equations and chapters itself. Its `.docx` and `.epub` still take their
+  numbers from pandoc-crossref.
 
 The `.docx`, `.pptx` and `.epub` have no typesetter to choose and are written
 the same way under either engine.
