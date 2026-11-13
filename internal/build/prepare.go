@@ -27,10 +27,12 @@ type prepared struct {
 	style string
 	// engine typesets the PDF and the notes: EngineLaTeX or EngineTypst.
 	engine string
-	work   string
-	keep   bool
-	store  *data.Store
-	rep    *Report
+	// pdfStandard is what the PDF must conform to; nil for none.
+	pdfStandard []string
+	work        string
+	keep        bool
+	store       *data.Store
+	rep         *Report
 	// body still holds each figure's placeholder: the figure is sized here, but
 	// how it is referenced belongs to the output format.
 	body    string
@@ -111,6 +113,10 @@ it, or open an issue for the knob you need:
 	if err != nil {
 		return nil, err
 	}
+	std, err := pickPDFStandards(d, b, engine, style)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := checkThesisShape(d, b, style); err != nil {
 		return nil, err
@@ -128,7 +134,7 @@ it, or open an issue for the knob you need:
 		return nil, err
 	}
 	return &prepared{
-		o: o, d: d, b: b, style: style, engine: engine, work: work, keep: keep, cover: cover,
+		o: o, d: d, b: b, style: style, engine: engine, pdfStandard: std, work: work, keep: keep, cover: cover,
 		rep: &Report{Brand: b.Name, Style: style, Engine: engine, WorkDir: work, Kept: keep},
 	}, nil
 }

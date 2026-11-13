@@ -2,6 +2,10 @@
 local deck = false
 -- citeproc is unset by mdbrand when the document has no bibliography.
 local citeproc = true
+-- alt is set by mdbrand when the PDF must meet a standard: every picture is
+-- then written with its description as alt text, which pandoc's writer
+-- leaves out and PDF/UA requires.
+local alt = false
 
 -- typst.lua, run by pandoc before spans.lua when the engine is typst.
 -- pandoc writes every @key as a bibliography citation; Typst numbers and
@@ -221,7 +225,48 @@ local function slideLevel(blocks)
   return level
 end
 
+-- A picture written with its alt text: a figure's is its caption, any
+-- other's the description in ![…](…). One without is reported, by file.
+local lengthUnits = { mm = true, cm = true, ["in"] = true, pt = true, em = true }
+local function typstString(t) return '"' .. t:gsub('\\', '\\\\'):gsub('"', '\\"') .. '"' end
+local function withAlt(text, inline)
+  return function(img)
+    local args = { typstString(img.src) }
+    for _, k in ipairs({ "width", "height" }) do
+      local v = img.attributes[k]
+      if v then
+        local n, u = v:match("^([%d.]+)(%a*%%?)$")
+        if not n or not (lengthUnits[u] or u == "%") then return nil end
+        table.insert(args, k .. ": " .. n .. u)
+      end
+    end
+    local a = text or pandoc.utils.stringify(img.caption)
+    a = a:gsub("%s+", " "):match("^%s*(.-)%s*$")
+    if a == "" then
+      io.stderr:write("MDBRAND-NOALT " .. img.src .. "\n")
+    else
+      table.insert(args, "alt: " .. typstString(a))
+    end
+    local call = "image(" .. table.concat(args, ", ") .. ")"
+    return pandoc.RawInline("typst", inline and "#box(" .. call .. ")" or "#" .. call)
+  end
+end
+
 function Pandoc(doc)
+  if alt and not deck then
+    doc = doc:walk({ Figure = function(f)
+      local caption = pandoc.utils.stringify(f.caption.long or f.caption)
+      f.content = f.content:walk({ Image = withAlt(caption ~= "" and caption or nil, false) })
+      return f
+    end })
+    doc = doc:walk({ Image = withAlt(nil, true), Math = function(m)
+      -- An equation is read out from its TeX, as MathJax reads it.
+      local w = pandoc.write(pandoc.Pandoc({ pandoc.Plain({ m }) }), "typst"):gsub("%s+$", "")
+      return pandoc.RawInline("typst", "#math.equation(block: " .. tostring(m.mathtype == "DisplayMath") ..
+        ", alt: " .. typstString((m.text:gsub("%s+", " "):match("^%s*(.-)%s*$"))) .. ", " .. w .. ")")
+    end })
+    return doc
+  end
   if not deck then return nil end
   local level = slideLevel(doc.blocks)
   -- Gather sections and slides, each slide's blocks and notes. Content before

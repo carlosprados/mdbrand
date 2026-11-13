@@ -1238,6 +1238,33 @@ Live is 2 GB. What changes for the author:
 The `.docx`, `.pptx` and `.epub` have no typesetter to choose and are written
 the same way under either engine.
 
+### PDF/A and PDF/UA
+
+A tender, an archive or a thesis repository may ask for PDF/A, and a public
+body for an accessible PDF/UA. Typst writes both and refuses a document that
+would not conform, so either is one line, in the document or in a bundle that
+must always meet it:
+
+```yaml
+mdbrand:
+  engine: typst
+  pdf_standard: [a-2b, ua-1]   # any of Typst's: a-1b … a-4e, ua-1, 1.4 … 2.0
+```
+
+- Figures are placed as SVGs with their text in outlines, because Typst
+  cannot embed a PDF under either standard; a PDF logo is redrawn the same
+  way. A picture the author gave as a PDF stops the build: give it as SVG,
+  PNG or JPEG.
+- PDF/UA, and PDF/A's accessible levels, read every picture out by its alt
+  text: a figure's caption, the description in `![…](…)`, the bundle's name
+  for its logo, a formula's TeX. A picture with no description stops the
+  build by file.
+- XeLaTeX cannot promise either, so a standard under `engine: latex` stops
+  the build instead of printing a PDF that only claims it.
+
+Typst checks conformance as it writes; an external validator such as
+[veraPDF](https://verapdf.org) is the second opinion a filing office may run.
+
 ## Brand bundles
 
 A bundle is a directory. It lives **outside** any code repository, because a

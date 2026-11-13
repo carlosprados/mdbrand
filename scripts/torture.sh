@@ -1089,6 +1089,9 @@ traps=(
 	"undefined-ref.md|fail@latex|\\ref{tab:costes}"
 	"undefined-ref.md|fail@typst|raw LaTeX that Typst cannot set: \\ref"
 	"typst-latex-var.md|fail@typst|sets indent, which XeLaTeX's template reads and Typst's"
+	"pdf-standard-latex.md|fail|needs engine typst: XeLaTeX cannot promise PDF/A or PDF/UA"
+	"pdf-standard-noalt.md|fail@typst|picture(s) without a description"
+	"pdf-standard-pdfpicture.md|fail@typst|a PDF picture cannot go into a PDF/A or PDF/UA document"
 	"table-row-tall.md|fail@latex|taller than a page"
 	# Typst breaks a row across pages: the defect does not exist there.
 	"table-row-tall.md|prints@typst|This row never reached the PDF."
@@ -1200,6 +1203,23 @@ for t in "${traps[@]}"; do
 		printf '%s\n' "$out" | sed 's/^/        /'
 	fi
 done
+
+# PDF/A and PDF/UA, which only Typst can promise: a figure placed as a PDF
+# broke both, and PDF/UA wants every picture and formula read out.
+if ! latex; then
+	echo
+	echo "testdata/pdf-standard.md — PDF/A-2b and PDF/UA-1, figures included"
+	out="$(cd "$root/testdata" && "$bin" build pdf-standard.md -o "$work/pdf-standard.pdf" 2>&1)"
+	status=$?
+	if [ $status -ne 0 ]; then
+		bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+	else
+		meta="$(pdfinfo -meta "$work/pdf-standard.pdf" 2>/dev/null)"
+		has -F 'pdfaid:part>2' <<<"$meta" && ok "the XMP declares PDF/A-2" || bad "no PDF/A-2 in the XMP"
+		has -F 'pdfuaid:part>1' <<<"$meta" && ok "the XMP declares PDF/UA-1" || bad "no PDF/UA-1 in the XMP"
+		pdfinfo "$work/pdf-standard.pdf" 2>/dev/null | has -E '^Tagged: +yes' && ok "the PDF is tagged" || bad "the PDF is not tagged"
+	fi
+fi
 
 # Typst numbers a thesis itself: its PDF builds where pandoc-crossref is
 # built for another pandoc, which would stop XeLaTeX's (exit 3).

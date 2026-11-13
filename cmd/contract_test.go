@@ -50,5 +50,8 @@ func TestContractCommandLine(t *testing.T) {
 	for _, e := range build.Engines {
 		lines = append(lines, "engine "+e)
 	}
+	for _, s := range build.PDFStandards {
+		lines = append(lines, "pdf_standard "+s)
+	}
 	contract.Check(t, "command-line", lines)
 }

@@ -143,15 +143,18 @@ func (r *DataRoots) UnmarshalYAML(n *yaml.Node) error {
 // Options are the mdbrand-specific keys, nested under `mdbrand:` so they never
 // collide with a pandoc variable.
 type Options struct {
-	Brand        string    `yaml:"brand"`
-	Style        string    `yaml:"style"`
-	Engine       string    `yaml:"engine"`       // the PDF's typesetter: latex (default) or typst
-	Confidential string    `yaml:"confidential"` // stamped under the cover rule
-	Reference    string    `yaml:"reference"`    // file/offer number on the cover
-	ShortTitle   string    `yaml:"short_title"`  // the running header's title, when the full one is too long
-	Cover        Cover     `yaml:"cover"`        // a picture on the report's cover, and the .epub's
-	Thesis       *Thesis   `yaml:"thesis"`       // style thesis: its three pages and front parts
-	WordCount    WordCount `yaml:"wordcount"`
+	Brand  string `yaml:"brand"`
+	Style  string `yaml:"style"`
+	Engine string `yaml:"engine"` // the PDF's typesetter: latex (default) or typst
+	// PDFStandard is what the PDF must conform to — a-2b, ua-1… — and only
+	// engine typst can promise it.
+	PDFStandard  StringList `yaml:"pdf_standard"`
+	Confidential string     `yaml:"confidential"` // stamped under the cover rule
+	Reference    string     `yaml:"reference"`    // file/offer number on the cover
+	ShortTitle   string     `yaml:"short_title"`  // the running header's title, when the full one is too long
+	Cover        Cover      `yaml:"cover"`        // a picture on the report's cover, and the .epub's
+	Thesis       *Thesis    `yaml:"thesis"`       // style thesis: its three pages and front parts
+	WordCount    WordCount  `yaml:"wordcount"`
 	// Data replaces the default data/ beside the document with these
 	// directories or files, resolved against the document.
 	Data DataRoots `yaml:"data"`
