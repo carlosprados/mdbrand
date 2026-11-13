@@ -391,6 +391,23 @@ if [ $status -eq 0 ]; then
 		ok "the figure follows its heading" || bad "the figure (page $fig) prints before its heading (page $head)"
 fi
 
+# fontsize: an IB essay must print at 12pt. Typst's template set every
+# document at 10pt whatever the front matter said, exit 0 — five pages short.
+echo
+echo "testdata/fontsize.md — the document's fontsize is the size printed"
+out="$("$bin" build "$root/testdata/fontsize.md" -o "$work/fontsize.pdf" 2>&1)"
+status=$?
+if [ $status -ne 0 ]; then
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+elif command -v mutool >/dev/null; then
+	size="$(mutool draw -F stext -o - "$work/fontsize.pdf" 1 2>/dev/null | grep -o 'size="[0-9.]*"' |
+		sort | uniq -c | sort -rn | head -1 | grep -o '[0-9.]*"' | tr -d '"')"
+	awk -v s="${size:-0}" 'BEGIN { exit !(s > 11.5 && s < 12.5) }' \
+		&& ok "the body prints at 12pt" || bad "the body prints at ${size:-no}pt, want 12pt"
+else
+	skip "mutool is not installed: the printed size is not read"
+fi
+
 # Named colours: a table that sorts its rows into kinds wanted more than the
 # accent. Each prints in its colour in every output, set where pandoc would
 # otherwise drop it, and none reaches the preamble.
@@ -1068,6 +1085,7 @@ traps=(
 	"picture-low-res.md|fail|tiny.png prints at 18 ppi on page 1"
 	"undefined-ref.md|fail@latex|\\ref{tab:costes}"
 	"undefined-ref.md|fail@typst|raw LaTeX that Typst cannot set: \\ref"
+	"typst-latex-var.md|fail@typst|sets indent, which XeLaTeX's template reads and Typst's"
 	"table-row-tall.md|fail@latex|taller than a page"
 	# Typst breaks a row across pages: the defect does not exist there.
 	"table-row-tall.md|prints@typst|This row never reached the PDF."
@@ -1096,8 +1114,9 @@ traps=(
 	"slide-figure-room.md|fail@typst|on its block — its labels stay at"
 	"slide-figure.md|fail|below the 8.5pt floor"
 	"slide-figure.md|fail|direction: right at the root"
-	"slide-wide.md|fail@latex|slide 3 \"Two columns\""
-	"slide-wide.md|fail@typst|slide 2 \"Two columns\""
+	# Slide 2 on both engines: the HTML comment above the first ## made an
+	# empty frame of its own in beamer, and this was slide 3.
+	"slide-wide.md|fail|slide 2 \"Two columns\""
 	"slide-column-figure.md|fail|It is 67×"
 	"slide-footer.md|fail|the slides' footer is"
 	"slide-cover-logo.md|fail@latex|slides.logo_width_cover: 13mm|--brand square-logo --brands-dir $root/testdata/brands"

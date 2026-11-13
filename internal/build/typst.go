@@ -25,6 +25,7 @@ import (
 	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/carlosprados/mdbrand/internal/tex"
+	"gopkg.in/yaml.v3"
 )
 
 // The engines that typeset a PDF. XeLaTeX is the default; Typst is chosen
@@ -92,6 +93,55 @@ func versionAtLeast(v string, min []int) bool {
 	return true
 }
 
+// latexOnlyVars are pandoc variables XeLaTeX's template reads from the front
+// matter and Typst's never does. Under engine typst each one would be dropped
+// in silence: a document that asked for a typeface or a class got another.
+var latexOnlyVars = []string{"mainfont", "sansfont", "monofont", "mathfont", "fontfamily",
+	"fontfamilyoptions", "CJKmainfont", "documentclass", "classoption", "indent",
+	"secnumdepth", "pagestyle", "mainfontoptions", "sansfontoptions", "monofontoptions"}
+
+// typstFontSize reads the front matter's fontsize — the one pandoc variable
+// of the kind Typst can honour — and refuses the others it would drop. A
+// thesis's size is the UPM's and a brand's; on XeLaTeX's path mdbrand sets
+// those variables itself, so the document's own are dropped there too. 10 is
+// article's default.
+func typstFontSize(front, style string) (float64, error) {
+	var m map[string]any
+	if err := yaml.Unmarshal([]byte(front), &m); err != nil {
+		return 0, err
+	}
+	var dropped []string
+	for _, k := range latexOnlyVars {
+		v, ok := m[k]
+		if !ok || v == nil || (k == "monofont" && v == typstMono) {
+			continue
+		}
+		if k == "mainfont" || ((k == "documentclass" || k == "classoption") && style == tex.Thesis) {
+			continue // mdbrand sets these on XeLaTeX's path as well
+		}
+		dropped = append(dropped, k)
+	}
+	size := 10.0
+	if v, ok := m["fontsize"]; ok && v != nil && style != tex.Thesis {
+		s := strings.TrimSpace(fmt.Sprint(v))
+		n, err := strconv.ParseFloat(strings.TrimSuffix(s, "pt"), 64)
+		switch {
+		case style == tex.Slides:
+			dropped = append(dropped, "fontsize")
+		case err != nil || !strings.HasSuffix(s, "pt") || n < 8 || n > 14:
+			return 0, fmt.Errorf("fontsize: %q: write it in points, 8pt to 14pt, as 12pt", s)
+		default:
+			size = n
+		}
+	}
+	if len(dropped) > 0 {
+		return 0, fmt.Errorf(`the front matter sets %s, which XeLaTeX's template reads and Typst's
+never does: under engine typst the document would print without it. Take it
+out, or build with --engine latex. Code is set in %s`, strings.Join(dropped, ", "), typstMono)
+	}
+	return size, nil
+}
+
 // TypstInstall is how to get the typst program, for doctor and the build.
 const TypstInstall = "cargo install --locked typst-cli (brew install typst)  ·  https://github.com/typst/typst/releases"
 
@@ -117,6 +167,9 @@ func renderTypst(p *prepared, out string, inputs *[]string) error {
 		return fmt.Errorf("the Typst engine sets no style %s", p.style)
 	}
 	deck := p.style == tex.Slides
+	if _, err := typstFontSize(d.FrontMatter, p.style); err != nil {
+		return err
+	}
 	if _, err := bodyFontArgs(b, rep, nil, typstSerif); err != nil {
 		return err
 	}
@@ -357,6 +410,7 @@ type typstData struct {
 	Cover, Credit                     string
 	Report, TOC                       bool
 	TOCDepth                          int
+	BodySize                          string
 	Letter                            bool
 	Recipient, Signature              []string
 	PlaceDate, Greeting               string
@@ -490,6 +544,11 @@ func typstTemplate(p *prepared, faces typstFaces, pages *tex.ThesisPages) ([]byt
 		return nil, err
 	}
 	td.Thesis = pages
+	size, err := typstFontSize(p.d.FrontMatter, p.style)
+	if err != nil {
+		return nil, err
+	}
+	td.BodySize = strconv.FormatFloat(size, 'f', -1, 64)
 	if pages != nil {
 		td.EN = pages.EN
 		td.Programme, td.Degree, td.Year = "["+typstEscape(pages.Programme)+"]", "["+typstEscape(pages.Degree)+"]", pages.Year
@@ -556,7 +615,10 @@ const typstTemplateSrc = `#let brand-primary = rgb("#[[.Primary]]")
 #let logo-header = [[.LogoWidthHeader]]
 
 #set document(title: [[.Title]][[if .PDFAuthor]], author: [[.PDFAuthor]][[end]])
-#set text(font: ([[.Body]],), size: 10pt, lang: [[.Lang]], fallback: true)
+// The document's fontsize, as pandoc's LaTeX template takes it; the sizes
+// below are its multiples, as article's \Large and \large are.
+#let body-size = [[.BodySize]]pt
+#set text(font: ([[.Body]],), size: body-size, lang: [[.Lang]], fallback: true)
 #set par(justify: true, leading: [[.Leading]], first-line-indent: 0pt, spacing: 1.1em)
 // Typst sets raw at 0.8em before this rule: 1.125em makes it 0.9 of the text.
 #show raw: set text(font: [[.Mono]], size: 1.125em)
@@ -567,19 +629,19 @@ const typstTemplateSrc = `#let brand-primary = rgb("#[[.Primary]]")
 // 120 columns that XeLaTeX kept on the paper ran off it.
 #show raw.where(block: true): it => layout(size => context {
   let widest(t) = calc.max(0pt, ..it.lines.map(l => measure(text(font: [[.Mono]], size: t, l.text)).width))
-  let t = (0.9, 0.8, 0.7).map(f => f * 10pt).find(t => widest(t) <= size.width)
-  if t == none { t = 0.7 * 10pt }
+  let t = (0.9, 0.8, 0.7).map(f => f * body-size).find(t => widest(t) <= size.width)
+  if t == none { t = 0.7 * body-size }
   // Set here, the size is the one printed: raw's relative sizes are spent.
   set text(size: t)
   it
 })
 #show math.equation: set text(font: "New Computer Modern Math")
 #show heading: set text(font: display-b, fill: brand-text, weight: display-bw)
-#show heading.where(level: 1): set text(size: 14pt)
-#show heading.where(level: 2): set text(size: 12pt)
+#show heading.where(level: 1): set text(size: 1.4 * body-size)
+#show heading.where(level: 2): set text(size: 1.2 * body-size)
 #show heading: set block(above: 1.6em, below: 0.9em, sticky: true)
 #show link: set text(fill: brand-link)
-#show figure.caption: set text(size: 9pt)
+#show figure.caption: set text(size: 0.9 * body-size)
 // pandoc puts every table in a figure, and a figure never breaks: a row
 // taller than the page ran through the footer. A short table that fits is
 // kept whole instead, since Typst cannot keep rows together across a break.
@@ -822,8 +884,15 @@ func typstCompileArgs(f typstFaces, stem string) []string {
 	return []string{"compile", "--root", "/", "--ignore-system-fonts", "--font-path", f.Dir, stem + ".typ", stem + ".pdf"}
 }
 
-// overhangPt is how far Typst hangs punctuation into the margin on purpose.
-const overhangPt = 3
+// overhangPt is how far Typst hangs punctuation into the margin on purpose,
+// at 10pt; the hang grows with the type, so a word is allowed overhangEm of
+// its own height where that is more. At 12pt a period hung 3.3pt.
+const (
+	overhangPt = 3
+	overhangEm = 0.35
+)
+
+var typstWordRe = regexp.MustCompile(`<word xMin="[0-9.]+" yMin="([0-9.]+)" xMax="([0-9.]+)" yMax="([0-9.]+)">([^<]*)</word>`)
 
 // pastMeasure warns of words past the text's right edge: Typst lets a line of
 // code or an unbreakable word run into the margin without a word, where
@@ -845,10 +914,12 @@ func pastMeasure(work, pdf string, b *brand.Brand, rep *Report) error {
 			continue
 		}
 		width, _ := strconv.ParseFloat(m[1], 64)
-		for _, w := range wordRe.FindAllStringSubmatch(page, -1) {
+		for _, w := range typstWordRe.FindAllStringSubmatch(page, -1) {
+			yMin, _ := strconv.ParseFloat(w[1], 64)
 			xMax, _ := strconv.ParseFloat(w[2], 64)
-			if over := xMax - (width - marginPt); over > overhangPt {
-				past = append(past, fmt.Sprintf("page %d: %q, %.0fpt", i+1, ellipsize(w[3], 40), over))
+			yMax, _ := strconv.ParseFloat(w[3], 64)
+			if over := xMax - (width - marginPt); over > max(overhangPt, overhangEm*(yMax-yMin)) {
+				past = append(past, fmt.Sprintf("page %d: %q, %.0fpt", i+1, ellipsize(w[4], 40), over))
 			}
 		}
 	}

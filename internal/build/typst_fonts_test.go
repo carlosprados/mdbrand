@@ -70,3 +70,30 @@ func TestVersionAtLeast(t *testing.T) {
 		}
 	}
 }
+
+// fontsize is honoured; a variable only XeLaTeX's template reads stops a
+// Typst build rather than be dropped. Under thesis mdbrand sets the size and
+// the class itself on both paths, so the document's are not the issue there.
+func TestTypstFontSize(t *testing.T) {
+	cases := []struct {
+		front, style string
+		size         float64
+		fails        bool
+	}{
+		{"title: x", "report", 10, false},
+		{"fontsize: 12pt", "note", 12, false},
+		{"fontsize: 11pt\nmonofont: DejaVu Sans Mono", "report", 11, false},
+		{"fontsize: 12", "report", 0, true},
+		{"fontsize: 30pt", "report", 0, true},
+		{"fontsize: 12pt", "slides", 0, true},
+		{"fontsize: 12pt\ndocumentclass: book", "thesis", 10, false},
+		{"monofont: Fira Code", "report", 0, true},
+		{"indent: true", "letter", 0, true},
+	}
+	for _, c := range cases {
+		size, err := typstFontSize(c.front, c.style)
+		if (err != nil) != c.fails || (!c.fails && size != c.size) {
+			t.Errorf("%s %q: size %v, err %v; want %v, fails %v", c.style, c.front, size, err, c.size, c.fails)
+		}
+	}
+}

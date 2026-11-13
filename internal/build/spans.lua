@@ -399,4 +399,13 @@ local function rawHTML(el)
 end
 
 RawInline = rawHTML
-RawBlock = rawHTML
+function RawBlock(el)
+  -- An HTML comment before a deck's first ## became a frame of its own in
+  -- beamer, empty but for the footer, and every slide after it was numbered
+  -- one too high, exit 0. A comment never prints: it goes before the writer
+  -- cuts the slides.
+  if FORMAT == "beamer" and el.format == "html" and el.text:match("^%s*<!%-%-.*%-%->%s*$") then
+    return {}
+  end
+  return rawHTML(el)
+end

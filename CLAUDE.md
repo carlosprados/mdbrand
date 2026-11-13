@@ -305,7 +305,9 @@ Do not relax one without understanding what it cost.
     `Overfull \vbox … at line N` points at the frame's `\end{frame}`, the
     title is read from its `\begin{frame}`, and the cover slides — which are
     not frame environments — are named as such rather than as the slide
-    before them. A title slide that a tall logo fills is told the
+    before them. An HTML comment above the first `##` became an empty frame,
+    every number after it one too high; spans.lua drops comments for beamer.
+    A title slide that a tall logo fills is told the
     `slides.logo_width_cover` that fits, measured from the mark's shape: a
     square one at the default 34 mm was 18 mm over, and the title was blamed. Figures on a slide are sized for the frame (140 × 48 mm,
     8.5–14 pt) and written with both width and height, because pandoc's
@@ -511,7 +513,11 @@ Do not relax one without understanding what it cost.
     instead, a character to a page, and pdffonts reads which face set each.
     pandoc before 3.7 cites with strings Typst 0.15 refuses, and 3.6 printed
     a citation as "a cross-reference to nothing": a Typst build stops on it
-    (exit 3).
+    (exit 3). Typst's template set every page at 10pt, so an IB essay whose
+    `fontsize: 12pt` XeLaTeX honoured came out five pages short, exit 0:
+    fontsize is honoured, and a variable only XeLaTeX's template reads
+    (monofont, indent, documentclass…) stops the build by name.
+    → `testdata/fontsize.md`, `traps/typst-latex-var.md`.
     → `internal/build/typst_fonts_test.go`, and `MDBRAND_ENGINE=typst just
     torture`, which CI's document-typst job runs with its own pandoc. A
     check that reads XeLaTeX's .tex or log is skipped there, saying so; a
