@@ -505,9 +505,18 @@ Do not relax one without understanding what it cost.
     headings, the measure, the pictures' resolution. Raw LaTeX stops the
     build rather than vanish. Its contents list as deep as pandoc's
     toc-depth, so the headings check counts the same entries on both.
+    Libertinus Serif, the built-in bundle's body where Inter is absent, is
+    Typst's own face and fontconfig has no charset for it: ☐ came out of the
+    code face, exit 0, on every machine without Inter — CI's. Typst is asked
+    instead, a character to a page, and pdffonts reads which face set each.
+    pandoc before 3.7 cites with strings Typst 0.15 refuses, and 3.6 printed
+    a citation as "a cross-reference to nothing": a Typst build stops on it
+    (exit 3).
     → `internal/build/typst_fonts_test.go`, and `MDBRAND_ENGINE=typst just
-    torture`, whose remaining failures are checks that grep XeLaTeX's own
-    artefacts (the .tex, the log) and wording.
+    torture`, which CI's document-typst job runs with its own pandoc. A
+    check that reads XeLaTeX's .tex or log is skipped there, saying so; a
+    trap marked `@typst` names the defect in Typst's measure, and one marked
+    `prints@typst` must print whole where the defect does not exist.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
@@ -573,7 +582,10 @@ gh run watch --exit-status "$(gh run list --workflow=release --limit 1 --json da
 same action versions as the release workflow so a bad bump surfaces there first.
 Both also build the fixtures, through the composite action in
 `.github/actions/document-toolchain`, which pins the d2 version because the
-fixtures assert behaviour that belongs to it.
+fixtures assert behaviour that belongs to it. A second job, document-typst,
+runs them with engine typst after `.github/actions/typst-toolchain`, which
+pins Typst and replaces Ubuntu's pandoc 3.1.3 — in that job only, since the
+XeLaTeX fixtures assert on 3.1.3 — with one whose Typst writer works.
 
 ## Keep these in step
 

@@ -25,6 +25,13 @@ trap 'rm -rf "$work"' EXIT
 
 failures=0
 ok()   { printf '  \033[32mok\033[0m    %s\n' "$1"; }
+skip() { printf '  \033[33mskip\033[0m  %s\n' "$1"; }
+
+# MDBRAND_ENGINE=typst runs the same fixtures through Typst. A check that reads
+# XeLaTeX's own artefacts — its .tex, its log — has a Typst counterpart where
+# the defect exists there, and is skipped, saying so, where it cannot.
+engine="${MDBRAND_ENGINE:-latex}"
+latex() { [ "$engine" = latex ]; }
 bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; failures=$((failures + 1)); }
 
 [ -x "$bin" ] || { echo "no binary at $bin — run just build first"; exit 1; }
@@ -45,7 +52,7 @@ fi
 # exception on purpose — CI deliberately does not install Inter, so the default
 # bundle's "works on a machine with nothing on it" path is exercised on every
 # push instead of being asserted once and assumed forever.
-warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in Latin Modern')"
+warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in ')"
 if [ -n "$warnings" ]; then
 	bad "warnings, and this document must produce none:"
 	printf '%s\n' "$warnings" | sed 's/^/        /'
@@ -53,7 +60,9 @@ else
 	ok "no warnings beyond the body-font fallback"
 fi
 
-if [ -f "$log" ]; then
+if ! latex; then
+	skip "XeLaTeX's log and .tex: Typst's own checks ran in the build"
+elif [ -f "$log" ]; then
 	n="$(grep -c 'Overfull \\hbox' "$log")"
 	[ "$n" -eq 0 ] && ok "no overfull line" || bad "$n overfull line(s) in the log"
 	n="$(grep -c 'Missing character' "$log")"
@@ -224,10 +233,13 @@ if [ $status -ne 0 ]; then
 else
 	# A generated table sized to the letter pushed "vCPU" past its column
 	# by 3pt — under the warning threshold, so the log is read directly.
-	warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in Latin Modern')"
+	warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in ')"
 	[ -z "$warnings" ] && ok "no warnings" || bad "warnings: $warnings"
-	n="$(grep -c 'Overfull \\hbox' "$work/data/data.log")"
-	[ "$n" -eq 0 ] && ok "no overfull line, tables included" || bad "$n overfull line(s) in the log"
+	# On Typst the build itself measures every line against the text width.
+	if latex; then
+		n="$(grep -c 'Overfull \\hbox' "$work/data/data.log")"
+		[ "$n" -eq 0 ] && ok "no overfull line, tables included" || bad "$n overfull line(s) in the log"
+	fi
 fi
 if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	text="$(pdftotext "$work/data.pdf" - 2>/dev/null | sed 's/\xc2\xa0/ /g' | tr -s '[:space:]' ' ')"
@@ -390,11 +402,16 @@ if [ $status -eq 0 ]; then ok "builds"; else
 	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
 fi
 if [ $status -eq 0 ]; then
-	tex="$work/named/named-colours.tex"
 	for hex in 2E7D32 C62828 6B6B6B; do
-		grep -qF "\\textcolor[HTML]{$hex}" "$tex" && ok "the PDF sets $hex" || bad "the .tex does not set $hex"
+		if latex; then
+			grep -qF "\\textcolor[HTML]{$hex}" "$work/named/named-colours.tex" && ok "the PDF sets $hex" || bad "the .tex does not set $hex"
+		else
+			grep -qF "#text(fill: rgb(\"#$hex\"))[" "$work/named/named-colours.typ" && ok "the PDF sets $hex" || bad "the .typ does not set $hex"
+		fi
 	done
-	grep -qF 'Colour-' "$work/named/preamble.tex" && bad "a named colour reached the preamble" || ok "the preamble names no named colour"
+	if latex; then
+		grep -qF 'Colour-' "$work/named/preamble.tex" && bad "a named colour reached the preamble" || ok "the preamble names no named colour"
+	fi
 	xml="$(unzip -p "$work/named.docx" word/document.xml)"
 	grep -qF '<w:rStyle w:val="Colour-ko"/><w:color w:val="C62828"/>' <<<"$xml" \
 		&& ok "the .docx colours the runs, not only the style" || bad "the .docx leaves a named colour to its style"
@@ -431,6 +448,9 @@ fi
 # exit 0. An observatorio report lost a chart and a paragraph that way.
 echo
 echo "testdata/floats-table.md — a table under a figure leaves the page whole"
+if ! latex; then
+	skip "longtable's \\@colroom, and a fixture in raw LaTeX figures: XeLaTeX's alone"
+else
 out="$("$bin" build "$root/testdata/floats-table.md" -o "$work/floats-table.pdf" 2>&1)"
 status=$?
 if [ $status -eq 0 ]; then ok "builds, no page set past the paper"; else
@@ -439,6 +459,7 @@ fi
 if [ $status -eq 0 ]; then
 	pdftotext "$work/floats-table.pdf" - | has -F "WITNESS paragraph after the fourth figure" &&
 		ok "the text after the last figure is on the page" || bad "the text after the last figure is off the page"
+fi
 fi
 
 # headings: a heading whose first paragraph is one line long sat at the foot
@@ -574,7 +595,7 @@ fi
 if [ $status -eq 0 ]; then
 	# The runner has neither Inter nor the office faces: those two warnings are
 	# the machine's, and every other is the cover's.
-	warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in Latin Modern' |
+	warnings="$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in ' |
 		grep -v "is not installed here, so the .docx's characters were not checked")"
 	[ -z "$warnings" ] && ok "no warnings" || bad "warnings: $warnings"
 	pdfimages -f 1 -l 1 -list "$work/cover.pdf" | has -E ' 1200 +1800 ' && ok "the picture is on the cover" || bad "the cover has no picture"
@@ -587,7 +608,7 @@ if [ $status -eq 0 ]; then
 fi
 out="$("$bin" build "$root/testdata/cover.md" --to epub -o "$work/cover-alone.epub" 2>&1)"
 status=$?
-if [ $status -eq 0 ] && [ -z "$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in Latin Modern')" ]; then
+if [ $status -eq 0 ] && [ -z "$(printf '%s\n' "$out" | grep '^  !' | grep -v 'the default bundle set this document in ')" ]; then
 	ok "the .epub alone typesets its cover apart, without warnings"
 else
 	bad "--to epub alone (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
@@ -766,13 +787,15 @@ fi
 warnings="$(printf '%s\n' "$out" | grep '^  !')"
 [ -z "$warnings" ] && ok "no warnings" || { bad "warnings, and this deck must produce none:"; printf '%s\n' "$warnings" | sed 's/^/        /'; }
 if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
-	log="$work/slides/slides.log"
-	n="$(grep -c 'Overfull' "$log")"
-	[ "$n" -eq 0 ] && ok "nothing overfull, across or down" || bad "$n overfull box(es) in the log"
-	n="$(grep -c 'Missing character' "$log")"
-	[ "$n" -eq 0 ] && ok "no missing glyph" || bad "$n missing glyph(s) in the log"
+	if latex; then
+		log="$work/slides/slides.log"
+		n="$(grep -c 'Overfull' "$log")"
+		[ "$n" -eq 0 ] && ok "nothing overfull, across or down" || bad "$n overfull box(es) in the log"
+		n="$(grep -c 'Missing character' "$log")"
+		[ "$n" -eq 0 ] && ok "no missing glyph" || bad "$n missing glyph(s) in the log"
+	fi
 	info="$(pdfinfo "$work/slides.pdf" 2>/dev/null)"
-	printf '%s' "$info" | has 'Page size: *453.54 x 255.12 pts' && ok "16:9, 160 × 90 mm" \
+	printf '%s' "$info" | has -E 'Page size: *453\.54[0-9]* x 255\.1[12][0-9]* pts' && ok "16:9, 160 × 90 mm" \
 		|| bad "the page is not beamer's 16:9 frame: $(printf '%s' "$info" | grep 'Page size')"
 	pages="$(printf '%s' "$info" | awk '/^Pages:/{print $2}')"
 	# Nine slides; the last one has a pause and two incremental points, so it
@@ -796,7 +819,9 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	done
 	# The bundle's colors.accent differs from its primary, so accented words
 	# take a colour of their own.
-	grep -qF '\textcolor{brandAccent}{accented phrase}' "$work/slides/slides.tex" \
+	if latex; then accented='\textcolor{brandAccent}{accented phrase}' src="$work/slides/slides.tex"
+	else accented='#text(fill: brand-accent)[accented phrase]' src="$work/slides/slides.typ"; fi
+	grep -qF "$accented" "$src" \
 		&& ok "accented words print in colors.accent" || bad "accented words are not in colors.accent"
 	# Figures take the bundle's colours: Vega's and d2's own blue used to sit
 	# on a page in the brand's.
@@ -805,13 +830,15 @@ if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
 	grep -qi '#3A3F44' "$work/slides/fig00.svg" && ! grep -qi '#0D32B2' "$work/slides/fig00.svg" \
 		&& ok "the diagram is in the bundle's colours, not d2's blue" || bad "the diagram keeps d2's own colours"
 	# The label is orange; the title and number beside it must not be.
-	grep -qF '\begingroup\color{brandPrimary}Internal\endgroup' "$work/slides/slides.tex" \
-		&& ok "the confidential label keeps its colour to itself" || bad "the confidential label's colour is not grouped"
+	if latex; then
+		grep -qF '\begingroup\color{brandPrimary}Internal\endgroup' "$work/slides/slides.tex" \
+			&& ok "the confidential label keeps its colour to itself" || bad "the confidential label's colour is not grouped"
+	fi
 	# The speaker notes: one page per content slide, pauses collapsed, two to
 	# an A4 sheet, numbered out of the deck's own total.
 	notes="$work/slides-notes.pdf"
 	ninfo="$(pdfinfo "$notes" 2>/dev/null)"
-	printf '%s' "$ninfo" | has 'Page size: *595.28 x 841.89 pts' && ok "the notes are on A4" \
+	printf '%s' "$ninfo" | has -E 'Page size: *595\.2(8|76) x 841\.89 pts' && ok "the notes are on A4" \
 		|| bad "the notes are not A4: $(printf '%s' "$ninfo" | grep 'Page size')"
 	npages="$(printf '%s' "$ninfo" | awk '/^Pages:/{print $2}')"
 	[ "${npages:-0}" -eq 3 ] && ok "six content slides, two to a sheet: 3 pages" || bad "${npages:-no} pages of notes, want 3"
@@ -1022,10 +1049,13 @@ traps=(
 	"named-colour-typo.md|fail|.kko on \"Rojo\" — did you mean .ko?"
 	"named-colour-typo.md|fail|.OK on \"Verde\" — did you mean .ok?|--to docx --brand none"
 	"display-glyph.md|fail|display face (fonts.office.display), has no glyph|--to docx --brands-dir $root/testdata/brands"
-	"missing-style.md|fail|DejaVuSans: small caps|--brands-dir $root/testdata/brands"
+	"missing-style.md|fail@latex|DejaVuSans: small caps|--brands-dir $root/testdata/brands"
+	"missing-style.md|fail@typst|DejaVu Sans has no small caps|--brands-dir $root/testdata/brands"
 	"d2-hash.md|fail|line 1 of the d2 block captioned \"Custodia de claves\": b: B. HSM con PKCS#11 {"
 	"d2-syntax.md|fail|line 3 of the d2 block captioned \"Flujo de altas\", column 1:"
-	"cite-no-source.md|fail|2 citation(s) but nothing to cite them from"
+	"cite-no-source.md|fail@latex|2 citation(s) but nothing to cite them from"
+	# Typst reads [@fig:arq] as the cross-reference it is, not a citation.
+	"cite-no-source.md|fail@typst|1 citation(s) but nothing to cite them from"
 	"cite-no-source.md|fail|@fig:arq read as pandoc-crossref|--to docx --brand none"
 	"dead-anchor.md|fail|#setup — did you mean #set-up?"
 	"dead-anchor.md|fail|#setup — did you mean #set-up?|--to docx --brand none"
@@ -1036,13 +1066,18 @@ traps=(
 	"colour-attrs.md|fail|Color=\"red\" on \"Plazos\""
 	"colour-attrs.md|fail|background=\"black\" on \"make deploy\"|--to docx --brand none"
 	"picture-low-res.md|fail|tiny.png prints at 18 ppi on page 1"
-	"undefined-ref.md|fail|\\ref{tab:costes}"
-	"table-row-tall.md|fail|taller than a page"
+	"undefined-ref.md|fail@latex|\\ref{tab:costes}"
+	"undefined-ref.md|fail@typst|raw LaTeX that Typst cannot set: \\ref"
+	"table-row-tall.md|fail@latex|taller than a page"
+	# Typst breaks a row across pages: the defect does not exist there.
+	"table-row-tall.md|prints@typst|This row never reached the PDF."
 	"fig-width-tall.md|fail|Lower width= to 88mm"
 	"fig-width-unit.md|fail|width=400px is not a width mdbrand can place"
-	"off-paper.md|fail|run off the paper"
+	"off-paper.md|fail@latex|run off the paper"
+	"off-paper.md|prints@typst|for the tables. The rest of the line was cut"
 	"wide-code-off-paper.md|fail|run off the paper"
-	"header-too-short.md|fail|Raise page.headheight by at least 165pt|--brands-dir $root/testdata/brands"
+	"header-too-short.md|fail@latex|Raise page.headheight by at least 165pt|--brands-dir $root/testdata/brands"
+	"header-too-short.md|fail@typst|leaves 12.0mm for it: it would print across the page's edge. Raise page.margin|--brands-dir $root/testdata/brands"
 	"confidential-too-long.md|fail|too wide for the footer"
 	"confidential-too-long.md|ok|the .docx footer fits about|--to docx --brand none"
 	"title-too-long.md|fail|Set mdbrand.short_title"
@@ -1052,18 +1087,24 @@ traps=(
 	"slide-overflow.md|fail|a .docx is a page|--to docx --brand none"
 	"slide-contrast.md|fail|under the 4.5:1|--brands-dir $root/testdata/brands"
 	"note-too-long.md|fail|\"Short slide, long speech\""
-	"note-too-long.md|fail|room for 17 lines"
+	"note-too-long.md|fail@latex|room for 17 lines"
+	# Typst's numbers follow the body face, which differs where Inter is absent.
+	"note-too-long.md|fail@typst|lines beside its slide. Cut it"
 	"notes-on-page.md|fail|speaker notes belong to a deck"
 	"slide-figure-room.md|fail|\"A diagram under its argument\""
-	"slide-figure-room.md|fail|put width=71mm on its block"
+	"slide-figure-room.md|fail@latex|put width=71mm on its block"
+	"slide-figure-room.md|fail@typst|on its block — its labels stay at"
 	"slide-figure.md|fail|below the 8.5pt floor"
 	"slide-figure.md|fail|direction: right at the root"
-	"slide-wide.md|fail|slide 3 \"Two columns\""
+	"slide-wide.md|fail@latex|slide 3 \"Two columns\""
+	"slide-wide.md|fail@typst|slide 2 \"Two columns\""
 	"slide-column-figure.md|fail|It is 67×"
 	"slide-footer.md|fail|the slides' footer is"
-	"slide-cover-logo.md|fail|slides.logo_width_cover: 13mm|--brand square-logo --brands-dir $root/testdata/brands"
+	"slide-cover-logo.md|fail@latex|slides.logo_width_cover: 13mm|--brand square-logo --brands-dir $root/testdata/brands"
+	"slide-cover-logo.md|fail@typst|mm in the bundle, or|--brand square-logo --brands-dir $root/testdata/brands"
 	"notes-wide.md|fail|\"A slide\"|--to pdf,notes --brand none"
-	"list-deep.md|fail|a list nests deeper than LaTeX can set"
+	"list-deep.md|fail@latex|a list nests deeper than LaTeX can set"
+	"list-deep.md|prints@typst|five"
 	"accent-pale.md|fail|Set colors.accent|--brands-dir $root/testdata/brands"
 	"accent-pale.md|ok|Set colors.accent|--style note --brands-dir $root/testdata/brands"
 	"brand-typo.md|fail|colors.acent is not a setting mdbrand reads — did you mean accent?|--brands-dir $root/testdata/brands"
@@ -1109,6 +1150,9 @@ echo
 echo "testdata/traps — each must fail, naming the fix"
 for t in "${traps[@]}"; do
 	IFS='|' read -r file want phrase extra <<<"$t"
+	# want@engine holds for that engine alone: the same defect is named in
+	# Typst's own measure, or does not exist there and prints whole.
+	case "$want" in *@*) [ "${want#*@}" = "$engine" ] || continue; want="${want%@*}" ;; esac
 	# shellcheck disable=SC2086 — the extra arguments are meant to split.
 	ext=pdf
 	case "$extra" in *"--to docx"*) ext=docx ;; *"--to pptx"*) ext=pptx ;; *"--to epub"*) ext=epub ;; esac
@@ -1118,6 +1162,14 @@ for t in "${traps[@]}"; do
 	case "$want" in
 		ok)   [ $status -eq 0 ] || bad "$file: exit $status, want a build that warns and succeeds" ;;
 		fail) [ $status -ne 0 ] || bad "$file: exit 0, want the build to stop" ;;
+		prints)
+			if [ $status -eq 0 ] && pdftotext "$work/${file%.md}.pdf" - 2>/dev/null | tr -s '[:space:]' ' ' | has -F "$phrase"; then
+				ok "$file prints whole: \"$phrase\""
+			else
+				bad "$file: exit $status, or the PDF lacks \"$phrase\". It said:"
+				printf '%s\n' "$out" | sed 's/^/        /'
+			fi
+			continue ;;
 	esac
 	if printf '%s\n' "$out" | has -F "$phrase"; then
 		ok "$file says \"$phrase\""

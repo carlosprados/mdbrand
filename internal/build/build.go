@@ -159,6 +159,11 @@ func pipeline(o Options, inputs *[]string) (*Report, error) {
 	if missing := run.Missing(toolsFor(formats, engine)...); len(missing) > 0 {
 		return nil, exit.AsEnvironment(fmt.Errorf("missing tools: %s\n  run: mdbrand doctor", strings.Join(missing, ", ")))
 	}
+	if engine == EngineTypst && slices.ContainsFunc(formats, typesets) {
+		if err := checkTypstPandoc(); err != nil {
+			return nil, err
+		}
+	}
 	p, err := prepare(o, d, inputs)
 	if err != nil {
 		return nil, err
@@ -305,6 +310,9 @@ func pickFormats(flag, frontMatter, config []string) ([]string, error) {
 	}
 	return out, nil
 }
+
+// typesets reports whether a format is typeset by the engine.
+func typesets(format string) bool { return format == "pdf" || format == "notes" }
 
 func toolsFor(formats []string, engine string) []string {
 	var out []string

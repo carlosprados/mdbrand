@@ -22,6 +22,7 @@ import (
 
 	"github.com/carlosprados/mdbrand/internal/brand"
 	"github.com/carlosprados/mdbrand/internal/doc"
+	"github.com/carlosprados/mdbrand/internal/exit"
 	"github.com/carlosprados/mdbrand/internal/run"
 	"github.com/carlosprados/mdbrand/internal/tex"
 )
@@ -55,6 +56,42 @@ func typstReadBack(p *prepared, pdf, source, pandocOut string, faces typstFaces)
 	return checkResolution(work, pdf, p.pictures(), rep)
 }
 
+// typstPandoc is the oldest pandoc whose Typst writer Typst 0.15 reads as
+// written. 3.6 and before cite with a string where a label is now required,
+// and stopped the build on any document with a bibliography — or, worse,
+// printed a citation as "a cross-reference to nothing".
+var typstPandoc = []int{3, 7}
+
+// checkTypstPandoc stops a Typst build on a pandoc too old to write for it.
+func checkTypstPandoc() error {
+	out, err := run.Stdout("", "pandoc", "--version")
+	if err != nil {
+		return err
+	}
+	m := pandocVersionRe.FindStringSubmatch(string(out))
+	if m == nil || versionAtLeast(m[1], typstPandoc) {
+		return nil
+	}
+	return exit.AsEnvironment(fmt.Errorf(`engine typst needs pandoc 3.7 or later, and this is pandoc %s: an older
+pandoc writes Typst that Typst refuses, or reads wrong. Install a newer pandoc
+(https://github.com/jgm/pandoc/releases), or build with --engine latex`, m[1]))
+}
+
+// versionAtLeast reports whether a dotted version is at least min, part by part.
+func versionAtLeast(v string, min []int) bool {
+	parts := strings.Split(v, ".")
+	for i, want := range min {
+		got := 0
+		if i < len(parts) {
+			got, _ = strconv.Atoi(parts[i])
+		}
+		if got != want {
+			return got > want
+		}
+	}
+	return true
+}
+
 // TypstInstall is how to get the typst program, for doctor and the build.
 const TypstInstall = "cargo install --locked typst-cli (brew install typst)  ·  https://github.com/typst/typst/releases"
 
@@ -80,7 +117,7 @@ func renderTypst(p *prepared, out string, inputs *[]string) error {
 		return fmt.Errorf("the Typst engine sets no style %s", p.style)
 	}
 	deck := p.style == tex.Slides
-	if _, err := bodyFontArgs(b, rep, nil); err != nil {
+	if _, err := bodyFontArgs(b, rep, nil, typstSerif); err != nil {
 		return err
 	}
 
