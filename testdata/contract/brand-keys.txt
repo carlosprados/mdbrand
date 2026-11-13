@@ -42,6 +42,7 @@ page.logo_width_cover_secondary
 page.logo_width_header
 page.margin
 page.papersize
+pdf_standard
 requires
 slides
 slides.art

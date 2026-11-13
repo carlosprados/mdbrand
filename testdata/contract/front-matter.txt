@@ -5,6 +5,7 @@ mdbrand.data
 mdbrand.engine
 mdbrand.formats
 mdbrand.greeting
+mdbrand.pdf_standard
 mdbrand.place
 mdbrand.reference
 mdbrand.short_title

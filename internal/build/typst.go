@@ -142,6 +142,28 @@ out, or build with --engine latex. Code is set in %s`, strings.Join(dropped, ", 
 	return size, nil
 }
 
+// typstFigures places each sized figure in the body: the PDF rsvg-convert
+// made for XeLaTeX, not the SVG, since Typst would draw an SVG's text from its
+// own faces, which are the bundle's alone. Under a PDF standard that PDF is
+// redrawn with its text as outlines, and an author's PDF picture is refused.
+func typstFigures(p *prepared) (string, error) {
+	if len(p.pdfStandard) > 0 {
+		if err := refusePDFPictures(p.d.Refs); err != nil {
+			return "", err
+		}
+	}
+	body := p.body
+	for i, f := range p.figs {
+		r := p.results[i]
+		file, err := stdPicture(p.work, r.PDF, p.pdfStandard)
+		if err != nil {
+			return "", err
+		}
+		body = strings.Replace(body, f.Placeholder, r.Picture(filepath.Base(file), r.WidthMM), 1)
+	}
+	return body, nil
+}
+
 // TypstInstall is how to get the typst program, for doctor and the build.
 const TypstInstall = "cargo install --locked typst-cli (brew install typst)  ·  https://github.com/typst/typst/releases"
 
@@ -174,12 +196,9 @@ func renderTypst(p *prepared, out string, inputs *[]string) error {
 		return err
 	}
 
-	body := p.body
-	for i, f := range p.figs {
-		r := p.results[i]
-		// The PDF rsvg-convert made for XeLaTeX, not the SVG: Typst would draw
-		// an SVG's text from its own faces, which are the bundle's alone.
-		body = strings.Replace(body, f.Placeholder, r.Picture(filepath.Base(r.PDF), r.WidthMM), 1)
+	body, err := typstFigures(p)
+	if err != nil {
+		return err
 	}
 	var pages *tex.ThesisPages
 	if p.style == tex.Thesis {
@@ -217,6 +236,9 @@ func renderTypst(p *prepared, out string, inputs *[]string) error {
 		return err
 	}
 	luaFilter := typstLua(d, deck)
+	if len(p.pdfStandard) > 0 {
+		luaFilter = bytes.Replace(luaFilter, []byte("local alt = false"), []byte("local alt = true"), 1)
+	}
 	for name, content := range map[string][]byte{"mdbrand.typst": tpl, "typst.lua": luaFilter} {
 		if err := os.WriteFile(filepath.Join(work, name), content, 0o644); err != nil {
 			return err
@@ -261,6 +283,11 @@ func renderTypst(p *prepared, out string, inputs *[]string) error {
 	if err := typstFallbackStyles(faces, b, pandocOut); err != nil {
 		return err
 	}
+	if needsAlt(p.pdfStandard) {
+		if err := missingAlt(pandocOut); err != nil {
+			return err
+		}
+	}
 	if cmds := uniqueMatches(rawTeXRe, pandocOut); len(cmds) > 0 {
 		return fmt.Errorf("raw LaTeX that Typst cannot set: %s. It would be left out of the PDF\n"+
 			"  without a word; write it in Markdown (a cross-reference is @fig:x, @tbl:x, @sec:x)",
@@ -268,7 +295,11 @@ func renderTypst(p *prepared, out string, inputs *[]string) error {
 	}
 
 	o.logf("  typst compile %s.typ", stem)
-	tout, err := run.Cmd(work, "typst", typstCompileArgs(faces, stem)...)
+	cargs := typstCompileArgs(faces, stem)
+	if len(p.pdfStandard) > 0 {
+		cargs = append(cargs[:len(cargs)-2:len(cargs)-2], "--pdf-standard", strings.Join(p.pdfStandard, ","), stem+".typ", stem+".pdf")
+	}
+	tout, err := run.Cmd(work, "typst", cargs...)
 	if err != nil {
 		return typstPanic(err, p)
 	}
@@ -508,11 +539,27 @@ func typstBaseData(p *prepared, faces typstFaces) (typstData, error) {
 	if td.Paper == "" {
 		td.Paper = "a4"
 	}
+	// Under a PDF standard a PDF logo is placed as its SVG, and every picture
+	// the template sets says what it is: the bundle's name, the cover's credit.
+	logo := func(l string) (string, error) {
+		f, err := stdPicture(p.work, l, p.pdfStandard)
+		if err != nil || len(p.pdfStandard) == 0 {
+			return q(f), err
+		}
+		return q(f) + ", alt: " + q(cmp.Or(b.DisplayName, b.Name)), nil
+	}
 	if l := b.LogoPath(); l != "" {
-		td.Logo = q(l)
+		if td.Logo, err = logo(l); err != nil {
+			return td, err
+		}
 	}
 	if l := b.LogoSecondaryPath(); l != "" {
-		td.Logo2 = q(l)
+		if td.Logo2, err = logo(l); err != nil {
+			return td, err
+		}
+	}
+	if td.Cover != "" && len(p.pdfStandard) > 0 {
+		td.Cover += ", alt: " + q(cmp.Or(m.Options.Cover.Credit, m.Title))
 	}
 	if p.style == "letter" {
 		o := m.Options

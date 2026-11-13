@@ -527,6 +527,21 @@ Do not relax one without understanding what it cost.
     trap marked `@typst` names the defect in Typst's measure, and one marked
     `prints@typst` must print whole where the defect does not exist.
 
+29. **A PDF standard is Typst's to keep, or the build stops.** `pdf_standard`
+    (document, else bundle) hands Typst `--pdf-standard`, and Typst refuses
+    a file that would not conform. Typst 0.15 cannot embed a PDF under any
+    of them, and every figure was the PDF rsvg-convert drew: under a
+    standard, figures and PDF logos are redrawn by pdftocairo as SVGs with
+    their text in outlines, and an author's PDF picture stops the build.
+    pandoc's Typst writer writes no alt text, which PDF/UA requires of every
+    picture and formula: typst.lua writes each image with its description —
+    a figure's caption — and each formula with its TeX, and a picture with
+    none stops the build by file. Under XeLaTeX a standard stops the build:
+    a PDF that only claimed PDF/A would be refused where it is filed. Nothing
+    changes for a document without one.
+    → `testdata/pdf-standard.md` (the XMP's pdfaid and pdfuaid, tagging),
+    `traps/pdf-standard-*.md`.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.

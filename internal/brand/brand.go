@@ -43,6 +43,9 @@ type Brand struct {
 	Thesis   Thesis   `yaml:"thesis"`
 	Figures  Figures  `yaml:"figures"`
 	Footer   string   `yaml:"footer"`
+	// PDFStandard is what every PDF of the bundle must conform to, unless a
+	// document names its own: a-2b for an archive, ua-1 for accessibility.
+	PDFStandard []string `yaml:"pdf_standard"`
 
 	// Requires is the oldest mdbrand the bundle works with, e.g. "0.18".
 	Requires string `yaml:"requires"`

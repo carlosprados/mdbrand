@@ -109,6 +109,7 @@ mdbrand:
   brand: amplia                   # bundle name; none = built-in defaults
   style: report                   # report | note | letter | slides | thesis
   engine: latex                   # latex (default) | typst: who typesets the PDF and a deck's notes. See *Typst*
+  pdf_standard: [a-2b, ua-1]      # optional, engine typst only: PDF/A for archives, PDF/UA for accessibility
   reference: "Oferta AS-2164-26"  # report cover, optional
   confidential: "Confidencial"    # report: cover + footers; note: title + footers; letter: under the date; slides: footer
   short_title: "Oferta Acme"      # the running header's title when the real one is too long
@@ -432,6 +433,12 @@ and stays so; choose Typst per document. What changes for the author:
 - Raw LaTeX (`\newpage`, `\textcolor{…}`) stops the build, since Typst
   cannot set it. Write it in Markdown; a cross-reference is `[@fig:x]`,
   `[@tbl:x]`, `[@sec:x]` on a `{#fig:x}` label, as in a thesis.
+- `pdf_standard: [a-2b, ua-1]` (in the document or the bundle) makes Typst
+  write a conforming PDF/A or PDF/UA and refuse one that would not conform.
+  Under PDF/UA every picture needs a description — `![A map of the
+  region](map.png)`; a figure's caption serves, a formula reads out as its TeX.
+  A PDF picture cannot go in: give it as SVG, PNG or JPEG. XeLaTeX cannot
+  promise either standard, so `engine: latex` with one stops the build.
 - `fontsize: 12pt` is honoured. A pandoc variable only XeLaTeX's template
   reads — `monofont`, `sansfont`, `indent`, `documentclass`, `classoption`… —
   stops the build: remove it or build with `--engine latex`.
