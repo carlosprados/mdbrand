@@ -1224,6 +1224,10 @@ Live is 2 GB. What changes for the author:
 - Raw LaTeX in the Markdown (`\newpage`, `\textcolor{…}`) stops the build:
   Typst cannot set it. A cross-reference is `[@fig:x]`, `[@tbl:x]` or
   `[@sec:x]` on a `{#fig:x}` label, in any style.
+- `fontsize:` is honoured, headings growing with it as article's do. A
+  pandoc variable only XeLaTeX's template reads — `monofont`, `sansfont`,
+  `mathfont`, `indent`, `documentclass`, `classoption`, `secnumdepth` — stops
+  the build by name instead of being dropped.
 - Only the bundle's faces are used, never the machine's. Code is set in
   DejaVu Sans Mono; the built-in bundle's body falls back to Libertinus Serif.
 - The page is close to XeLaTeX's, not the same: page breaks fall elsewhere.

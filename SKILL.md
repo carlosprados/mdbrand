@@ -431,6 +431,9 @@ and stays so; choose Typst per document. What changes for the author:
 - Raw LaTeX (`\newpage`, `\textcolor{…}`) stops the build, since Typst
   cannot set it. Write it in Markdown; a cross-reference is `[@fig:x]`,
   `[@tbl:x]`, `[@sec:x]` on a `{#fig:x}` label, as in a thesis.
+- `fontsize: 12pt` is honoured. A pandoc variable only XeLaTeX's template
+  reads — `monofont`, `sansfont`, `indent`, `documentclass`, `classoption`… —
+  stops the build: remove it or build with `--engine latex`.
 - Only the bundle's faces are used. Code is set in DejaVu Sans Mono, and a
   built-in bundle, where Inter is absent, falls back to Libertinus Serif.
 - The page is close to XeLaTeX's but not the same: breaks fall elsewhere, so
