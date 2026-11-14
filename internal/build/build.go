@@ -617,7 +617,12 @@ func wordCount(o Options, d *doc.File, body string, figs []*doc.Fig, work string
 		return "", err
 	}
 	src := filepath.Join(work, ".mdbrand-words.md")
-	if err := os.WriteFile(src, []byte(body), 0o644); err != nil {
+	// \{\{ is two literal braces: pandoc drops the backslashes and saw a
+	// placeholder that mdbrand, reading the source, rightly did not fill, and
+	// the build stopped on a scenario name carrying {{y}}. The copy pandoc
+	// counts from reads \{\( there instead: one word all the same.
+	counted := strings.ReplaceAll(body, `\{\{`, `\{\(`)
+	if err := os.WriteFile(src, []byte(counted), 0o644); err != nil {
 		return "", err
 	}
 	args := []string{"-f", "markdown", "-t", "json", filepath.Base(src)}

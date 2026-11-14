@@ -197,8 +197,10 @@ Do not relax one without understanding what it cost.
     splits on commas alone and drew one bar of a `;` export. A field it plots that
     mixes numbers and text fails: Vega-Lite drew Ávila alone, exit 0, when
     an English document read a Spanish CSV.
+    `\{\{y\}\}` is two literal braces: pandoc dropped the backslashes and
+    counted a placeholder mdbrand did not fill, and the build stopped.
     → `internal/data/*_test.go`, `internal/fig/vega_test.go`,
-    `testdata/data.md`, and `testdata/traps/unknown-data-key.md`,
+    `testdata/data.md`, `testdata/literal-chars.md`, and `testdata/traps/unknown-data-key.md`,
     `table-typo.md`, `chart-mixed-data.md`.
 
 14. **No page break leaves fewer than `tex.TableKeep` rows of a table on
@@ -535,7 +537,11 @@ Do not relax one without understanding what it cost.
     Typst numbers a thesis itself, so pandoc-crossref is required only of
     an output that takes its numbers from it: XeLaTeX's PDF, the .docx, the
     .epub.
-    → `testdata/fontsize.md`, `traps/typst-latex-var.md`.
+    The Go template writes a pandoc template, where `$` opens a variable: a
+    title holding "$100" stopped the build in pandoc's parser. Every `$` in
+    the template's data is doubled.
+    → `testdata/fontsize.md`, `traps/typst-latex-var.md`, `testdata/literal-chars.md`,
+    `traps/table-cell-over.md`, `testdata/table-header.md`.
     → `internal/build/typst_fonts_test.go`, and `MDBRAND_ENGINE=typst just
     torture`, which CI's document-typst job runs with its own pandoc. A
     check that reads XeLaTeX's .tex or log is skipped there, saying so; a

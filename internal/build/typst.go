@@ -616,6 +616,7 @@ func typstTemplate(p *prepared, faces typstFaces, pages *tex.ThesisPages) ([]byt
 			return nil, err
 		}
 		var out bytes.Buffer
+		pandocLiteral(&td)
 		err = t.Execute(&out, td)
 		return out.Bytes(), err
 	}
@@ -624,6 +625,7 @@ func typstTemplate(p *prepared, faces typstFaces, pages *tex.ThesisPages) ([]byt
 		return nil, err
 	}
 	var out bytes.Buffer
+	pandocLiteral(&td)
 	err = t.Execute(&out, td)
 	return out.Bytes(), err
 }

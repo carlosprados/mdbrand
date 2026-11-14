@@ -151,7 +151,8 @@ Under 45 mm of room the build stops — shorten the title or subtitle. The
 ## Word count
 
 Every build prints the count; `{{words}}` in the body, front matter or a
-caption puts it in the document, grouped for `lang` (4.512 in es). The default
+caption puts it in the document, grouped for `lang` (4.512 in es). Braces
+that must print as written — a name a tool passes on — are `\{\{y\}\}`. The default
 criterion is the IB's (Extended Essay, TOK): prose, lists, headings, block
 quotes and content footnotes count; code, figures and captions, tables, math,
 citations, citation-only notes and the bibliography do not. A heading marked
