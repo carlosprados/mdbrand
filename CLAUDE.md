@@ -230,8 +230,12 @@ Do not relax one without understanding what it cost.
     dates 3% beside two of sentences and "Pendiente" ran 19pt over: each
     column first gets its longest word, or a cell of 12 characters whole,
     and only a table past an assumed 80-character measure is shared again,
-    so one that fits keeps its dashes byte for byte.
-    → `internal/tex/tables_test.go`, the page checks on `testdata/data.md`,
+    so one that fits keeps its dashes byte for byte. Where the longest words
+    alone fill that measure, each column gets its longest word and no more:
+    sized by its longest cells, a sentence column took half the table, the
+    quarters 5% each, and XeLaTeX broke "T2-27" at its hyphen while Typst
+    ran three of them together, exit 0.
+    → `internal/tex/tables_test.go`, `testdata/table-least.md`, the page checks on `testdata/data.md`,
     `traps/table-row-tall.md`, `testdata/floats-table.md`,
     `testdata/heading-table.md`, `internal/data/pipe_test.go`.
 

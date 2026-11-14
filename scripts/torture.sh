@@ -479,6 +479,24 @@ if [ $status -eq 0 ]; then
 fi
 fi
 
+# A table whose longest words fill the measure was sized by its longest
+# cells: the quarters got 5% of it, XeLaTeX broke "T2-27" at its hyphen and
+# Typst set the three quarters into one another, with no warning at all.
+echo
+echo "testdata/table-least.md — no column narrower than its longest word"
+out="$("$bin" build "$root/testdata/table-least.md" -o "$work/table-least.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ] && ! grep '^  !' <<<"$out" | has -v 'the default bundle set this document in '; then ok "builds, no warning"; else
+	bad "build failed or warned (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	t="$(pdftotext -layout "$work/table-least.pdf" -)"
+	miss=""
+	for w in T4-26 T1-27 T2-27 Condicionado; do has -w -- "$w" <<<"$t" || miss="$miss $w"; done
+	[ -z "$miss" ] && ok "every quarter and status prints whole, apart from its neighbour" ||
+		bad "broken or run together:$miss"
+fi
+
 # headings: a heading whose first paragraph is one line long sat at the foot
 # of a page with that line, the rest overleaf. Each must share its page with
 # the start of its second paragraph.
