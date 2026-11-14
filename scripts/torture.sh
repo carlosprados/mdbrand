@@ -497,6 +497,71 @@ if [ $status -eq 0 ]; then
 		bad "broken or run together:$miss"
 fi
 
+# A table over pages repeats its header, as longtable's \endhead does and
+# Typst's table.header: a reader on page two must not count back.
+echo
+echo "testdata/table-header.md — a long table repeats its header on every page"
+out="$("$bin" build "$root/testdata/table-header.md" -o "$work/table-header.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s
+' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	pages="$(pdfinfo "$work/table-header.pdf" | awk '/^Pages/ {print $2}')"
+	bare=""
+	for p in $(seq 1 "$pages"); do
+		t="$(pdftotext -f "$p" -l "$p" "$work/table-header.pdf" -)"
+		has -E '^K[0-9]+$' <<<"$t" && ! has -x Clave <<<"$t" && bare="$bare $p"
+	done
+	[ "$pages" -gt 1 ] && [ -z "$bare" ] && ok "every page of its $pages starts with the header" ||
+		bad "pages with rows and no header:${bare:- (one page only)}"
+fi
+
+# A kept block holding a table went to the next page whole, with a break
+# inside it before the table: longtable measured the page the block was read
+# on. Sixteen blocks after ever longer paragraphs, so one meets a page's foot
+# in any face; each heading shares its page with its table's first row.
+echo
+echo "testdata/keep-table-moved.md — a kept block moved to the next page keeps its table"
+out="$("$bin" build "$root/testdata/keep-table-moved.md" -o "$work/keep-table-moved.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	pages="$(pdfinfo "$work/keep-table-moved.pdf" | awk '/^Pages/ {print $2}')"
+	split=""
+	for i in $(seq -w 1 16); do
+		hp="" rp=""
+		for p in $(seq 1 "$pages"); do
+			t="$(pdftotext -f "$p" -l "$p" "$work/keep-table-moved.pdf" -)"
+			[ -z "$hp" ] && grep -qF "Kept block $i" <<<"$t" && hp=$p
+			[ -z "$rp" ] && grep -qF "ROW-$i" <<<"$t" && rp=$p
+		done
+		[ "$hp" = "$rp" ] || split="$split $i"
+	done
+	[ -z "$split" ] && ok "every kept block has its table on its heading's page" ||
+		bad "kept blocks split before their table:$split"
+fi
+
+# Names a tool writes for its user, escaped: \{\{y\}\} stopped the build,
+# pandoc reading a placeholder that mdbrand did not fill, and a $ in the
+# title stopped Typst's in pandoc's template parser.
+echo
+echo "testdata/literal-chars.md — escaped braces and a dollar print as written"
+out="$("$bin" build "$root/testdata/literal-chars.md" -o "$work/literal-chars.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	t="$(pdftotext -layout "$work/literal-chars.pdf" -)"
+	has -F 'LITERAL-CELL {{y}}' <<<"$t" && has -F '$100 {{y}} @ops' <<<"$t" &&
+		ok "the braces and the dollar print in the cell and the title" ||
+		bad "the braces or the dollar are not in the PDF as written"
+fi
+
 # headings: a heading whose first paragraph is one line long sat at the foot
 # of a page with that line, the rest overleaf. Each must share its page with
 # the start of its second paragraph.
@@ -1113,6 +1178,7 @@ traps=(
 	"table-row-tall.md|fail@latex|taller than a page"
 	# Typst breaks a row across pages: the defect does not exist there.
 	"table-row-tall.md|prints@typst|This row never reached the PDF."
+	"table-cell-over.md|fail@typst|set into the next column or the margin:"
 	"fig-width-tall.md|fail|Lower width= to 88mm"
 	"fig-width-unit.md|fail|width=400px is not a width mdbrand can place"
 	"off-paper.md|fail@latex|run off the paper"

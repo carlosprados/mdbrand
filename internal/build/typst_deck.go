@@ -58,6 +58,7 @@ func typstDeckTemplate(p *prepared, faces typstFaces) ([]byte, error) {
 		return nil, err
 	}
 	var out bytes.Buffer
+	pandocLiteral(&dd)
 	err = t.Execute(&out, dd)
 	return out.Bytes(), err
 }

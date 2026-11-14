@@ -197,8 +197,10 @@ Do not relax one without understanding what it cost.
     splits on commas alone and drew one bar of a `;` export. A field it plots that
     mixes numbers and text fails: Vega-Lite drew Ávila alone, exit 0, when
     an English document read a Spanish CSV.
+    `\{\{y\}\}` is two literal braces: pandoc dropped the backslashes and
+    counted a placeholder mdbrand did not fill, and the build stopped.
     → `internal/data/*_test.go`, `internal/fig/vega_test.go`,
-    `testdata/data.md`, and `testdata/traps/unknown-data-key.md`,
+    `testdata/data.md`, `testdata/literal-chars.md`, and `testdata/traps/unknown-data-key.md`,
     `table-typo.md`, `chart-mixed-data.md`.
 
 14. **No page break leaves fewer than `tex.TableKeep` rows of a table on
@@ -419,9 +421,14 @@ Do not relax one without understanding what it cost.
     the box; unpacked, LaTeX's output routine took it for a float and held
     the page with no goal — the section before the block and the table never
     printed, and the next figure came out before its heading, exit 0. Inside
-    the box that penalty is +10000.
+    the box that penalty is +10000. longtable also starts a table on a new
+    page when its first rows do not fit what is left of the page — in the
+    box, the page the block was read on: a block after a full page went to
+    the next whole, with a break inside it, its heading and paragraph alone
+    on a page and the table on the next. In the box that check is off.
     → `internal/build/build_test.go`, `internal/docx/docx_test.go`,
     `internal/tex/tex_test.go`, `testdata/keep.md`, `testdata/keep-table.md`,
+    `testdata/keep-table-moved.md`,
     `testdata/headings.md`,
     `traps/keep-*.md`.
 
@@ -521,10 +528,20 @@ Do not relax one without understanding what it cost.
     `fontsize: 12pt` XeLaTeX honoured came out five pages short, exit 0:
     fontsize is honoured, and a variable only XeLaTeX's template reads
     (monofont, indent, documentclass…) stops the build by name.
+    A word wider than its column ran into the next one, "T4-26T1-27T2-27",
+    exit 0: the read-back measures the margin, not the neighbour. A rule on
+    every table cell measures its unbreakable runs in the cell's own style,
+    leaves each that passes into the next column's inset as metadata, and
+    one query at the document's end stops the build naming them all — half
+    the excess each side when the cell is centred, as pandoc's are.
     Typst numbers a thesis itself, so pandoc-crossref is required only of
     an output that takes its numbers from it: XeLaTeX's PDF, the .docx, the
     .epub.
-    → `testdata/fontsize.md`, `traps/typst-latex-var.md`.
+    The Go template writes a pandoc template, where `$` opens a variable: a
+    title holding "$100" stopped the build in pandoc's parser. Every `$` in
+    the template's data is doubled.
+    → `testdata/fontsize.md`, `traps/typst-latex-var.md`, `testdata/literal-chars.md`,
+    `traps/table-cell-over.md`, `testdata/table-header.md`.
     → `internal/build/typst_fonts_test.go`, and `MDBRAND_ENGINE=typst just
     torture`, which CI's document-typst job runs with its own pandoc. A
     check that reads XeLaTeX's .tex or log is skipped there, saying so; a
