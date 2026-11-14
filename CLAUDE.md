@@ -521,6 +521,12 @@ Do not relax one without understanding what it cost.
     `fontsize: 12pt` XeLaTeX honoured came out five pages short, exit 0:
     fontsize is honoured, and a variable only XeLaTeX's template reads
     (monofont, indent, documentclass…) stops the build by name.
+    A word wider than its column ran into the next one, "T4-26T1-27T2-27",
+    exit 0: the read-back measures the margin, not the neighbour. A rule on
+    every table cell measures its unbreakable runs in the cell's own style,
+    leaves each that passes into the next column's inset as metadata, and
+    one query at the document's end stops the build naming them all — half
+    the excess each side when the cell is centred, as pandoc's are.
     Typst numbers a thesis itself, so pandoc-crossref is required only of
     an output that takes its numbers from it: XeLaTeX's PDF, the .docx, the
     .epub.

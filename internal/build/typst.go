@@ -368,6 +368,8 @@ func typstPanic(err error, p *prepared) error {
 		return derr
 	}
 	switch m[1] {
+	case "CELL-OVER":
+		return cellOverError(arg)
 	case "KEEP-TALL":
 		return fmt.Errorf(`::: {.keep} "%s": the block is taller than a page, so it cannot be kept on
 one; Typst would set it past the foot of the paper. Split it, or drop .keep`, arg)
@@ -727,7 +729,7 @@ $endif$
 #show figure.where(kind: table): set figure.caption(position: top)
 #set figure.caption(separator: [: ])
 #show table.cell.where(y: 0): set text(weight: "bold")
-
+` + typstCellCheck + `
 // A kept block is measured at the measure's width before it is set: one
 // taller than the text height cannot be kept, and Typst would run it past
 // the foot of the paper.
@@ -839,7 +841,7 @@ $body$
   [[end]]
 ]
 [[end]]
-`
+` + typstCellReport
 
 var pdffontsRe = regexp.MustCompile(`(?m)^(?:[A-Z]{6}\+)?(\S+)`)
 
@@ -1071,7 +1073,7 @@ const typstThesisSrc = `// pandoc writes a --- between paragraphs as #horizontal
 #show table: set text(size: 0.8em, hyphenate: false, top-edge: "ascender", bottom-edge: "descender")
 #show table: set par(justify: false, leading: 0.5em)
 #show table.cell.where(y: 0): set text(weight: "bold")
-#set page(paper: "a4", margin: margin, header: none, numbering: none)
+` + typstCellCheck + `#set page(paper: "a4", margin: margin, header: none, numbering: none)
 #set outline.entry(fill: repeat[.])
 #show outline.entry.where(level: 1): set text(weight: "bold")
 
@@ -1208,4 +1210,4 @@ const typstThesisSrc = `// pandoc writes a --- between paragraphs as #horizontal
 #pagebreak()
 
 $body$
-`
+` + typstCellReport

@@ -1113,6 +1113,7 @@ traps=(
 	"table-row-tall.md|fail@latex|taller than a page"
 	# Typst breaks a row across pages: the defect does not exist there.
 	"table-row-tall.md|prints@typst|This row never reached the PDF."
+	"table-cell-over.md|fail@typst|set into the next column or the margin:"
 	"fig-width-tall.md|fail|Lower width= to 88mm"
 	"fig-width-unit.md|fail|width=400px is not a width mdbrand can place"
 	"off-paper.md|fail@latex|run off the paper"
