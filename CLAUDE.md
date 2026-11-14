@@ -419,9 +419,14 @@ Do not relax one without understanding what it cost.
     the box; unpacked, LaTeX's output routine took it for a float and held
     the page with no goal — the section before the block and the table never
     printed, and the next figure came out before its heading, exit 0. Inside
-    the box that penalty is +10000.
+    the box that penalty is +10000. longtable also starts a table on a new
+    page when its first rows do not fit what is left of the page — in the
+    box, the page the block was read on: a block after a full page went to
+    the next whole, with a break inside it, its heading and paragraph alone
+    on a page and the table on the next. In the box that check is off.
     → `internal/build/build_test.go`, `internal/docx/docx_test.go`,
     `internal/tex/tex_test.go`, `testdata/keep.md`, `testdata/keep-table.md`,
+    `testdata/keep-table-moved.md`,
     `testdata/headings.md`,
     `traps/keep-*.md`.
 

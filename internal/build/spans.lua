@@ -202,12 +202,23 @@ end
 -- LaTeX's, which read it as a float and held the page with no goal: the
 -- section before the block and the table vanished, and the next figure
 -- printed before its heading, exit 0. Inside the box it is +10000, no break.
+-- longtable also starts a table on a new page when its first rows do not fit
+-- in what is left of the page; in the box, that is the page the block was
+-- read on, not the one it lands on. A block after a figure that filled page
+-- one went to page two whole, with a page break inside it before its table:
+-- heading and paragraph alone on page two, the table on page three, exit 0.
+-- The block reserves its own room, so in the box the table never breaks.
 -- The macros are written before the first block,
 -- and only then: a document without one keeps its .tex byte for byte.
 local keepMacros = [[
 \newsavebox\mdbrandKeepBox
 \newdimen\mdbrandKeepHt
+\makeatletter
+\newif\ifmdbrand@inkeep
+\patchcmd{\LT@start}{\advance\dimen@ -\pagegoal}{\ifmdbrand@inkeep\dimen@\z@\else\advance\dimen@ -\pagegoal\fi}{}{}
+\makeatother
 \newcommand\mdbrandKeepStart{\par\setbox\mdbrandKeepBox\vbox\bgroup
+  \csname mdbrand@inkeeptrue\endcsname
   \expandafter\def\csname LT@end@pen\endcsname{-10000}}
 \newcommand\mdbrandKeepEnd[1]{\par\egroup
   \mdbrandKeepHt=\dimexpr\ht\mdbrandKeepBox+\dp\mdbrandKeepBox\relax
