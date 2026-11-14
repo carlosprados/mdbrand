@@ -128,8 +128,15 @@ func colWidths(cells [][]string, n int) []int {
 		sumMost += most[c]
 		extra += max(0, most[c]-least[c])
 	}
-	if sumMost <= measureChars || sumLeast >= measureChars || extra == 0 {
+	if sumMost <= measureChars || extra == 0 {
 		return most
+	}
+	// Words alone fill the measure: each column gets its least and no more.
+	// Returning most here left a column of sentences 65 of 131 dashes and
+	// "T2-27" and "Condicionado" under their own width; XeLaTeX hid it by
+	// breaking them at a hyphen, Typst set them into the margin.
+	if sumLeast >= measureChars {
+		return least
 	}
 	width := make([]int, n)
 	room := measureChars - sumLeast

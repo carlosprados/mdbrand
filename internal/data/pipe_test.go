@@ -63,3 +63,21 @@ func TestColWidthsKeepShortCellsWhole(t *testing.T) {
 		t.Errorf("fitting table resized: %v", got)
 	}
 }
+
+// When the longest words alone fill the measure, each column keeps its own
+// share of them: sized by its longest cells, the sentence column took half
+// the table and "T2-27" printed into its neighbour.
+func TestColWidthsWordsFillTheMeasure(t *testing.T) {
+	long := "metering protocols, telecontrol gateways, border routers and field firmware"
+	cells := [][]string{
+		{"Persona", "Rol", "Nivel", "Dominios", "Estado", "T4-26", "T1-27", "T2-27"},
+		{"Alba Quintero", "development", "principal", long, "Condicionado", "50 %", "100 %", "100 %"},
+	}
+	w := colWidths(cells, 8)
+	if w[3] != len("telecontrol")+2 {
+		t.Errorf("sentence column gets %d dashes, want its longest word and air, 13 (%v)", w[3], w)
+	}
+	if w[7] != len("T2-27")+2 {
+		t.Errorf("T2-27 gets %d dashes, want 7 (%v)", w[7], w)
+	}
+}
