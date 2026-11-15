@@ -81,3 +81,17 @@ func TestColWidthsWordsFillTheMeasure(t *testing.T) {
 		t.Errorf("T2-27 gets %d dashes, want 7 (%v)", w[7], w)
 	}
 }
+
+// A link is measured by the text it prints: measured with its URL, the
+// offers' codes took 77% of a table and the project names wrapped a word to
+// a line.
+func TestColWidthsMeasureLinksByText(t *testing.T) {
+	cells := [][]string{
+		{"Oferta", "Proyecto", "Versión"},
+		{"[QX-1234-56](https://example.com/offers/presentation/0123456789abcdefghijklmnop/edit)", "Upgrade of the billing platform (general offer) with a long project name", "V1.1"},
+	}
+	w := colWidths(cells, 3)
+	if w[0] > len("QX-1234-56")+2 {
+		t.Errorf("link column gets %d dashes, want its text's, 12 (%v)", w[0], w)
+	}
+}

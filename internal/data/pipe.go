@@ -146,12 +146,18 @@ func colWidths(cells [][]string, n int) []int {
 	return width
 }
 
+// mdLink is an inline link or picture: it prints its text, not its target.
+var mdLink = regexp.MustCompile(`!?\[([^\]]*)\]\([^)\s]*(?:\s+"[^"]*")?\)`)
+
 // cellRoom is the least a cell can be set in and the most it would take. A
 // citation is measured as the number it prints: measured by its key, a
 // column of [@enc-20261011-sociometrica-el-espanol] took the width of eight
-// others and their headers overflowed the measure.
+// others and their headers overflowed the measure. A link likewise by its
+// text: measured with its URL, an offer's code took 77% of a table and the
+// project names beside it wrapped a word to a line.
 func cellRoom(v string) (least, most int) {
 	v = citeGroup.ReplaceAllString(v, "[00]")
+	v = mdLink.ReplaceAllString(v, "$1")
 	n := utf8.RuneCountInString(v)
 	least = 3
 	if n <= unbroken {

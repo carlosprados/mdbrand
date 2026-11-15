@@ -291,7 +291,7 @@ func (b *Brand) applyDefaults() {
 		b.Page.PaperSize = "a4"
 	}
 	if b.Page.Margin == "" {
-		b.Page.Margin = "22mm"
+		b.Page.Margin = "25mm"
 	}
 	if b.Page.LineStretch == 0 {
 		b.Page.LineStretch = 1.125
@@ -840,7 +840,7 @@ fonts:
 
 page:
   papersize: a4
-  margin: 22mm
+  margin: 25mm
   linestretch: 1.125
   logo_width_cover: 46mm    # tune per logo: a tall mark needs less width
   # logo_width_cover_secondary: 24mm

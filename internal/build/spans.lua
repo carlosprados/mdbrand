@@ -72,6 +72,20 @@ end
 -- A table's columns are each as wide as their longest word, or the word
 -- breaks: reported by column, for the build to hold against the column.
 function Table(el)
+  -- A header row in bold, as Typst's template sets it: in a report's table
+  -- the eye finds the columns by their heads, and XeLaTeX's booktabs rules
+  -- alone left them looking like the first row.
+  if FORMAT == "latex" then
+    for _, r in ipairs(el.head.rows) do
+      for _, cell in ipairs(r.cells) do
+        cell.contents = cell.contents:walk({
+          Plain = function(b) return pandoc.Plain({ pandoc.Strong(b.content) }) end,
+          Para = function(b) return pandoc.Para({ pandoc.Strong(b.content) }) end,
+        })
+      end
+    end
+    return el
+  end
   if not epub then
     return nil
   end
