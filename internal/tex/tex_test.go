@@ -42,13 +42,13 @@ func TestParseLenMM(t *testing.T) {
 }
 
 func TestTextWidthMM(t *testing.T) {
-	b := brand.Default() // a4, 22mm margins
+	b := brand.Default() // a4, 25mm margins
 	w, err := TextWidthMM(b)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if w != 166 {
-		t.Errorf("measure = %g mm, want 166", w)
+	if w != 160 {
+		t.Errorf("measure = %g mm, want 160", w)
 	}
 	b.Page.Margin = "110mm"
 	if _, err := TextWidthMM(b); err == nil {
@@ -250,7 +250,7 @@ func TestFigureBoxForSlides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want, _ := TextWidthMM(b); pb != b || pw.WidthMM != want || pw.HeightMM != 297-2*22 {
+	if want, _ := TextWidthMM(b); pb != b || pw.WidthMM != want || pw.HeightMM != 297-2*25 {
 		t.Errorf("a page style must get the bundle and its measure untouched")
 	}
 }

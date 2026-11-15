@@ -378,6 +378,8 @@ func pandocArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	args = monoFontArgs(p.d.FrontMatter, args)
+	args = pageFontSizeArgs(p.d.FrontMatter, p.style, args)
 	if p.style == tex.Thesis {
 		more, err := thesisArgs(p.work, d.Meta.Lang)
 		if err != nil {
@@ -454,6 +456,7 @@ func slideArgs(p *prepared, stem string, inputs *[]string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	args = monoFontArgs(p.d.FrontMatter, args)
 	cites, err := citeArgs(d, o.Input, inputs)
 	if err != nil {
 		return nil, err
@@ -471,7 +474,11 @@ func bodyFontArgs(b *brand.Brand, rep *Report, args []string, fallback string) (
 		// mainfontoptions, not a \setmainfont of our own: pandoc's template
 		// loads the face twice, the second time through \babelfont, and that
 		// one would load it again without the option.
-		args = append(args, "-V", "mainfont="+b.Fonts.Body, "-V", "mainfontoptions="+b.BodyFontOptions(noContextualAlternates))
+		opts := b.BodyFontOptions(noContextualAlternates)
+		if bold := boldFaceOptions(b.Fonts.Body); bold != "" {
+			opts += "," + bold
+		}
+		args = append(args, "-V", "mainfont="+b.Fonts.Body, "-V", "mainfontoptions="+opts)
 	case b.IsDefault():
 		// No mainfont at all: pandoc's template loads lmodern, so the document
 		// sets in Latin Modern, which every TeX Live has. The built-in bundle

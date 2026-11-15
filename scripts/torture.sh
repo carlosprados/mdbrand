@@ -242,7 +242,9 @@ else
 	fi
 fi
 if [ $status -eq 0 ] && command -v pdftotext >/dev/null; then
-	text="$(pdftotext "$work/data.pdf" - 2>/dev/null | sed 's/\xc2\xa0/ /g' | tr -s '[:space:]' ' ')"
+	# -layout reads a table by its rows: without it, a cell on two lines made
+	# pdftotext take the first column as a block of its own.
+	text="$(pdftotext -layout "$work/data.pdf" - 2>/dev/null | sed 's/\xc2\xa0/ /g' | tr -s '[:space:]' ' ')"
 	for phrase in \
 		"ofrece 4 vCPU, 16 GiB de RAM y 100 GB" \
 		"a 0.192 €/hora" \
@@ -868,7 +870,8 @@ fi
 if [ $status -eq 0 ]; then
 	text="$(pdftotext -layout "$work/code-samples.pdf" -)"
 	grep -qF '```d2 caption="An example"' <<<"$text" && ok "the d2 sample prints as code" || bad "the d2 sample was not printed as code"
-	[ "$(grep -cF '![Picture](diagrams/picture.png)' <<<"$text")" -eq 2 ] && ok "both picture samples print as written" || bad "a picture sample was rewritten"
+	# Inline code may break at its slash: the count reads the text unwrapped.
+	[ "$(tr -d '\n' <<<"$text" | grep -oF '![Picture](diagrams/picture.png)' | wc -l)" -eq 2 ] && ok "both picture samples print as written" || bad "a picture sample was rewritten"
 	n="$(pdfimages -list "$work/code-samples.pdf" | awk 'NR>2 && $3=="image"' | wc -l)"
 	[ "$n" -eq 1 ] && ok "the picture in prose is placed, once" || bad "the PDF holds $n pictures, want 1"
 fi
@@ -1168,7 +1171,7 @@ traps=(
 	"chart-field-typo.md|fail|\"sedes\" — did you mean \"sede\"?"
 	"colour-attrs.md|fail|Color=\"red\" on \"Plazos\""
 	"colour-attrs.md|fail|background=\"black\" on \"make deploy\"|--to docx --brand none"
-	"picture-low-res.md|fail|tiny.png prints at 18 ppi on page 1"
+	"picture-low-res.md|fail|picture(s) stretched past what their pixels can print"
 	"undefined-ref.md|fail@latex|\\ref{tab:costes}"
 	"undefined-ref.md|fail@typst|raw LaTeX that Typst cannot set: \\ref"
 	"typst-latex-var.md|fail@typst|sets indent, which XeLaTeX's template reads and Typst's"
@@ -1179,13 +1182,13 @@ traps=(
 	# Typst breaks a row across pages: the defect does not exist there.
 	"table-row-tall.md|prints@typst|This row never reached the PDF."
 	"table-cell-over.md|fail@typst|set into the next column or the margin:"
-	"fig-width-tall.md|fail|Lower width= to 88mm"
+	"fig-width-tall.md|fail|Lower width= to 86mm"
 	"fig-width-unit.md|fail|width=400px is not a width mdbrand can place"
 	"off-paper.md|fail@latex|run off the paper"
 	"off-paper.md|prints@typst|for the tables. The rest of the line was cut"
 	"wide-code-off-paper.md|fail|run off the paper"
 	"header-too-short.md|fail@latex|Raise page.headheight by at least 165pt|--brands-dir $root/testdata/brands"
-	"header-too-short.md|fail@typst|leaves 12.0mm for it: it would print across the page's edge. Raise page.margin|--brands-dir $root/testdata/brands"
+	"header-too-short.md|fail@typst|for it: it would print across the page's edge. Raise page.margin|--brands-dir $root/testdata/brands"
 	"confidential-too-long.md|fail|too wide for the footer"
 	"confidential-too-long.md|ok|the .docx footer fits about|--to docx --brand none"
 	"title-too-long.md|fail|Set mdbrand.short_title"

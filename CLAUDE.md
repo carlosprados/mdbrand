@@ -563,6 +563,24 @@ Do not relax one without understanding what it cost.
     → `testdata/pdf-standard.md` (the XMP's pdfaid and pdfuaid, tagging),
     `traps/pdf-standard-*.md`.
 
+30. **Both engines set the same page, by an editor's rules.** Typst's
+    template took its sizes as given and its leading from the cap height, and
+    pandoc's LaTeX template scaled every display face to the body's x-height:
+    Typst's running heads were 6.6% smaller, its subtitle 7mm lower, its
+    headings Gotham where XeLaTeX's were Inter, its paragraphs 3.7pt apart
+    where XeLaTeX's were 6, and the PDFs read as two products. XeLaTeX set
+    bold in Inter ExtraBold and code in Latin Modern Mono Light, and at 10pt
+    on a 22mm margin a line held 98 characters. So: 11pt by default for a
+    page style and a 25mm default margin (85 a line); headings in the body's
+    bold at article's table of sizes; fontconfig's weight-700 face as bold;
+    display sizes scaled to the body's x-height on both; code in DejaVu Sans
+    Mono at 0.9, floor 7pt; baselines at article's baselineskip ×
+    linestretch, paragraphs half of it apart, headings spaced in the body's
+    ex, header at headsep and footer 30pt below the text; table heads bold;
+    a link measured by its text when columns are shared. Each was measured
+    off both PDFs with mutool's structured text, to within 2%.
+    → `testdata/fontsize.md`, the torture fixtures on both engines.
+
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
 fontconfig hit. Use invented face names like `MdbrandTestFace-Regular.otf`.

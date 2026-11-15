@@ -79,6 +79,9 @@ const typstDeckSrc = `#let brand-primary = rgb("#[[.Primary]]")
 #let display-b = ([[.DisplayB]], [[.Body]])
 #let display-w = [[.DisplayW]]
 #let display-bw = [[.DisplayBW]]
+// Display sizes are scaled to the body's x-height: see typstDisplayScale.
+#let ds = [[.DisplayScale]]
+#let dsb = [[.DisplayBScale]]
 #let running = [[.Running]]
 #let side = [[.MarginMM]]mm
 
@@ -103,7 +106,7 @@ const typstDeckSrc = `#let brand-primary = rgb("#[[.Primary]]")
 
 // The footer's text is measured against the logo and "99 / 99" once: at
 // this length the number would be pushed off the slide.
-#let foot-text(n, total) = text(font: display, weight: display-w, size: 7pt, fill: brand-text, {
+#let foot-text(n, total) = text(font: display, weight: display-w, size: 7pt * ds, fill: brand-text, {
   [[if .Confidential]]text(fill: brand-primary)[[.Confidential]]; h(1em);[[end]] running; h(1em); [#n / #total]
 })
 #context {
@@ -127,11 +130,11 @@ const typstDeckSrc = `#let brand-primary = rgb("#[[.Primary]]")
   let title = [
     #line(length: 20mm, stroke: 1.2pt + brand-primary)
     #v(5mm)
-    #text(font: display-b, weight: display-bw, size: 24pt)[[.Title]]
+    #text(font: display-b, weight: display-bw, size: 24pt * dsb)[[.Title]]
     [[if .Subtitle]]#v(3mm)
-    #text(font: display, weight: display-w, size: 13pt)[[.Subtitle]][[end]]
+    #text(font: display, weight: display-w, size: 13pt * ds)[[.Subtitle]][[end]]
   ]
-  let meta = text(font: display, weight: display-w, size: 9pt)[#[[.Authors]][[if .Date]] #h(0.6em)·#h(0.6em) #[[.Date]][[end]][[if .Reference]] \ #[[.Reference]][[end]][[if .Confidential]] \ #text(fill: brand-primary)[[.Confidential]][[end]][[if .Footer]] \ #[[.Footer]][[end]]]
+  let meta = text(font: display, weight: display-w, size: 9pt * ds)[#[[.Authors]][[if .Date]] #h(0.6em)·#h(0.6em) #[[.Date]][[end]][[if .Reference]] \ #[[.Reference]][[end]][[if .Confidential]] \ #text(fill: brand-primary)[[.Confidential]][[end]][[if .Footer]] \ #[[.Footer]][[end]]]
   // Each gap keeps 6 mm at least: at none the subtitle sat on the author.
   let used = measure(block(width: size.width, head)).height + measure(block(width: size.width, title)).height + measure(block(width: size.width, meta)).height + 12mm
   if used > size.height { panic("MDBRAND-COVER-OVER " + repr(calc.round((used - size.height).mm(), digits: 1))) }
@@ -149,7 +152,7 @@ const typstDeckSrc = `#let brand-primary = rgb("#[[.Primary]]")
   #v(1fr)
   #line(length: 20mm, stroke: 1.2pt + brand-primary)
   #v(5mm)
-  #text(font: display-b, weight: display-bw, size: 22pt, title)
+  #text(font: display-b, weight: display-bw, size: 22pt * dsb, title)
   #v(1fr)
 ])
 
@@ -158,7 +161,7 @@ const typstDeckSrc = `#let brand-primary = rgb("#[[.Primary]]")
 // the figures on it, for the width that would make room.
 #let mdbrand-slide(n, total, name, figs, title, body) = page(grid(rows: (auto, 1fr, auto),
   block(width: 100%, inset: (x: side, top: 4mm))[
-    #text(font: display-b, weight: display-bw, size: 14.4pt, title)
+    #text(font: display-b, weight: display-bw, size: 14.4pt * dsb, title)
     #v(1.2mm, weak: false)
     #line(length: 12mm, stroke: 0.8pt + brand-primary)
     #v(3mm, weak: false)

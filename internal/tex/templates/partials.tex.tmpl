@@ -63,10 +63,13 @@
 % only be measured by typesetting it — VerbatimOut/BVerbatimInput is what makes
 % reading it a second time possible at all.
 %
-% The ladder stops at \footnotesize (8pt in a 10pt document, the floor where
-% code is still code and not a texture). Below that the block is emitted anyway,
-% overfull, and \typeout hands mdbrand the two numbers that make the warning
-% actionable: the columns the block has and the columns that fit.
+% Code is DejaVu Sans Mono at 0.9 of the size, so the steps are 0.9 of
+% \normalsize, \small and \footnotesize, then 7pt: the floor where code is
+% still code and not a texture, the same whatever the body — at 11pt a ladder
+% of fractions alone stopped at 8.1 with room left below it.
+% Below that the block is emitted anyway, overfull, and \typeout hands mdbrand
+% the two numbers that make the warning actionable: the columns the block has
+% and the columns that fit.
 \usepackage{fvextra}
 % breaklines is for the Highlighting environment pandoc wraps a fence that
 % declares a language in — there, the author has said "this is code", and code
@@ -98,6 +101,7 @@
   \mdbrandTryCode{\normalsize}%
   \ifdim\wd\mdbrandCodeBox>\linewidth \mdbrandTryCode{\small}\fi
   \ifdim\wd\mdbrandCodeBox>\linewidth \mdbrandTryCode{\footnotesize}\fi
+  \ifdim\wd\mdbrandCodeBox>\linewidth \mdbrandTryCode{\fontsize{7.78}{9.5}\selectfont}\fi
   \ifdim\wd\mdbrandCodeBox>\linewidth
     \typeout{MDBRAND-CODE-TOOWIDE cols=\the\numexpr\wd\mdbrandCodeBox/\wd\mdbrandCharBox\relax\space fits=\the\numexpr\linewidth/\wd\mdbrandCharBox\relax}%
   \fi

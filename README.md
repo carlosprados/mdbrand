@@ -1204,6 +1204,25 @@ arquitectura.d2               37.7 × 62.8   mm   text 12.0 pt
 latencia.vl.json             126.7 × 60.2   mm   text 12.0 pt
 ```
 
+## The page
+
+Both engines set a page the same way, by what an editor would ask of it:
+
+- **Line length.** A report, note or letter is 11pt unless `fontsize:` says
+  otherwise, and the built-in bundle's margin is 25mm: about 85 characters a
+  line. At 10pt and 22mm a line of Inter held 98, past where the eye finds the
+  next one without searching. A bundle's own `page.margin` still wins.
+- **One family for the text.** Headings are the body face's bold, at article's
+  `\Large` and `\large`; bold words are its Bold, not its ExtraBold. The display
+  face keeps the places that carry the identity — cover, running head,
+  footer — scaled to the body's x-height, as fontspec does under pandoc.
+- **Code** is DejaVu Sans Mono at 0.9 of the text, stepping down to 7pt before
+  a block is let run past the measure.
+- **Spacing** follows article: baselines at its `\baselineskip` times the
+  bundle's `linestretch`, paragraphs half a line apart, the same space around
+  headings, the running head `headsep` above the text and the footer 30pt below.
+- **Table heads** are bold.
+
 ## Typst
 
 XeLaTeX typesets every PDF unless a document says otherwise. `engine: typst`
@@ -1224,13 +1243,14 @@ Live is 2 GB. What changes for the author:
 - Raw LaTeX in the Markdown (`\newpage`, `\textcolor{…}`) stops the build:
   Typst cannot set it. A cross-reference is `[@fig:x]`, `[@tbl:x]` or
   `[@sec:x]` on a `{#fig:x}` label, in any style.
-- `fontsize:` is honoured, headings growing with it as article's do. A
+- `fontsize:` is honoured, headings sized as article's are. A
   pandoc variable only XeLaTeX's template reads — `monofont`, `sansfont`,
   `mathfont`, `indent`, `documentclass`, `classoption`, `secnumdepth` — stops
   the build by name instead of being dropped.
-- Only the bundle's faces are used, never the machine's. Code is set in
-  DejaVu Sans Mono; the built-in bundle's body falls back to Libertinus Serif.
-- The page is close to XeLaTeX's, not the same: page breaks fall elsewhere.
+- Only the bundle's faces are used, never the machine's; the built-in
+  bundle's body falls back to Libertinus Serif.
+- Type and spacing are XeLaTeX's (see "The page"); page breaks can still fall
+  elsewhere.
 - A thesis's PDF needs no pandoc-crossref: Typst numbers figures, tables,
   equations and chapters itself. Its `.docx` and `.epub` still take their
   numbers from pandoc-crossref.
@@ -1323,7 +1343,7 @@ fonts:
 
 page:
   papersize: a4
-  margin: 22mm
+  margin: 25mm
   linestretch: 1.125
   logo_width_cover: 46mm
   logo_width_cover_secondary: 24mm

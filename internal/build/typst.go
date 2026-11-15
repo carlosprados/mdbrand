@@ -121,7 +121,10 @@ func typstFontSize(front, style string) (float64, error) {
 		}
 		dropped = append(dropped, k)
 	}
-	size := 10.0
+	size := pageBodyPt
+	if style == tex.Thesis || style == tex.Slides {
+		size = 10
+	}
 	if v, ok := m["fontsize"]; ok && v != nil && style != tex.Thesis {
 		s := strings.TrimSpace(fmt.Sprint(v))
 		n, err := strconv.ParseFloat(strings.TrimSuffix(s, "pt"), 64)
@@ -433,9 +436,13 @@ type typstData struct {
 	Primary, Text, Rule, Link, Accent string
 	Body, Display, DisplayB, Mono     string
 	DisplayW, DisplayBW               int
+	DisplayScale, DisplayBScale       string // display sizes × these: typstDisplayScale
 	PDFAuthor                         string // quoted; "" without an author
 	Margin, Paper, Lang               string
-	Leading                           string
+	Leading                           string // the baselineskip, as XeLaTeX's: article's table × linestretch
+	ParSkip                           string // half the baselineskip, as the parskip package sets it
+	Stretch                           float64
+	HeadSep                           string
 	Logo, LogoWidthHeader, LogoCover  string
 	Logo2, Logo2Cover                 string
 	Footer, Confidential, Reference   string
@@ -444,6 +451,7 @@ type typstData struct {
 	Report, TOC                       bool
 	TOCDepth                          int
 	BodySize                          string
+	H1Size, H2Size                    string // \Large and \large in article's table for BodySize
 	Letter                            bool
 	Recipient, Signature              []string
 	PlaceDate, Greeting               string
@@ -513,13 +521,19 @@ func typstBaseData(p *prepared, faces typstFaces) (typstData, error) {
 		PDFAuthor: map[bool]string{true: q(m.AuthorString())}[m.AuthorString() != ""],
 		Margin:    b.Page.Margin, Paper: map[string]string{"a4": "a4", "letter": "us-letter"}[strings.ToLower(b.Page.PaperSize)],
 		Lang:    q(lang),
-		Leading: fmt.Sprintf("%.2fem", 0.65*max(b.Page.LineStretch, 1)),
+		Stretch: max(b.Page.LineStretch, 1),
+		HeadSep: b.Page.HeadSep,
 		Title:   content(m.Title), Running: content(m.RunningTitle()),
 		Footer: content(b.Footer), Confidential: content(m.Options.Confidential), Reference: content(m.Options.Reference),
 		LogoWidthHeader: b.Page.LogoWidthHeader, LogoCover: b.Page.LogoWidthCover, Logo2Cover: b.Page.LogoWidthCoverSecondary,
 		Report: p.style == "report", TOC: m.HasTOC(), TOCDepth: cmp.Or(m.TOCDepth, 3), TableKeep: tex.TableKeep,
 		Author: "[" + typstEscape(m.AuthorString()) + "]",
 	}
+	ds, dsb, err := typstDisplayScale(faces)
+	if err != nil {
+		return typstData{}, err
+	}
+	td.DisplayScale, td.DisplayBScale = scaleString(ds), scaleString(dsb)
 	if m.Subtitle != "" {
 		td.Subtitle = content(m.Subtitle)
 	}
@@ -598,6 +612,11 @@ func typstTemplate(p *prepared, faces typstFaces, pages *tex.ThesisPages) ([]byt
 		return nil, err
 	}
 	td.BodySize = strconv.FormatFloat(size, 'f', -1, 64)
+	skip := baselineSkip(size) / size
+	td.Leading = fmt.Sprintf("%.4fem", skip*td.Stretch)
+	td.ParSkip = fmt.Sprintf("%.4fem", skip/2)
+	h1, h2 := headingSizes(size)
+	td.H1Size, td.H2Size = strconv.FormatFloat(h1, 'f', -1, 64)+"pt", strconv.FormatFloat(h2, 'f', -1, 64)+"pt"
 	if pages != nil {
 		td.EN = pages.EN
 		td.Programme, td.Degree, td.Year = "["+typstEscape(pages.Programme)+"]", "["+typstEscape(pages.Degree)+"]", pages.Year
@@ -661,6 +680,9 @@ const typstTemplateSrc = `#let brand-primary = rgb("#[[.Primary]]")
 #let display-b = ([[.DisplayB]], [[.Body]])
 #let display-w = [[.DisplayW]]
 #let display-bw = [[.DisplayBW]]
+// Display sizes are scaled to the body's x-height: see typstDisplayScale.
+#let ds = [[.DisplayScale]]
+#let dsb = [[.DisplayBScale]]
 #let running = [[.Running]]
 #let margin = [[.Margin]]
 #let logo-header = [[.LogoWidthHeader]]
@@ -670,7 +692,19 @@ const typstTemplateSrc = `#let brand-primary = rgb("#[[.Primary]]")
 // below are its multiples, as article's \Large and \large are.
 #let body-size = [[.BodySize]]pt
 #set text(font: ([[.Body]],), size: body-size, lang: [[.Lang]], fallback: true)
-#set par(justify: true, leading: [[.Leading]], first-line-indent: 0pt, spacing: 1.1em)
+// Lines as XeLaTeX spaces them: each one's top edge is the baselineskip
+// above its baseline, so baselines stand 1.2em × linestretch apart whatever
+// the face's own heights, and paragraphs half a baselineskip further, as the
+// parskip package pandoc loads sets them. Typst's leading counted from the
+// cap height gave 146% where XeLaTeX has 135, and paragraphs 3.7pt apart
+// where it has 6: lines too airy, paragraphs too close.
+#set text(top-edge: [[.Leading]], bottom-edge: "baseline")
+#set par(justify: true, leading: 0pt, first-line-indent: 0pt, spacing: [[.ParSkip]])
+// Lists indented as XeLaTeX's itemize sets them: the text 2.5em in, the
+// marker before it. Typst set the marker on the margin, and a nested list in
+// a long report lost the step that shows its structure.
+#set list(indent: 1.65em, body-indent: 0.28em)
+#set enum(indent: 1.1em, body-indent: 0.28em)
 // Typst sets raw at 0.8em before this rule: 1.125em makes it 0.9 of the text.
 #show raw: set text(font: [[.Mono]], size: 1.125em)
 // A code block too wide for the measure steps down as XeLaTeX's does, before
@@ -680,17 +714,31 @@ const typstTemplateSrc = `#let brand-primary = rgb("#[[.Primary]]")
 // 120 columns that XeLaTeX kept on the paper ran off it.
 #show raw.where(block: true): it => layout(size => context {
   let widest(t) = calc.max(0pt, ..it.lines.map(l => measure(text(font: [[.Mono]], size: t, l.text)).width))
-  let t = (0.9, 0.8, 0.7).map(f => f * body-size).find(t => widest(t) <= size.width)
-  if t == none { t = 0.7 * body-size }
+  // The floor is 7pt whatever the body: legibility is absolute, and at 11pt
+  // a ladder of fractions stopped at 7.7 with room left below it.
+  let steps = (0.9, 0.8, 0.7).map(f => f * body-size).filter(t => t > 7pt) + (7pt,)
+  let t = steps.find(t => widest(t) <= size.width)
+  if t == none { t = 7pt }
   // Set here, the size is the one printed: raw's relative sizes are spent.
   set text(size: t)
   it
 })
 #show math.equation: set text(font: "New Computer Modern Math")
-#show heading: set text(font: display-b, fill: brand-text, weight: display-bw)
-#show heading.where(level: 1): set text(size: 1.4 * body-size)
-#show heading.where(level: 2): set text(size: 1.2 * body-size)
-#show heading: set block(above: 1.6em, below: 0.9em, sticky: true)
+// Headings in the body's own bold, at \Large and \large as XeLaTeX's
+// article sets them — by its table, not in proportion: 14.4 and 12pt at
+// both 10 and 11pt. A display sans beside a body sans as close as Gotham
+// and Inter reads as a slip, not a contrast; the display face keeps the
+// places that carry the identity: cover, running head, footer.
+#show heading: set text(fill: brand-text, weight: "bold")
+#show heading.where(level: 1): set text(size: [[.H1Size]])
+#show heading.where(level: 2): set text(size: [[.H2Size]])
+// Space around headings as article's \section and \subsection set it
+// (3.5ex over 2.3ex, 3.25ex over 1.5ex): in the body's ex, so in multiples
+// of the body's size, measured off XeLaTeX's PDFs at 10 and 11pt.
+#show heading: set block(sticky: true)
+#show heading.where(level: 1): set block(above: 1.973 * body-size, below: 1.246 * body-size)
+#show heading.where(level: 2): set block(above: 1.716 * body-size, below: 0.81 * body-size)
+#show heading.where(level: 3): set block(above: 1.71 * body-size, below: 0.81 * body-size)
 #show link: set text(fill: brand-link)
 #show figure.caption: set text(size: 0.9 * body-size)
 // pandoc puts every table in a figure, and a figure never breaks: a row
@@ -741,24 +789,27 @@ $endif$
   block(breakable: false, body)
 }
 
-#set page(paper: "[[.Paper]]", margin: margin,
+// The running head's baseline stands headsep above the text and the
+// footer's 30pt below it, as geometry and article place them in XeLaTeX:
+// Typst's defaults, 30% of the margin, set both about 2mm higher.
+#set page(paper: "[[.Paper]]", margin: margin, header-ascent: [[.HeadSep]], footer-descent: 30pt,
   header: context { if [[if .Letter]]here().page() > 1[[else]]true[[end]] {
-    set text(font: display, weight: display-w, size: 8.5pt, fill: brand-text)
+    set text(font: display, weight: display-w, size: 8.5pt * ds, fill: brand-text, top-edge: "ascender", bottom-edge: "baseline")
     let room = page.width - 2 * margin[[if .Logo]] - logo-header - 2mm[[end]]
     [[if .Logo]]let lh = measure(image([[.Logo]], width: logo-header)).height
     if lh > margin - 10mm { panic("MDBRAND-HEADER-LOGO " + repr(calc.round(lh.mm())) + "mm " + repr(calc.round((margin - 10mm).mm())) + "mm") }
     // measure takes the styles in force at context, not the set rule above:
     // the title was measured at 10pt and a fitting one stopped at 117%.
-    [[end]]let w = measure(text(font: display, weight: display-w, size: 8.5pt, running)).width
+    [[end]]let w = measure(text(font: display, weight: display-w, size: 8.5pt * ds, running)).width
     if w > room { panic("MDBRAND-HEADER-TITLE " + repr(calc.round(w / room * 100)) + "%") }
     grid(columns: (1fr, auto), align: (left + bottom, right + bottom),
       running, [[if .Logo]]image([[.Logo]], width: logo-header)[[else]][][[end]])
-    v(-0.6em)
+    v(-1.5pt)
     line(length: 100%, stroke: 0.4pt + brand-rule)
   } },
   footer: context { if [[if .Letter]]here().page() > 1[[else]]true[[end]] {
-    set text(font: display, weight: display-w, size: 8.5pt, fill: brand-text)
-    [[if .Confidential]]let label = text(font: display, weight: display-w, size: 8.5pt, fill: brand-primary, [[.Confidential]])
+    set text(font: display, weight: display-w, size: 8.5pt * ds, fill: brand-text, top-edge: "baseline", bottom-edge: "baseline")
+    [[if .Confidential]]let label = text(font: display, weight: display-w, size: 8.5pt * ds, fill: brand-primary, [[.Confidential]])
     if measure(label).width > (page.width - 2 * margin) / 2 - 8mm { panic("MDBRAND-FOOTER-LABEL " + repr(calc.round(measure(label).width.mm())) + "mm") }
     [[else]]let label = []
     [[end]]grid(columns: (1fr, auto, 1fr), align: (left, center, right), label, counter(page).display(), [])
@@ -766,36 +817,52 @@ $endif$
 
 [[if .Report]]
 #page(header: none, footer: none)[
-  #set par(justify: false)
-  #grid(rows: (auto, 1fr, auto, auto), row-gutter: 0mm,
+  #set par(justify: false, spacing: 0pt, leading: 0pt)
+  // Each line as XeLaTeX's cover sets it: its top edge is its baselineskip
+  // above its baseline, so a v() adds to the distance between baselines as
+  // \vspace does between two paragraphs. Typst's own paragraph spacing,
+  // and a line box from cap height to baseline, put the subtitle 24mm from
+  // the title where XeLaTeX has 16.6.
+  #let cover-line(skip, body) = block(text(top-edge: skip, bottom-edge: "baseline", body))
+  #let cover-title = [
+    #line(length: 100%, stroke: 1.6pt + brand-primary)
+    #v(9mm)
+    #cover-line(32pt, text(font: display-b, weight: display-bw, size: 27pt * dsb, fill: brand-text)[[.Title]])
+    [[if .Subtitle]]#v(6mm)
+    #cover-line(18pt, text(font: display, weight: display-w, size: 13pt * ds, fill: brand-text)[[.Subtitle]])[[end]]
+    [[if .Reference]]#v(5mm)
+    #cover-line(14pt, text(font: display, weight: display-w, size: 10pt * ds, fill: brand-text)[[.Reference]])[[end]]
+  ]
+  #let cover-foot = [
+    #line(length: 100%, stroke: 0.4pt + brand-rule)
+    #v(3.5mm)
+    #set text(font: display, weight: display-w, size: 9.5pt * ds, fill: brand-text)
+    $if(author)$#cover-line(13pt)[$for(author)$$author$$sep$, $endfor$]
+    #v(1.2mm)
+    $endif$$if(date)$#cover-line(13pt)[$date$]
+    $endif$[[if .Confidential]]#v(2.5mm)
+    #cover-line(13pt, text(fill: brand-primary)[[.Confidential]])[[end]]
+    [[if .Footer]]#v(2.5mm)
+    #cover-line(13pt)[[.Footer]][[end]]
+  ]
+  // Without a picture the title stands midway between the logo and the
+  // foot, as XeLaTeX's \vfill on each side sets it; with one, the picture
+  // takes the middle and the title sits 12mm above the foot.
+  [[if .Cover]]#grid(rows: (auto, 1fr, auto, auto), row-gutter: 0mm,
     [[if .Logo2]]grid(columns: (1fr, auto), image([[.Logo]], width: [[.LogoCover]]), image([[.Logo2]], width: [[.Logo2Cover]]))[[else if .Logo]]image([[.Logo]], width: [[.LogoCover]])[[else]][][[end]],
-    [[if .Cover]]layout(size => {
+    layout(size => {
       let room = calc.min(size.height - 20mm, 0.62 * (page.height - 2 * margin))
       if room < 45mm { panic("MDBRAND-COVER-ROOM " + repr(calc.round(room.mm())) + "mm") }
       v(1fr)
       image([[.Cover]], width: 100%, height: room, fit: "cover")
       [[if .Credit]]text(size: 7.5pt, fill: brand-text)[[.Credit]][[end]]
       v(1fr)
-    })[[else]][][[end]],
-    [
-      #line(length: 100%, stroke: 1.6pt + brand-primary)
-      #v(9mm)
-      #text(font: display-b, weight: display-bw, size: 27pt, fill: brand-text)[[.Title]]
-      [[if .Subtitle]]#v(6mm)
-      #text(font: display, weight: display-w, size: 13pt, fill: brand-text)[[.Subtitle]][[end]]
-      [[if .Reference]]#v(5mm)
-      #text(font: display, weight: display-w, size: 10pt, fill: brand-text)[[.Reference]][[end]]
-      #v(20mm)
-    ],
-    [
-      #line(length: 100%, stroke: 0.4pt + brand-rule)
-      #v(3.5mm)
-      #set text(font: display, weight: display-w, size: 9.5pt, fill: brand-text)
-      $for(author)$$author$$sep$, $endfor$ \
-      $date$
-      [[if .Confidential]]#v(2.5mm) #text(fill: brand-primary)[[.Confidential]][[end]]
-      [[if .Footer]]#v(2.5mm) [[.Footer]][[end]]
-    ])
+    }),
+    [#cover-title #v(12mm)],
+    cover-foot)
+  [[else]]#grid(rows: (auto, 1fr, auto, 1fr, auto), row-gutter: 0mm,
+    [[if .Logo2]]grid(columns: (1fr, auto), image([[.Logo]], width: [[.LogoCover]]), image([[.Logo2]], width: [[.Logo2Cover]]))[[else if .Logo]]image([[.Logo]], width: [[.LogoCover]])[[else]][][[end]],
+    [], cover-title, [], cover-foot)[[end]]
 ]
 #counter(page).update(1)
 [[else if .Letter]]
@@ -803,7 +870,7 @@ $endif$
 // the date. The signature follows the body.
 #block(width: 100%)[
   #set par(justify: false, spacing: 0pt)
-  #set text(font: display, weight: display-w, size: 10pt, fill: brand-text)
+  #set text(font: display, weight: display-w, size: 10pt * ds, fill: brand-text)
   [[if .Logo]]#image([[.Logo]], width: [[.LogoCover]])[[end]]
   #v(14mm)
   [[range .Recipient]]#[[.]] \
@@ -820,13 +887,13 @@ $endif$
 [[else]]
 #block(width: 100%)[
   #set par(justify: false)
-  #text(font: display-b, weight: display-bw, size: 19pt, fill: brand-text)[[.Title]]
+  #text(font: display-b, weight: display-bw, size: 19pt * dsb, fill: brand-text)[[.Title]]
   [[if .Subtitle]]#v(2.5mm, weak: true)
-  #text(font: display, weight: display-w, size: 11pt, fill: brand-text)[[.Subtitle]][[end]]
+  #text(font: display, weight: display-w, size: 11pt * ds, fill: brand-text)[[.Subtitle]][[end]]
   #v(3mm, weak: true)
   #line(length: 100%, stroke: 1pt + brand-primary)
   #v(2mm, weak: true)
-  #text(font: display, weight: display-w, size: 9pt, fill: brand-text)[#(($if(author)$[$for(author)$$author$$sep$, $endfor$],$endif$ $if(date)$[$date$],$endif$ [[if .Confidential]]text(fill: brand-primary)[[.Confidential]],[[end]]).join[ · ])]
+  #text(font: display, weight: display-w, size: 9pt * ds, fill: brand-text)[#(($if(author)$[$for(author)$$author$$sep$, $endfor$],$endif$ $if(date)$[$date$],$endif$ [[if .Confidential]]text(fill: brand-primary)[[.Confidential]],[[end]]).join[ · ])]
 ]
 #v(7mm)
 [[end]]
@@ -838,7 +905,7 @@ $body$
 #v(10mm)
 #block[
   #set par(justify: false, spacing: 0pt)
-  #set text(font: display, weight: display-w, size: 10pt, fill: brand-text)
+  #set text(font: display, weight: display-w, size: 10pt * ds, fill: brand-text)
   [[range .Signature]]#[[.]] \
   [[end]]
 ]
@@ -1038,13 +1105,28 @@ const typstThesisSrc = `// pandoc writes a --- between paragraphs as #horizontal
 #let display-b = ([[.DisplayB]], [[.Body]])
 #let display-w = [[.DisplayW]]
 #let display-bw = [[.DisplayBW]]
+// Display sizes are scaled to the body's x-height: see typstDisplayScale.
+#let ds = [[.DisplayScale]]
+#let dsb = [[.DisplayBScale]]
 #let margin = [[.Margin]]
 #let in-appendix = state("in-appendix", false)
 #let tr(es, en) = [[if .EN]]en[[else]]es[[end]]
 
 #set document(title: [[.Title]][[if .PDFAuthor]], author: [[.PDFAuthor]][[end]])
 #set text(font: ([[.Body]],), size: 11pt, lang: [[.Lang]], fallback: true)
-#set par(justify: true, leading: [[.Leading]], first-line-indent: 0pt, spacing: 1.1em)
+// Lines as XeLaTeX spaces them: each one's top edge is the baselineskip
+// above its baseline, so baselines stand 1.2em × linestretch apart whatever
+// the face's own heights, and paragraphs half a baselineskip further, as the
+// parskip package pandoc loads sets them. Typst's leading counted from the
+// cap height gave 146% where XeLaTeX has 135, and paragraphs 3.7pt apart
+// where it has 6: lines too airy, paragraphs too close.
+#set text(top-edge: [[.Leading]], bottom-edge: "baseline")
+#set par(justify: true, leading: 0pt, first-line-indent: 0pt, spacing: [[.ParSkip]])
+// Lists indented as XeLaTeX's itemize sets them: the text 2.5em in, the
+// marker before it. Typst set the marker on the margin, and a nested list in
+// a long report lost the step that shows its structure.
+#set list(indent: 1.65em, body-indent: 0.28em)
+#set enum(indent: 1.1em, body-indent: 0.28em)
 // Typst sets raw at 0.8em before this rule: 1.125em makes it 0.9 of the text.
 #show raw: set text(font: [[.Mono]], size: 1.125em)
 // A code block too wide for the measure steps down as XeLaTeX's does, before
@@ -1113,7 +1195,7 @@ const typstThesisSrc = `// pandoc writes a --- between paragraphs as #horizontal
 #show figure.where(kind: image): set figure(supplement: tr([Figura], [Figure]))
 #show figure.where(kind: table): set figure.caption(position: top)
 
-#show heading: set text(font: display-b, weight: display-bw)
+#show heading: set text(weight: "bold")
 #show heading: set block(above: 1.6em, below: 0.9em, sticky: true)
 #show heading.where(level: 2): set text(size: 13pt)
 #show heading.where(level: 3): set text(size: 11.5pt)
@@ -1125,10 +1207,10 @@ const typstThesisSrc = `// pandoc writes a --- between paragraphs as #horizontal
   set par(justify: false)
   v(20mm)
   if it.numbering != none {
-    block(text(size: 14pt, weight: display-bw, font: display-b)[#context { if in-appendix.get() { tr([Anexo], [Appendix]) } else { tr([Capítulo], [Chapter]) } } #counter(heading).display()])
+    block(text(size: 14pt * dsb, weight: display-bw, font: display-b)[#context { if in-appendix.get() { tr([Anexo], [Appendix]) } else { tr([Capítulo], [Chapter]) } } #counter(heading).display()])
     v(4mm)
   }
-  block(text(size: 22pt, weight: display-bw, font: display-b, it.body))
+  block(text(size: 22pt * dsb, weight: display-bw, font: display-b, it.body))
   v(10mm)
 }
 

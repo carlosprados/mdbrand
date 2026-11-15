@@ -148,6 +148,17 @@ Under 45 mm of room the build stops — shorten the title or subtitle. The
   the director's Word copy (title block, crossref's numbers, page numbers are
   Word's — quote the PDF's); `--to epub` the e-reader's, without the fixed pages.
 
+## The page
+
+A report, note or letter is set at 11pt unless the front matter says
+`fontsize:` (10pt, 11pt, 12pt), with the built-in bundle's 25mm margin: about
+85 characters a line, where 10pt and 22mm gave 98. Both engines set the same
+type — headings in the body face's bold at article's sizes, bold words in its
+Bold (not ExtraBold), the display face only on the cover, running head and
+footer, scaled to the body's x-height, and code in DejaVu Sans Mono at 0.9 of
+the text, down to 7pt for a wide block. A running title too wide for the head
+beside the logo stops the build: set `mdbrand.short_title`.
+
 ## Word count
 
 Every build prints the count; `{{words}}` in the body, front matter or a

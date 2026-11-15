@@ -80,7 +80,8 @@ func TestTypstFontSize(t *testing.T) {
 		size         float64
 		fails        bool
 	}{
-		{"title: x", "report", 10, false},
+		{"title: x", "report", 11, false},
+		{"title: x", "thesis", 10, false},
 		{"fontsize: 12pt", "note", 12, false},
 		{"fontsize: 11pt\nmonofont: DejaVu Sans Mono", "report", 11, false},
 		{"fontsize: 12", "report", 0, true},
