@@ -14,7 +14,11 @@ import (
 // is measured in the cell's own style (the header's bold included). Its
 // excess spills one way, or half each way when centred; once that passes
 // the cell's own inset the run is in the next column's, and it is left as
-// metadata for typstCellReport, so every one is named at once. Less is
+// metadata for typstCellReport, so every one is named at once — unless
+// the run, set at the cell's width, takes more than one line and is no
+// wider than two: hyphenation breaks it once, as XeLaTeX would. A word cut
+// into three pieces or more in a sliver of a column is the defect still,
+// "Con-di-cio-na-do". Less is
 // only the gap between columns narrowing: centred cells in real documents
 // ran 7pt over and read fine. The rule returns the cell untouched: no
 // position moves for it.
@@ -47,8 +51,12 @@ const typstCellCheck = `// A word wider than its column: see typstCellCheck in t
   let side = if h == center { 0.5 } else { 1 }
   it
   for r in mdbrand-runs(it.body, x => x) {
-    let over = measure(r.c).width - room
-    if over * side > mdbrand-cell-x { [#metadata((t: r.t, o: over))<mdbrand-cell-over>] }
+    let m = measure(r.c)
+    let over = m.width - room
+    let hyphenated = m.width <= 2 * room and measure(block(width: room, r.c)).height > 1.5 * m.height
+    if over * side > mdbrand-cell-x and not hyphenated {
+      [#metadata((t: r.t, o: over))<mdbrand-cell-over>]
+    }
   }
 })
 `

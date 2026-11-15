@@ -159,6 +159,15 @@ footer, scaled to the body's x-height, and code in DejaVu Sans Mono at 0.9 of
 the text, down to 7pt for a wide block. A running title too wide for the head
 beside the logo stops the build: set `mdbrand.short_title`.
 
+Page breaks are set as an editor would: no page ends on a heading or a table's
+caption, a breaking table keeps its caption, header and first three rows
+together and its last three rows together,
+and no paragraph leaves one line alone at a foot or head. Figures float to the
+top or foot of their page or the next, as in LaTeX. The PDF is read back,
+and a page ending on a heading or a caption stops the build as mdbrand's own
+defect; `::: {.keep}` around the heading and its first paragraph is the way
+through until it is fixed.
+
 ## Word count
 
 Every build prints the count; `{{words}}` in the body, front matter or a

@@ -39,20 +39,32 @@
 % known once it happens, so it is written to the .aux by heading number and
 % the next pass breaks before the heading instead — and keeps writing it, or
 % a third pass would forget it.
+% A heading straight below another (\if@nobreak) must not break the page
+% itself: the break fell between the two, and the first sat alone at the
+% foot of an IB essay and of alea's book. It marks the heading above it,
+% and itself so the count of marks grows while a run is being moved, and the
+% next pass breaks before the run's first heading.
 \makeatletter
 \newcount\mdbrand@headno
 \def\mdbrand@orphan#1{\expandafter\gdef\csname mdbrand@orph@#1\endcsname{}}
 \def\mdbrand@markorphan{\immediate\write\@auxout{\string\mdbrand@orphan{\the\mdbrand@headno}}}
+\def\mdbrand@markabove{\mdbrand@markorphan
+  \immediate\write\@auxout{\string\mdbrand@orphan{\the\numexpr\mdbrand@headno-1\relax}}}
 \newdimen\mdbrandHeadRoom
 \newcommand\mdbrandHeadingRoom{\global\advance\mdbrand@headno\@ne
   \ifinner\else\par
+  \mdbrandHeadRoom=\dimexpr {{.Brand.Page.HeadingLines}}\baselineskip+3\baselineskip\relax
+  \if@nobreak
+    \ifcsname mdbrand@orph@\the\mdbrand@headno\endcsname \mdbrand@markabove
+    \else\ifdim\mdbrandHeadRoom>\dimexpr\pagegoal-\pagetotal\relax
+      \ifdim\dimexpr\pagegoal-\pagetotal\relax>0pt \mdbrand@markabove\fi\fi\fi
+  \else
   \ifcsname mdbrand@orph@\the\mdbrand@headno\endcsname
     \mdbrand@markorphan \penalty-100 \vfil\penalty-10000
   \else
-  \mdbrandHeadRoom=\dimexpr {{.Brand.Page.HeadingLines}}\baselineskip+3\baselineskip\relax
   \penalty-100
   \ifdim\mdbrandHeadRoom>\dimexpr\pagegoal-\pagetotal\relax
-    \ifdim\dimexpr\pagegoal-\pagetotal\relax>0pt \vfil\penalty-10000\fi\fi\fi\fi}
+    \ifdim\dimexpr\pagegoal-\pagetotal\relax>0pt \vfil\penalty-10000\fi\fi\fi\fi\fi}
 % \if@nobreak is read as the table opens: by \LT@start the caption and the
 % header's minipages have cleared it.
 \newif\ifmdbrand@afterhead
@@ -63,6 +75,28 @@
 \pretocmd{\subsection}{\mdbrandHeadingRoom}{}{}
 \pretocmd{\subsubsection}{\mdbrandHeadingRoom}{}{}
 {{end}}
+% No paragraph leaves a single line at the foot or the head of a page.
+% LaTeX's 150 is a preference: the first line of a paragraph in alea's book
+% sat alone at a foot, the rest overleaf. A page short by a line instead is
+% what an editor accepts, and the bottom is ragged for it. Nor does a page
+% end on a hyphenated word.
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+\brokenpenalty=10000
+\raggedbottom
+% A figure goes at the top or foot of a page of text before it goes to a page
+% of figures alone. At article's fractions a page half full of figures was
+% made a page of its own: an observatorio report put four charts on two such
+% pages, two pages past the text that reads them. A page of figures now has
+% to be nearly full, and a figure may take most of a page with text below.
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.85}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
 % Tables: a full-size table in a 10pt document overflows the measure, and the
 % overflow is silent. footnotesize plus a little air is the shape that works.
 \AtBeginEnvironment{longtable}{\footnotesize}

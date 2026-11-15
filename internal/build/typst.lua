@@ -109,7 +109,15 @@ end
 -- A table goes through the template's mdbrand-table with its row count: a
 -- short one that fits is kept whole, since Typst has no control over the
 -- rows a break leaves on either side.
+--
+-- pandoc centres every table, and a column without an alignment of its own
+-- is written as auto, which inherits that centring: a deck's cells came out
+-- centred where beamer's are left. Such a column is left, as XeLaTeX sets
+-- one; the table itself stays centred.
 function Table(t)
+  for i, spec in ipairs(t.colspecs) do
+    if spec[1] == "AlignDefault" then t.colspecs[i] = { "AlignLeft", spec[2] } end
+  end
   local rows = 0
   for _, b in ipairs(t.bodies) do rows = rows + #b.body end
   local captioned = #t.caption.long > 0 and "true" or "false"

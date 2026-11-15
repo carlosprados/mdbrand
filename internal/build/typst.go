@@ -47,6 +47,9 @@ func typstReadBack(p *prepared, pdf, source, pandocOut string, faces typstFaces)
 	if err := checkTextLayer(work, pdf, source, heads, tocDepth, rep); err != nil {
 		return err
 	}
+	if err := checkPageFoot(p, work, pdf, pandocOut); err != nil {
+		return err
+	}
 	if p.style == tex.Slides {
 		if err := typstDeckWidths(work, pdf); err != nil {
 			return err
@@ -741,20 +744,8 @@ const typstTemplateSrc = `#let brand-primary = rgb("#[[.Primary]]")
 #show heading.where(level: 3): set block(above: 1.71 * body-size, below: 0.81 * body-size)
 #show link: set text(fill: brand-link)
 #show figure.caption: set text(size: 0.9 * body-size)
-// pandoc puts every table in a figure, and a figure never breaks: a row
-// taller than the page ran through the footer. A short table that fits is
-// kept whole instead, since Typst cannot keep rows together across a break.
-#let mdbrand-table(rows, captioned, body) = context {
-  set figure(numbering: none, outlined: false) if not captioned
-  let h = measure(block(width: page.width - 2 * margin, body)).height
-  if rows < 2 * [[.TableKeep]] and h <= page.height - 2 * margin {
-    body
-  } else {
-    show figure: set block(breakable: true)
-    body
-  }
-}
-#set math.equation(numbering: "(1)")
+// A table: see typstTable in typst_tables.go.
+` + typstTable + `#set math.equation(numbering: "(1)")
 $if(section-numbering)$
 // "3." and "4.1." as XeLaTeX numbers them, while @sec prints the bare 3.
 #set heading(numbering: "1.1.")
@@ -766,19 +757,31 @@ $if(section-numbering)$
 }
 $endif$
 // A table as XeLaTeX sets one: footnotesize with a little air, ragged cells
-// and no hyphens, its caption above. Justified and hyphenated in a 10%
-// column, a date printed as "14   jul" and a header as "Arran-que".
+// and a hyphen only where a word is wider than its column, its caption
+// above. Justified and hyphenated in a 10% column, a date printed as
+// "14   jul" and a header as "Arran-que"; never hyphenated, "pyhomogeneity"
+// ran 11pt into the next column where XeLaTeX broke it. Ragged and set
+// optimally, as XeLaTeX sets a p column, and a hyphen costing ten times
+// Typst's default: at the default, "en-tera" and "es-caño" broke words
+// that fit a line of their own.
 // Rows 13pt apart, as arraystretch 1.25 puts them: Typst's line box runs
 // from cap height to baseline, and rows 8.8pt apart overlapped, so text
 // extraction read the table column by column.
 // Columns 12pt apart and the header set off by 6pt more, as \tabcolsep and
 // booktabs' rule do.
 #set table(stroke: none, inset: (_, y) => (x: 6pt, top: 2pt, bottom: if y == 0 { 8pt } else { 2pt }))
-#show table: set text(size: 0.8em, hyphenate: false, top-edge: "ascender", bottom-edge: "descender")
-#show table: set par(justify: false, leading: 0.5em)
+#show table: set text(size: 0.8 * body-size, hyphenate: true, costs: (hyphenation: 1000%), top-edge: "ascender", bottom-edge: "descender")
+#show table: set par(justify: false, leading: 0.5em, linebreaks: "optimized")
 #show figure.where(kind: table): set figure.caption(position: top)
+// A figure floats to the top or foot of its page, or of the next, as
+// XeLaTeX's do: set where it was written, one that did not fit went over
+// and left up to 116mm blank at the foot of an observatorio report's
+// pages, two pages longer than XeLaTeX's.
+#show figure.where(kind: image): set figure(placement: auto)
 #set figure.caption(separator: [: ])
-#show table.cell.where(y: 0): set text(weight: "bold")
+// A header is never hyphenated: "% vo-tos" headed an observatorio
+// report's column. One wider than its column is the cell check's to stop.
+#show table.cell.where(y: 0): set text(weight: "bold", hyphenate: false)
 ` + typstCellCheck + `
 // A kept block is measured at the measure's width before it is set: one
 // taller than the text height cannot be kept, and Typst would run it past
@@ -1146,17 +1149,24 @@ const typstThesisSrc = `// pandoc writes a --- between paragraphs as #horizontal
 #show link: set text(fill: rgb("#[[.Link]]"))
 #show figure.caption: set text(size: 9.5pt)
 // A table as XeLaTeX sets one: footnotesize with a little air, ragged cells
-// and no hyphens, its caption above. Justified and hyphenated in a 10%
-// column, a date printed as "14   jul" and a header as "Arran-que".
+// and a hyphen only where a word is wider than its column, its caption
+// above. Justified and hyphenated in a 10% column, a date printed as
+// "14   jul" and a header as "Arran-que"; never hyphenated, "pyhomogeneity"
+// ran 11pt into the next column where XeLaTeX broke it. Ragged and set
+// optimally, as XeLaTeX sets a p column, and a hyphen costing ten times
+// Typst's default: at the default, "en-tera" and "es-caño" broke words
+// that fit a line of their own.
 // Rows 13pt apart, as arraystretch 1.25 puts them: Typst's line box runs
 // from cap height to baseline, and rows 8.8pt apart overlapped, so text
 // extraction read the table column by column.
 // Columns 12pt apart and the header set off by 6pt more, as \tabcolsep and
 // booktabs' rule do.
 #set table(stroke: none, inset: (_, y) => (x: 6pt, top: 2pt, bottom: if y == 0 { 8pt } else { 2pt }))
-#show table: set text(size: 0.8em, hyphenate: false, top-edge: "ascender", bottom-edge: "descender")
-#show table: set par(justify: false, leading: 0.5em)
-#show table.cell.where(y: 0): set text(weight: "bold")
+#show table: set text(size: 8.8pt, hyphenate: true, costs: (hyphenation: 1000%), top-edge: "ascender", bottom-edge: "descender")
+#show table: set par(justify: false, leading: 0.5em, linebreaks: "optimized")
+// A header is never hyphenated: "% vo-tos" headed an observatorio
+// report's column. One wider than its column is the cell check's to stop.
+#show table.cell.where(y: 0): set text(weight: "bold", hyphenate: false)
 ` + typstCellCheck + `#set page(paper: "a4", margin: margin, header: none, numbering: none)
 #set outline.entry(fill: repeat[.])
 #show outline.entry.where(level: 1): set text(weight: "bold")
@@ -1166,15 +1176,7 @@ const typstThesisSrc = `// pandoc writes a --- between paragraphs as #horizontal
   if h > page.height - 2 * margin { panic("MDBRAND-KEEP-TALL " + name) }
   block(breakable: false, body)
 }
-#let mdbrand-table(rows, captioned, body) = context {
-  set figure(numbering: none, outlined: false) if not captioned
-  let h = measure(block(width: page.width - 2 * margin, body)).height
-  if rows < 2 * [[.TableKeep]] and h <= page.height - 2 * margin { body } else {
-    show figure: set block(breakable: true)
-    body
-  }
-}
-
+` + typstTable + `
 // Figures, tables and equations by chapter: 2.1, A.1. A numbering function
 // runs where its element is, for the caption and for every reference to it;
 // a context of its own would read the chapter where the reference stands.
@@ -1194,6 +1196,11 @@ const typstThesisSrc = `// pandoc writes a --- between paragraphs as #horizontal
 #show figure.where(kind: table): set figure(supplement: tr([Tabla], [Table]))
 #show figure.where(kind: image): set figure(supplement: tr([Figura], [Figure]))
 #show figure.where(kind: table): set figure.caption(position: top)
+// A figure floats to the top or foot of its page, or of the next, as
+// XeLaTeX's do: set where it was written, one that did not fit went over
+// and left up to 116mm blank at the foot of an observatorio report's
+// pages, two pages longer than XeLaTeX's.
+#show figure.where(kind: image): set figure(placement: auto)
 
 #show heading: set text(weight: "bold")
 #show heading: set block(above: 1.6em, below: 0.9em, sticky: true)

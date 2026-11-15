@@ -1221,6 +1221,19 @@ Both engines set a page the same way, by what an editor would ask of it:
 - **Spacing** follows article: baselines at its `\baselineskip` times the
   bundle's `linestretch`, paragraphs half a line apart, the same space around
   headings, the running head `headsep` above the text and the footer 30pt below.
+- **Page breaks.** No page ends on a heading or on a table's caption: a run of
+  headings goes over with the first lines of its text, and a table that breaks
+  keeps its caption, header and first three rows on the page it starts, and
+  its last three rows on the page it ends. No
+  paragraph leaves a single line at a page's foot or head, and XeLaTeX does not
+  end a page on a hyphen. The finished PDF is read back like a proof, and a
+  page that ends on a heading or a caption stops the build. A figure floats to
+  the top or foot of its page or the next, so a figure that does not fit
+  leaves no blank at a page's foot, and a page of figures alone is made only
+  when they nearly fill it.
+- **Tables** set their cells left unless a column says otherwise, and a word
+  wider than its column is hyphenated once, on both engines — never in a
+  header, and a word that would take three pieces stops the build.
 - **Table heads** are bold.
 
 ## Typst

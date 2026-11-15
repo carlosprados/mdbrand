@@ -72,6 +72,12 @@ end
 -- A table's columns are each as wide as their longest word, or the word
 -- breaks: reported by column, for the build to hold against the column.
 function Table(el)
+  -- A table's caption is reported, as headings are, so the build can find it
+  -- at the foot of a page with its rows overleaf.
+  if (FORMAT == "latex" or FORMAT == "typst") and #el.caption.long > 0 then
+    local text = pandoc.utils.stringify(el.caption.long):gsub("%s+", " ")
+    io.stderr:write("MDBRAND-CAPTION\t" .. text .. "\n")
+  end
   -- A header row in bold, as Typst's template sets it: in a report's table
   -- the eye finds the columns by their heads, and XeLaTeX's booktabs rules
   -- alone left them looking like the first row.
