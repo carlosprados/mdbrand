@@ -182,6 +182,9 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if err := checkTextLayer(work, stem+".pdf", source, heads, tocDepth, rep); err != nil {
 		return err
 	}
+	if err := checkPageFoot(p, work, stem+".pdf", pandocOut); err != nil {
+		return err
+	}
 	if err := checkResolution(work, stem+".pdf", p.pictures(), rep); err != nil {
 		return err
 	}

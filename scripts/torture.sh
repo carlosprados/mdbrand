@@ -614,6 +614,66 @@ if [ $status -eq 0 ]; then
 	[ -z "$alone" ] && ok "no heading is left at the foot above its table" || bad "headings alone above a table:$alone"
 fi
 
+# A run of headings: XeLaTeX broke the page between two of them when the
+# second's room did not fit, and the first sat alone at the foot.
+echo
+echo "testdata/heading-chain.md — a run of headings goes over with its text"
+out="$("$bin" build "$root/testdata/heading-chain.md" -o "$work/heading-chain.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	pages="$(pdfinfo "$work/heading-chain.pdf" | awk '/^Pages/ {print $2}')"
+	split=""
+	for i in $(seq -w 1 24); do
+		hp="" tp=""
+		for p in $(seq 1 "$pages"); do
+			t="$(pdftotext -f "$p" -l "$p" "$work/heading-chain.pdf" -)"
+			[ -z "$hp" ] && grep -qF "H$i first" <<<"$t" && hp=$p
+			[ -z "$tp" ] && grep -qF "P${i}x1" <<<"$t" && tp=$p
+		done
+		[ "$hp" = "$tp" ] || split="$split H$i"
+	done
+	[ -z "$split" ] && ok "every run of headings shares its page with its text" || bad "runs of headings apart from their text:$split"
+fi
+
+# A table long enough to break: Typst broke it between its caption and its
+# first row, and the heading and caption sat at the foot; and before its last
+# row, which went over alone.
+echo
+echo "testdata/caption-table.md — a caption goes over with its table's first rows"
+out="$("$bin" build "$root/testdata/caption-table.md" -o "$work/caption-table.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	pages="$(pdfinfo "$work/caption-table.pdf" | awk '/^Pages/ {print $2}')"
+	declare -A first=()
+	for p in $(seq 1 "$pages"); do
+		while read -r w; do
+			[ -z "${first[$w]:-}" ] && first[$w]=$p
+		done < <(pdftotext -f "$p" -l "$p" "$work/caption-table.pdf" - | grep -oE 'C[0-9]{2} heading|Caption C[0-9]{2}|C[0-9]{2}r[368]' | tr ' ' _)
+	done
+	apart="" tail=""
+	for i in $(seq -w 1 24); do
+		a="${first[C${i}_heading]:-x}" b="${first[Caption_C$i]:-y}" c="${first[C${i}r3]:-z}"
+		{ [ "$a" = "$b" ] && [ "$b" = "$c" ]; } || apart="$apart C$i"
+		[ "${first[C${i}r6]:-x}" = "${first[C${i}r8]:-y}" ] || tail="$tail C$i"
+	done
+	[ -z "$apart" ] && ok "every heading shares its page with its caption and three rows" || bad "captions apart from their tables:$apart"
+	[ -z "$tail" ] && ok "every table's last three rows share a page" || bad "tables whose last rows broke apart:$tail"
+	# The rows kept together are a table Typst rebuilt, and an em size applied
+	# to it twice printed 7pt; XeLaTeX's footnotesize at 11pt is 9.
+	if command -v mutool >/dev/null; then
+		size="$(mutool draw -F stext -o - "$work/caption-table.pdf" 2>/dev/null | grep -o 'size="[0-9.]*"' |
+			sort | uniq -c | sort -rn | head -1 | grep -o '[0-9.]*"' | tr -d '"')"
+		awk -v s="${size:-0}" 'BEGIN { exit !(s > 8.5 && s < 9.2) }' \
+			&& ok "the tables print at about 9pt" || bad "the tables print at ${size:-no}pt, want about 9pt"
+	fi
+fi
+
 # ----------------------------------------------------------------- the locale
 # A chart in a Spanish document wrote 30,000 and Jan. Its locale only reaches
 # Vega through vl2vg and vg2svg -f -t, and only from vega-cli 6.4.0; the

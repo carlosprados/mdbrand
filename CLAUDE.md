@@ -533,7 +533,15 @@ Do not relax one without understanding what it cost.
     every table cell measures its unbreakable runs in the cell's own style,
     leaves each that passes into the next column's inset as metadata, and
     one query at the document's end stops the build naming them all — half
-    the excess each side when the cell is centred, as pandoc's are.
+    the excess each side when the cell is centred. pandoc centres every
+    table, and a column with no alignment of its own inherited it: a deck's
+    cells and some of a report's printed centred where XeLaTeX's are left,
+    so typst.lua makes such a column left. A word wider than its column is
+    hyphenated, as XeLaTeX does ("pyhomoge-neity"), at ten times Typst's
+    hyphen cost, set optimally: at the default, words that fit a line were
+    broken too. A run that hyphenation breaks once, into two lines at the
+    cell's width, is not reported; one cut into three or more is. A header
+    is never hyphenated ("% vo-tos").
     Typst numbers a thesis itself, so pandoc-crossref is required only of
     an output that takes its numbers from it: XeLaTeX's PDF, the .docx, the
     .epub.
@@ -580,6 +588,39 @@ Do not relax one without understanding what it cost.
     a link measured by its text when columns are shared. Each was measured
     off both PDFs with mutool's structured text, to within 2%.
     → `testdata/fontsize.md`, the torture fixtures on both engines.
+
+31. **No page ends on a heading or a table's caption, and the PDF is read
+    back for it.** In XeLaTeX a heading straight below another broke the page
+    itself when its room did not fit, and the first heading sat alone at the
+    foot of an IB essay and of alea's book: one after a heading (`\if@nobreak`)
+    now marks the heading above it in the .aux, and the next pass breaks there.
+    In Typst a table long enough to break broke between its caption and its
+    first row, the heading and caption at the foot of a client report and an
+    offer: the caption, header and first TableKeep rows are measured and
+    reserved as a sticky unbreakable block, taken back by as much. XeLaTeX's
+    club and widow penalties of 150 let a paragraph's first line sit alone at
+    a foot; they are 10000, with `\brokenpenalty`, on a ragged bottom.
+    spans.lua reports each table's caption as it does headings, and the
+    finished PDF's rows are read by height: the running footer is the height
+    most pages end at, and a page whose last row above it is a heading
+    (starting at the text's left edge, after nothing but its number) or a
+    caption (after its label) stops the build, on both engines.
+    Typst set each figure where it was written, and one that did not fit
+    went over and left up to 116mm blank at a page's foot — an observatorio
+    report ran two pages past XeLaTeX's. A figure floats (`placement:
+    auto`) to the top or foot of its page or the next, as XeLaTeX's do;
+    tables stay in the flow, since they break. A breaking table's last
+    TableKeep rows are a footer that does not repeat, which Typst sets whole:
+    table 3 of that report left one row overleaf, after two charts.
+    A table rebuilt for that is a new element, and the template's show-set
+    rules reach it again: a size in em printed a report's annex at 7pt where
+    XeLaTeX sets 9, so a table's size is absolute.
+    XeLaTeX, at article's float fractions, made a page of figures of any page
+    half full of them and put four charts two pages past their text: a page
+    of figures must now be 85% full, and a figure may take 85% of a page of
+    text.
+    → `internal/build/pagefoot_test.go`, `testdata/heading-chain.md`,
+    `testdata/caption-table.md` (its tables' size included).
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
