@@ -163,7 +163,8 @@ Page breaks are set as an editor would: no page ends on a heading or a table's
 caption, a breaking table keeps its caption, header and first three rows
 together and its last three rows together,
 and no paragraph leaves one line alone at a foot or head. Figures float to the
-top or foot of their page or the next, as in LaTeX. The PDF is read back,
+top or foot of their page or the next, as in LaTeX; one straight under a
+heading stays under it, and a `\newpage` first sets every figure still waiting. The PDF is read back,
 and a page ending on a heading or a caption stops the build as mdbrand's own
 defect; `::: {.keep}` around the heading and its first paragraph is the way
 through until it is fixed.

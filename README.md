@@ -1227,7 +1227,10 @@ Both engines set a page the same way, by what an editor would ask of it:
   its last three rows on the page it ends. No
   paragraph leaves a single line at a page's foot or head, and XeLaTeX does not
   end a page on a hyphen. The finished PDF is read back like a proof, and a
-  page that ends on a heading or a caption stops the build. A figure floats to
+  page that ends on a heading or a caption stops the build — after XeLaTeX has
+  set it again with that heading moved over, and a heading followed straight by
+  a figure keeps it beneath it. A `\newpage` sets every figure still waiting
+  before the new page starts. A figure floats to
   the top or foot of its page or the next, so a figure that does not fit
   leaves no blank at a page's foot, and a page of figures alone is made only
   when they nearly fill it.

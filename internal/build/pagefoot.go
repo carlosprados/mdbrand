@@ -1,9 +1,12 @@
 package build
 
 import (
+	"bytes"
 	"fmt"
 	"html"
 	"math"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -81,13 +84,33 @@ type proofRow struct {
 // repeats a heading's name is indented, and "Albacete 2023, 4 escaños."
 // is not section 20234. A caption carries its label ("Tabla 4:") always.
 func strandedAtFoot(bbox string, heads, captions []string) []string {
+	var out []string
+	for _, r := range stranded(bbox, heads, captions) {
+		follows := "its text"
+		if !r.heading {
+			follows = "its table"
+		}
+		out = append(out, fmt.Sprintf("page %d ends on %s; %s is on page %d", r.page, r.what, follows, r.page+1))
+	}
+	return out
+}
+
+// strandedRow is a page that ends on a heading or a caption: the page, from
+// 1, and which it ends on.
+type strandedRow struct {
+	page    int
+	heading bool
+	what    string
+}
+
+func stranded(bbox string, heads, captions []string) []strandedRow {
 	pages := proofPages(bbox)
 	foot := footerHeight(pages)
 	if math.IsNaN(foot) {
 		return nil
 	}
 	left := leftEdge(pages)
-	var out []string
+	var out []strandedRow
 	for i, rows := range pages[:max(0, len(pages)-1)] {
 		if len(rows) < 2 || math.Abs(rows[len(rows)-1].y-foot) > 1 {
 			continue
@@ -97,9 +120,9 @@ func strandedAtFoot(bbox string, heads, captions []string) []string {
 			body = body[:len(body)-1]
 		}
 		if what, ok := endsOn(body, heads, "the heading", left, isNumber); ok {
-			out = append(out, fmt.Sprintf("page %d ends on %s; its text is on page %d", i+1, what, i+2))
+			out = append(out, strandedRow{i + 1, true, what})
 		} else if what, ok := endsOn(body, captions, "the caption", math.NaN(), isLabel); ok {
-			out = append(out, fmt.Sprintf("page %d ends on %s; its table is on page %d", i+1, what, i+2))
+			out = append(out, strandedRow{i + 1, false, what})
 		}
 	}
 	return out
@@ -234,4 +257,61 @@ func footerHeight(pages [][]proofRow) float64 {
 		}
 	}
 	return best
+}
+
+var headPageRe = regexp.MustCompile(`\\mdbrand@headpage\{(\d+)\}\{(\d+)\}`)
+
+// moveStrandedHeadings sets again, in XeLaTeX, a PDF where a page ends on a
+// heading. The reservation before a heading counts lines of text, and a
+// heading whose section opens with a figure has none: the figure floated to
+// the next page and left the heading alone at the foot, exit 0 — a client
+// report and alea's book had it. Each heading writes its number and the
+// sheet it was set on to the .aux (the shipout counter, which reads one
+// less while the sheet ships out); the PDF is read, and the last heading set
+// on a page that ends on one is marked as the preamble marks one left above
+// a table, so the next pass breaks before it. Three rounds at most, while a
+// round marks a heading not marked before.
+func moveStrandedHeadings(o Options, p *prepared, work, stem, pandocOut string) error {
+	if p.style == tex.Slides || !run.Have("pdftotext") {
+		return nil
+	}
+	var heads []string
+	for _, h := range reportedHeadings(pandocOut) {
+		heads = append(heads, h.text)
+	}
+	auxPath := filepath.Join(work, stem+".aux")
+	for round := 0; round < 3; round++ {
+		out, err := run.Stdout(work, "pdftotext", "-enc", "UTF-8", "-bbox-layout", stem+".pdf", "-")
+		if err != nil {
+			return err
+		}
+		aux, err := os.ReadFile(auxPath)
+		if err != nil {
+			return nil
+		}
+		last := map[int]string{} // sheet -> the last heading number set on it
+		for _, m := range headPageRe.FindAllStringSubmatch(string(aux), -1) {
+			sheet, _ := strconv.Atoi(m[2])
+			last[sheet+1] = m[1]
+		}
+		var marks []string
+		for _, r := range stranded(string(out), heads, nil) {
+			n, ok := last[r.page]
+			mark := `\mdbrand@orphan{` + n + `}`
+			if ok && !bytes.Contains(aux, []byte(mark)) {
+				marks = append(marks, mark)
+			}
+		}
+		if len(marks) == 0 {
+			return nil
+		}
+		aux = append(aux, []byte(strings.Join(marks, "\n")+"\n")...)
+		if err := os.WriteFile(auxPath, aux, 0o644); err != nil {
+			return err
+		}
+		if err := runXeLaTeX(o, work, stem, 2); err != nil {
+			return err
+		}
+	}
+	return nil
 }
