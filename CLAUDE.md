@@ -630,6 +630,11 @@ Do not relax one without understanding what it cost.
     PDF, marks the last heading on a page that ends on one as the preamble
     marks one above a table, and sets the document again, three rounds at
     most.
+    On CI, in Latin Modern, that fixture had more pages of figures alone than
+    of text, and its charts' labels more rows at one x than the prose: the
+    footer is the lowest height two pages end at, not the commonest, and the
+    left edge is counted on lines of 40 characters or more — or no page was
+    judged and nothing moved.
     → `internal/build/pagefoot_test.go`, `testdata/heading-chain.md`,
     `testdata/caption-table.md` (its tables' size included),
     `testdata/heading-figure.md`.
