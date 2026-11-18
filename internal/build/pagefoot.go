@@ -187,12 +187,16 @@ func isLabel(s string) bool {
 	return true
 }
 
-// leftEdge is where most rows start: the text block's left margin.
+// leftEdge is where most lines of prose start: the text block's left
+// margin. Lines of 40 characters or more only: thirteen charts' labels,
+// each a short row at one x, outnumbered the text and no heading was found.
 func leftEdge(pages [][]proofRow) float64 {
 	count := map[float64]int{}
 	for _, rows := range pages {
 		for _, r := range rows {
-			count[math.Round(r.x)]++
+			if utf8.RuneCountInString(r.text) >= 40 {
+				count[math.Round(r.x)]++
+			}
 		}
 	}
 	best, n := math.NaN(), 0
@@ -241,8 +245,11 @@ func proofPages(bbox string) [][]proofRow {
 	return pages
 }
 
-// footerHeight is the height, to the point, at which most pages' last row
-// sits: the running footer. NaN when no height is shared by two pages.
+// footerHeight is the height, to the point, of the running footer: the
+// lowest at which two pages or more end. Not the commonest: a report of
+// charts had more pages of figures alone, which carry no footer and end on
+// a caption at one height, than pages of text, and no page was judged.
+// NaN when no height is shared by two pages.
 func footerHeight(pages [][]proofRow) float64 {
 	count := map[float64]int{}
 	for _, rows := range pages {
@@ -250,10 +257,10 @@ func footerHeight(pages [][]proofRow) float64 {
 			count[math.Round(rows[len(rows)-1].y)]++
 		}
 	}
-	best, n := math.NaN(), 1
+	best := math.NaN()
 	for y, c := range count {
-		if c > n || (c == n && !math.IsNaN(best) && y < best) {
-			best, n = y, c
+		if c >= 2 && (math.IsNaN(best) || y > best) {
+			best = y
 		}
 	}
 	return best
