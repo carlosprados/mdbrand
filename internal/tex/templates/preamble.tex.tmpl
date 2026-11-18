@@ -74,6 +74,15 @@
 \pretocmd{\section}{\mdbrandHeadingRoom}{}{}
 \pretocmd{\subsection}{\mdbrandHeadingRoom}{}{}
 \pretocmd{\subsubsection}{\mdbrandHeadingRoom}{}{}
+% Each heading writes its number and the sheet it was set on, once it is
+% set: the build reads the PDF, and a heading left alone at a page's foot —
+% its section opens with a figure, which floated away — is marked for the
+% next pass by that number. etoolbox cannot patch \@xsect; it is wrapped.
+\makeatletter
+\def\mdbrand@headpage#1#2{}
+\let\mdbrand@xsect\@xsect
+\def\@xsect#1{\mdbrand@xsect{#1}\protected@write\@auxout{}{\string\mdbrand@headpage{\the\mdbrand@headno}{\the\ReadonlyShipoutCounter}}}
+\makeatother
 {{end}}
 % No paragraph leaves a single line at the foot or the head of a page.
 % LaTeX's 150 is a preference: the first line of a paragraph in alea's book

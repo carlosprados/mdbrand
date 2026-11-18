@@ -430,7 +430,17 @@ local function rawHTML(el)
 end
 
 RawInline = rawHTML
+-- An author's \newpage means "the next section starts on a new page", and
+-- LaTeX's \newpage leaves the figures still waiting where they fall: they
+-- came out at the top of that new page, the section's own figure no longer
+-- fitted under its heading, and the heading sat alone at the foot (a report
+-- stopped on mdbrand's page-foot check twice). \clearpage sets every waiting
+-- figure first. A document without one keeps its .tex byte for byte.
+local flushes = { ["\\newpage"] = true, ["\\pagebreak"] = true }
 function RawBlock(el)
+  if FORMAT == "latex" and (el.format == "latex" or el.format == "tex") and flushes[el.text:match("^%s*(.-)%s*$")] then
+    return pandoc.RawBlock("latex", "\\clearpage")
+  end
   -- An HTML comment before a deck's first ## became a frame of its own in
   -- beamer, empty but for the footer, and every slide after it was numbered
   -- one too high, exit 0. A comment never prints: it goes before the writer

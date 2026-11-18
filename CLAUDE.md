@@ -619,8 +619,20 @@ Do not relax one without understanding what it cost.
     half full of them and put four charts two pages past their text: a page
     of figures must now be 85% full, and a figure may take 85% of a page of
     text.
+    A section that opens with its chart left its heading alone at the foot
+    on both engines, and a client report stopped building on it. An author's
+    `\newpage` left earlier figures waiting at the top of the new page:
+    spans.lua writes it, and `\pagebreak`, as `\clearpage` in LaTeX. Where
+    the chart did not fit under its heading, it floated: in Typst a figure
+    straight under a heading is set in the flow, where the sticky heading
+    goes with it; in XeLaTeX each heading writes its number and sheet to the
+    .aux (`\@xsect` wrapped — etoolbox cannot patch it), the build reads the
+    PDF, marks the last heading on a page that ends on one as the preamble
+    marks one above a table, and sets the document again, three rounds at
+    most.
     → `internal/build/pagefoot_test.go`, `testdata/heading-chain.md`,
-    `testdata/caption-table.md` (its tables' size included).
+    `testdata/caption-table.md` (its tables' size included),
+    `testdata/heading-figure.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a

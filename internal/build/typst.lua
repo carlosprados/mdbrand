@@ -126,11 +126,18 @@ end
 
 -- A heading's first paragraph, when short, sticks to the next block too: a
 -- heading and a one-line paragraph sat at the foot, the rest overleaf.
+-- A figure straight under a heading does not float: a float is not in the
+-- flow, so the sticky heading had nothing to go over with, and a section
+-- that opens with its chart left its heading alone at the foot.
 function Blocks(bs)
   if deck then return nil end
   local out = pandoc.Blocks({})
   for i, b in ipairs(bs) do
-    if i > 1 and bs[i - 1].t == "Header" and b.t == "Para" and bs[i + 1] and #pandoc.utils.stringify(b) < 300 then
+    if i > 1 and bs[i - 1].t == "Header" and b.t == "Figure" then
+      out:insert(pandoc.RawBlock("typst", "#[#show figure: set figure(placement: none)"))
+      out:insert(b)
+      out:insert(pandoc.RawBlock("typst", "]"))
+    elseif i > 1 and bs[i - 1].t == "Header" and b.t == "Para" and bs[i + 1] and #pandoc.utils.stringify(b) < 300 then
       out:insert(pandoc.RawBlock("typst", "#block(sticky: true)["))
       out:insert(b)
       out:insert(pandoc.RawBlock("typst", "]"))

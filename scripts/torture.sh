@@ -674,6 +674,32 @@ if [ $status -eq 0 ]; then
 	fi
 fi
 
+# A section that opens with its chart: the chart floated to the next page
+# and its heading sat alone at the foot, on both engines — after an author's
+# \newpage that left earlier figures waiting, and wherever the chart did not
+# fit under the heading.
+echo
+echo "testdata/heading-figure.md — a heading goes over with the figure it opens with"
+out="$("$bin" build "$root/testdata/heading-figure.md" -o "$work/heading-figure.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	pages="$(pdfinfo "$work/heading-figure.pdf" | awk '/^Pages/ {print $2}')"
+	declare -A at=()
+	for p in $(seq 1 "$pages"); do
+		while read -r w; do
+			[ -z "${at[$w]:-}" ] && at[$w]=$p
+		done < <(pdftotext -f "$p" -l "$p" "$work/heading-figure.pdf" - | grep -oE 'F[0-9]{2} opens|Chart of F[0-9]{2}' | tr ' ' _)
+	done
+	apart=""
+	for i in $(seq -w 0 12); do
+		[ "${at[F${i}_opens]:-x}" = "${at[Chart_of_F$i]:-y}" ] || apart="$apart F$i"
+	done
+	[ -z "$apart" ] && ok "every heading shares its page with its figure" || bad "headings apart from their figure:$apart"
+fi
+
 # ----------------------------------------------------------------- the locale
 # A chart in a Spanish document wrote 30,000 and Jan. Its locale only reaches
 # Vega through vl2vg and vg2svg -f -t, and only from vega-cli 6.4.0; the

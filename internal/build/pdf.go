@@ -161,6 +161,9 @@ func renderPDF(p *prepared, out string, inputs *[]string) error {
 	if err := runXeLaTeX(o, work, stem, passes); err != nil {
 		return err
 	}
+	if err := moveStrandedHeadings(o, p, work, stem, string(pandocOut)); err != nil {
+		return err
+	}
 
 	// Every check below reads this log; without it they would all pass.
 	logRaw, err := os.ReadFile(filepath.Join(work, stem+".log"))
