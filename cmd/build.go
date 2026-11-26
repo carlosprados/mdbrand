@@ -143,7 +143,8 @@ XeLaTeX typesets the PDF unless the document asks for Typst:
       engine: typst               # or --engine typst; default latex
 
 Every style is there, with the same checks, about twice as fast and without
-TeX Live. Raw LaTeX stops a Typst build, since Typst cannot set it; a
+TeX Live. Raw LaTeX stops a Typst build, since Typst cannot set it, but for
+a \newpage on its own line, which breaks the page; a
 cross-reference is [@fig:x] on a {#fig:x} label. The .docx, .pptx and .epub
 are the same under either engine.
 
@@ -185,8 +186,8 @@ the PDF gives them, numbered captions, tables that never break a word, and a
 filled table of contents Word updates on opening. A .docx carries no fonts, so
 a named bundle must declare fonts.office (body, display, mono), faces the
 readers have; the build stops without them, and refuses a .docx asking for any
-other face, or holding a picture linked as PDF. Raw LaTeX is left out of it
-with a warning, and a formula Word's equations cannot take stops it. For Google
+other face, or holding a picture linked as PDF. A \newpage breaks its page;
+other raw LaTeX is left out of it with a warning, and a formula Word's equations cannot take stops it. For Google
 Docs, upload it converted: gog drive upload informe.docx --convert-to doc
 
 --to notes, for a deck (style slides), writes its speaker notes beside it as

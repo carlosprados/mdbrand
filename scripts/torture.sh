@@ -700,6 +700,31 @@ if [ $status -eq 0 ]; then
 	[ -z "$apart" ] && ok "every heading shares its page with its figure" || bad "headings apart from their figure:$apart"
 fi
 
+# An author's \newpage: a .docx dropped it and ran the sections together, and
+# Typst's break printed a blank page where a page already started. Like
+# \clearpage, a break is weak everywhere: five pages on every output.
+echo
+echo "testdata/pagebreak.md --to pdf,docx — \\newpage breaks the page, and never twice"
+out="$("$bin" build "$root/testdata/pagebreak.md" --to pdf,docx -o "$work/pagebreak.pdf" 2>&1)"
+status=$?
+if [ $status -eq 0 ]; then ok "builds"; else
+	bad "build failed (exit $status)"; printf '%s\n' "$out" | sed 's/^/        /'
+fi
+if [ $status -eq 0 ]; then
+	printf '%s\n' "$out" | has -F "raw LaTeX" && bad "the .docx still drops a \\newpage" || ok "no word of a \\newpage dropped"
+	n="$(pdfinfo "$work/pagebreak.pdf" | awk '/^Pages/ {print $2}')"
+	[ "$n" -eq 5 ] && ok "the PDF has 5 pages, no blank one" || bad "the PDF has $n pages, want 5"
+	xml="$(unzip -p "$work/pagebreak.docx" word/document.xml)"
+	[ "$(grep -o '<w:pageBreakBefore/>' <<<"$xml" | wc -l)" -eq 3 ] && ok "the .docx breaks before each of 3 blocks" \
+		|| bad "the .docx has $(grep -o '<w:pageBreakBefore/>' <<<"$xml" | wc -l) page-break-before, want 3"
+	grep -qF '_mdbrandBreak' <<<"$xml" && bad "the .docx keeps mdbrand's marks" || ok "the .docx drops mdbrand's marks"
+	if command -v soffice >/dev/null; then
+		(cd "$work" && timeout 120 soffice --headless --convert-to pdf --outdir "$work/lo-break" pagebreak.docx >/dev/null 2>&1)
+		n="$(pdfinfo "$work/lo-break/pagebreak.pdf" 2>/dev/null | awk '/^Pages/ {print $2}')"
+		[ "${n:-0}" -eq 5 ] && ok "LibreOffice lays the .docx out on 5 pages" || bad "LibreOffice lays the .docx out on ${n:-no} pages, want 5"
+	fi
+fi
+
 # ----------------------------------------------------------------- the locale
 # A chart in a Spanish document wrote 30,000 and Jan. Its locale only reaches
 # Vega through vl2vg and vg2svg -f -t, and only from vega-cli 6.4.0; the

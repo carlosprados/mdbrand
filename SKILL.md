@@ -409,7 +409,8 @@ stays the reference; offer the `.docx` when someone needs to edit or comment.
   readers have (Google Docs: Google Fonts only). Without it the build stops and
   prints the block to add. Never put a licensed face there.
 - A picture linked as PDF stops a `.docx` build: export it as SVG or PNG.
-- Raw LaTeX is left out of the `.docx` with a warning; a formula Word cannot
+- `\newpage` breaks the page in the `.docx` as in the PDF. Other raw LaTeX
+  is left out of the `.docx` with a warning; a formula Word cannot
   take (custom macro, non-amsmath environment) stops it. `abstract:` and
   `numbersections:` carry over.
 - Google Docs: `gog drive upload x.docx --convert-to doc`.
@@ -452,8 +453,9 @@ bundle, figures, data and checks — a defect still stops the build by name — 
 about half the time, with no TeX Live on the machine. XeLaTeX is the default
 and stays so; choose Typst per document. What changes for the author:
 
-- Raw LaTeX (`\newpage`, `\textcolor{…}`) stops the build, since Typst
-  cannot set it. Write it in Markdown; a cross-reference is `[@fig:x]`,
+- Raw LaTeX (`\textcolor{…}`, `\vspace`) stops the build, since Typst
+  cannot set it. A `\newpage` on a line of its own breaks the page, as in
+  XeLaTeX. Write it in Markdown; a cross-reference is `[@fig:x]`,
   `[@tbl:x]`, `[@sec:x]` on a `{#fig:x}` label, as in a thesis.
 - `pdf_standard: [a-2b, ua-1]` (in the document or the bundle) makes Typst
   write a conforming PDF/A or PDF/UA and refuse one that would not conform.
