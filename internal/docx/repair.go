@@ -47,6 +47,7 @@ func Repair(b []byte, f Fix) ([]byte, []string, error) {
 	}
 	doc = dropPictureDescr(doc)
 	doc = keepBlocks(doc)
+	doc = pageBreaks(doc)
 	p.set("word/document.xml", doc)
 	// Notes hold accents and links as well, in parts of their own: the
 	// colour reached the body's alone, and a footnote's link printed black
@@ -540,6 +541,30 @@ func keepBlocks(doc string) string {
 		b.WriteString(doc[:loc[0]])
 		b.WriteString(keepParas(doc[loc[1] : loc[1]+end]))
 		doc = doc[loc[1]+end+len(closing):]
+	}
+	b.WriteString(doc)
+	return b.String()
+}
+
+var breakRe = regexp.MustCompile(`<w:bookmarkStart w:id="\d+" w:name="_mdbrandBreak\d+"\s*/><w:bookmarkEnd w:id="\d+"\s*/>`)
+
+// pageBreaks turns each author's \newpage, marked by spans.lua, into
+// page-break-before on the paragraph after it — the first cell's, before a
+// table. A mark with nothing after it is a break at the end, and goes.
+func pageBreaks(doc string) string {
+	var b strings.Builder
+	for {
+		loc := breakRe.FindStringIndex(doc)
+		if loc == nil {
+			break
+		}
+		b.WriteString(doc[:loc[0]])
+		doc = doc[loc[1]:]
+		if p := paraRe.FindStringIndex(doc); p != nil {
+			b.WriteString(doc[:p[0]])
+			b.WriteString(withPPr(doc[p[0]:p[1]], "<w:pageBreakBefore/>"))
+			doc = doc[p[1]:]
+		}
 	}
 	b.WriteString(doc)
 	return b.String()

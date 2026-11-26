@@ -954,8 +954,10 @@ cells, every size is direct formatting. What carries over from the PDF:
 - the accent and link colours in footnotes as in the body;
 - bare code blocks stepped down until they fit, as in the PDF.
 
-Raw LaTeX has no place in a Word file: it is left out, with a warning naming
-each command (fine for a `\newpage` meant for the PDF). A formula Word's
+A `\newpage`, `\pagebreak` or `\clearpage` starts a new page in Word too,
+and, as in the PDF, adds none where a page already starts. Any other raw
+LaTeX has no place in a Word file: it is left out, with a warning naming
+each command. A formula Word's
 equations cannot take — a macro of your own, an environment beyond amsmath —
 would print as its TeX source, so it stops the build. Code is checked against
 `fonts.office.mono` as prose is against the body face.
@@ -1256,8 +1258,9 @@ past the measure and pictures under their resolution.
 What it buys: a build in about half the time, and a 56 MB program where TeX
 Live is 2 GB. What changes for the author:
 
-- Raw LaTeX in the Markdown (`\newpage`, `\textcolor{…}`) stops the build:
-  Typst cannot set it. A cross-reference is `[@fig:x]`, `[@tbl:x]` or
+- Raw LaTeX in the Markdown (`\textcolor{…}`, `\vspace`) stops the build:
+  Typst cannot set it. A `\newpage` on a line of its own is the exception:
+  Typst breaks the page, and not where one already starts. A cross-reference is `[@fig:x]`, `[@tbl:x]` or
   `[@sec:x]` on a `{#fig:x}` label, in any style.
 - `fontsize:` is honoured, headings sized as article's are. A
   pandoc variable only XeLaTeX's template reads — `monofont`, `sansfont`,

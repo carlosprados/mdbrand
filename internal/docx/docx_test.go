@@ -334,6 +334,34 @@ func TestCellPropsKeepSchemaOrder(t *testing.T) {
 // A kept block's paragraphs stay together: each keeps its lines, each but
 // the last stays with the next, and the marks spans.lua left are gone. Its
 // end is found by id, past the bookmark pandoc gives the heading inside.
+func TestPageBreaks(t *testing.T) {
+	mark := func(n string) string {
+		return `<w:bookmarkStart w:id="80000` + n + `" w:name="_mdbrandBreak` + n + `"/><w:bookmarkEnd w:id="80000` + n + `"/>`
+	}
+	doc := `<w:p><w:r><w:t>before</w:t></w:r></w:p>` + mark("1") +
+		`<w:bookmarkStart w:id="9" w:name="two" /><w:p><w:pPr><w:pStyle w:val="Heading1" /></w:pPr><w:r><w:t>Two</w:t></w:r></w:p><w:bookmarkEnd w:id="9" />` +
+		mark("2") + `<w:tbl><w:tr><w:tc><w:p><w:r><w:t>cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>` + mark("3")
+	got := pageBreaks(doc)
+	if strings.Contains(got, "_mdbrandBreak") {
+		t.Errorf("marks left behind:\n%s", got)
+	}
+	for _, want := range []string{
+		`<w:p><w:r><w:t>before</w:t></w:r></w:p>`,
+		`<w:p><w:pPr><w:pageBreakBefore/><w:pStyle w:val="Heading1" /></w:pPr><w:r><w:t>Two</w:t>`,
+		`<w:tc><w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>cell</w:t>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %s\nin:\n%s", want, got)
+		}
+	}
+	if n := strings.Count(got, "pageBreakBefore"); n != 2 {
+		t.Errorf("%d breaks, want 2: the one at the end has nothing to break before", n)
+	}
+	if misordered(normalize(got)) != "" {
+		t.Errorf("properties out of schema order after normalize:\n%s", normalize(got))
+	}
+}
+
 func TestKeepBlocks(t *testing.T) {
 	doc := `<w:p><w:r><w:t>before</w:t></w:r></w:p>` +
 		`<w:bookmarkStart w:id="900001" w:name="_mdbrandKeep1"/>` +

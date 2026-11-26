@@ -98,11 +98,13 @@ end
 
 
 -- A page break meant for the PDF is Typst's own; any other raw LaTeX is left
--- for spans.lua to report, and the build stops on it.
+-- for spans.lua to report, and the build stops on it. Weak, as \clearpage
+-- is: one where a page already starts, after the contents, printed a blank
+-- page.
 local breaks = { ["\\newpage"] = true, ["\\clearpage"] = true, ["\\pagebreak"] = true, ["\\cleardoublepage"] = true }
 function RawBlock(r)
   if (r.format == "latex" or r.format == "tex") and breaks[r.text:match("^%s*(.-)%s*$")] then
-    return pandoc.RawBlock("typst", "#pagebreak()")
+    return pandoc.RawBlock("typst", "#pagebreak(weak: true)")
   end
 end
 

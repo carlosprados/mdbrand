@@ -437,9 +437,23 @@ RawInline = rawHTML
 -- stopped on mdbrand's page-foot check twice). \clearpage sets every waiting
 -- figure first. A document without one keeps its .tex byte for byte.
 local flushes = { ["\\newpage"] = true, ["\\pagebreak"] = true }
+-- A .docx dropped every one of them, and a report for readers in Word ran
+-- its sections together. A break there is a mark Repair turns into
+-- page-break-before on the next paragraph: like \clearpage, it does nothing
+-- where a page already starts, so one right after the contents or at the
+-- end adds no blank page, as a paragraph holding a break would.
+local docxBreaks = { ["\\newpage"] = true, ["\\pagebreak"] = true, ["\\clearpage"] = true, ["\\cleardoublepage"] = true }
+local breaks = 0
 function RawBlock(el)
-  if FORMAT == "latex" and (el.format == "latex" or el.format == "tex") and flushes[el.text:match("^%s*(.-)%s*$")] then
+  local raw = (el.format == "latex" or el.format == "tex") and el.text:match("^%s*(.-)%s*$")
+  if FORMAT == "latex" and raw and flushes[raw] then
     return pandoc.RawBlock("latex", "\\clearpage")
+  end
+  if FORMAT == "docx" and raw and docxBreaks[raw] then
+    breaks = breaks + 1
+    local id = 800000 + breaks
+    return pandoc.RawBlock("openxml", '<w:bookmarkStart w:id="' .. id .. '" w:name="_mdbrandBreak' .. breaks ..
+      '"/><w:bookmarkEnd w:id="' .. id .. '"/>')
   end
   -- An HTML comment before a deck's first ## became a frame of its own in
   -- beamer, empty but for the footer, and every slide after it was numbered

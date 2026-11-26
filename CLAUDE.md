@@ -261,8 +261,12 @@ Do not relax one without understanding what it cost.
     LaTeX template prints `abstract:` before the include-before body — above
     the cover — so mdbrand lifts it out of the front matter and puts it after
     the cover in both outputs. A formula the .docx would print as TeX stops
-    it; raw LaTeX it drops warns.
-    → `internal/docx/docx_test.go`, the docx section of `scripts/torture.sh`
+    it; raw LaTeX it drops warns. A `\newpage` was dropped too, and a
+    report for readers in Word ran its sections together: spans.lua marks
+    each break and Repair sets pageBreakBefore on the next paragraph, which,
+    like `\clearpage`, adds no blank page where one already starts — after
+    the contents, or at the end.
+    → `internal/docx/docx_test.go`, `testdata/pagebreak.md`, the docx section of `scripts/torture.sh`
     (read back through LibreOffice), `traps/pdf-picture.md`.
 
 16. **The PDF's text layer reads as its text.** Inter's contextual
@@ -622,7 +626,9 @@ Do not relax one without understanding what it cost.
     A section that opens with its chart left its heading alone at the foot
     on both engines, and a client report stopped building on it. An author's
     `\newpage` left earlier figures waiting at the top of the new page:
-    spans.lua writes it, and `\pagebreak`, as `\clearpage` in LaTeX. Where
+    spans.lua writes it, and `\pagebreak`, as `\clearpage` in LaTeX, and
+    typst.lua as a weak `#pagebreak`: a strong one after the contents
+    printed a blank page. Where
     the chart did not fit under its heading, it floated: in Typst a figure
     straight under a heading is set in the flow, where the sticky heading
     goes with it; in XeLaTeX each heading writes its number and sheet to the
@@ -637,7 +643,7 @@ Do not relax one without understanding what it cost.
     judged and nothing moved.
     → `internal/build/pagefoot_test.go`, `testdata/heading-chain.md`,
     `testdata/caption-table.md` (its tables' size included),
-    `testdata/heading-figure.md`.
+    `testdata/heading-figure.md`, `testdata/pagebreak.md`.
 
 Tests must not depend on what the machine has installed. Two did: one asserted
 against a real Gotham that only exists on one laptop, another was rescued by a
